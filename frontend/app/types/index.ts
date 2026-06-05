@@ -1,0 +1,136 @@
+export interface MedicamentoUso {
+  nome: string
+  dosagem: string
+  frequencia: string
+}
+
+export interface HistoricoItem {
+  data: string
+  descricao: string
+  diagnostico?: string
+  medicamentos?: string
+  exames?: string
+}
+
+export interface Paciente {
+  id: number
+  nome: string
+  sexo: 'masculino' | 'feminino'
+  dataNascimento: string
+  tipoSanguineo: string
+  alergias: string[]
+  medicamentosEmUso: MedicamentoUso[]
+  convenio: string
+  telefone: string
+  email: string
+  cpf: string
+  endereco: string
+  contatoEmergencia?: { nome: string, telefone: string, parentesco: string }
+  responsavel?: { nome: string, telefone: string, parentesco: string }
+  ultimaConsulta?: string
+  historicoRecente: HistoricoItem[]
+}
+
+export interface Clinica {
+  id: number
+  nome: string
+  endereco: string
+  telefone: string
+}
+
+export type AgendamentoStatus = 'agendado' | 'confirmado' | 'em_atendimento' | 'atendido' | 'faltou' | 'cancelado'
+
+export interface Agendamento {
+  id: number
+  pacienteId: number
+  medicoId: number
+  clinicaId: number
+  data: string
+  horario: string
+  prioridade: 'normal' | 'preferencial'
+  status: AgendamentoStatus
+  descricao: string
+  criadoEm: string
+}
+
+export interface AgendamentoComPaciente extends Agendamento {
+  paciente: Paciente
+}
+
+export type AgendaStatus = 'confirmado' | 'aguardando' | 'presente' | 'falta'
+
+export interface AgendaSlot {
+  time: string
+  type: 'appointment' | 'available' | 'lunch'
+  patient?: {
+    id: number
+    name: string
+    status: AgendaStatus
+    description: string
+  }
+}
+
+export interface AuthUser {
+  id: number
+  nome: string
+  email: string
+  role: 'medico' | 'recepcao'
+  especialidades?: string[]
+  clinicaIds: number[]
+}
+
+export interface Chamado {
+  id: number
+  pacienteId: number
+  pacienteNome: string
+  dataChamada: string
+  status: 'chamando' | 'concluido' | 'cancelado'
+  localAtendimento: string
+  medicoResponsavel: string
+}
+
+export interface Atendimento {
+  id: number
+  pacienteId: number
+  dataInicio: string
+  dataFim?: string
+  observacoes?: string
+}
+
+export interface ItemMedicamento {
+  nome: string
+  dosagem: string
+  detalhes: string
+}
+
+export interface PadraoReceita {
+  id: string
+  medicoId: number
+  nome: string
+  tipo: 'receita'
+  medicamentos: ItemMedicamento[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PadraoExame {
+  id: string
+  medicoId: number
+  nome: string
+  tipo: 'exame'
+  exames: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PadraoAtestado {
+  id: string
+  medicoId: number
+  nome: string
+  tipo: 'atestado'
+  html: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type Padrao = PadraoReceita | PadraoExame | PadraoAtestado

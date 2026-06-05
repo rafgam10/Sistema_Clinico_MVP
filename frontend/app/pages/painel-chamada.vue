@@ -1,0 +1,223 @@
+<script setup lang="ts">
+const chamadosStore = useChamadosStore()
+const agendamentosStore = useAgendamentosStore()
+
+onMounted(async () => {
+  const hoje = formatarDataISO(new Date())
+  await agendamentosStore.fetchAgendamentos(undefined, hoje)
+  chamadosStore.init()
+})
+
+const { agora, horaFormatada, dataFormatada } = useRelogio()
+
+const ultimoChamado = computed(() => chamadosStore.ultimoChamado)
+const ultimasChamadas = computed(() => chamadosStore.historicoChamados.slice(0, 4))
+
+const emEspera = computed(() => agendamentosStore.fila.length)
+
+const esperaMedia = computed(() => {
+  const ags = agendamentosStore.agendamentos
+  const tempos = ags.map(a => calcularMinutosDesde(a.horario, agora.value))
+  const total = tempos.length
+  if (!total) return 0
+  return Math.round(tempos.reduce((a, b) => a + b, 0) / total)
+})
+</script>
+
+<template>
+  <div class="flex flex-col h-screen p-6 gap-4 overflow-hidden">
+    <header class="flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-3">
+        <LogoMed />
+      </div>
+      <div class="text-right">
+        <p class="text-2xl font-light text-muted">
+          {{ dataFormatada }}
+        </p>
+        <p class="text-5xl font-bold tabular-nums tracking-tight text-foreground">
+          {{ horaFormatada }}
+        </p>
+      </div>
+    </header>
+
+    <div class="flex-1 flex gap-4 min-h-0">
+      <div class="flex-2 flex flex-col gap-4 min-w-0">
+        <template v-if="ultimoChamado">
+          <UCard
+            class="flex-1 flex flex-col items-center justify-center p-10 bg-primary-600 dark:bg-primary-700/80"
+          >
+            <p class="text-xl font-medium text-white text-center tracking-widest uppercase mb-4">
+              Chamando Agora
+            </p>
+
+            <p class="text-5xl md:text-7xl font-bold text-center text-white leading-tight mb-6">
+              {{ ultimoChamado.pacienteNome }}
+            </p>
+
+            <div class="flex gap-4 w-full max-w-2xl mb-6">
+              <UPageCard
+                class="flex-1 bg-white/20 text-center p-2!"
+                variant="subtle"
+              >
+                <p class="text-sm text-white uppercase tracking-wider mb-1">
+                  Local de Atendimento
+                </p>
+                <p class="text-xl font-semibold text-foreground text-white">
+                  {{ ultimoChamado.localAtendimento }}
+                </p>
+              </UPageCard>
+              <UPageCard
+                class="flex-1 bg-white/20 text-center p-2!"
+                variant="subtle"
+              >
+                <p class="text-sm text-white uppercase tracking-wider mb-1">
+                  Médico Responsável
+                </p>
+                <p class="text-xl font-semibold text-foreground text-white">
+                  {{ ultimoChamado.medicoResponsavel }}
+                </p>
+              </UPageCard>
+            </div>
+
+            <div class="flex items-center gap-3 justify-center">
+              <UIcon
+                name="i-lucide-arrow-right"
+                class="text-white animate-pulse"
+              />
+              <p class="text-lg text-center text-white font-medium animate-pulse">
+                Por favor, dirija-se à sala indicada.
+              </p>
+            </div>
+          </UCard>
+
+          <div class="flex gap-4 shrink-0">
+            <UCard class="flex-1 flex items-center gap-4 p-4!">
+              <UIcon
+                name="i-lucide-clock"
+                class="text-3xl text-primary shrink-0"
+              />
+              <div>
+                <p class="text-sm text-muted uppercase tracking-wider">
+                  Espera Média
+                </p>
+                <p class="text-2xl font-bold tabular-nums text-foreground">
+                  {{ esperaMedia }}<span class="text-base font-normal text-muted"> min</span>
+                </p>
+              </div>
+            </UCard>
+            <UCard class="flex-1 flex items-center gap-4 p-4!">
+              <UIcon
+                name="i-lucide-users"
+                class="text-3xl text-primary shrink-0"
+              />
+              <div>
+                <p class="text-sm text-muted uppercase tracking-wider">
+                  Em Espera
+                </p>
+                <p class="text-2xl font-bold tabular-nums text-foreground">
+                  {{ emEspera }}<span class="text-base font-normal text-muted"> paciente{{ emEspera !== 1 ? 's' : '' }}</span>
+                </p>
+              </div>
+            </UCard>
+          </div>
+        </template>
+
+        <template v-else>
+          <UCard class="flex-1 flex flex-col items-center justify-center p-10 bg-primary-600 dark:bg-primary-700/80">
+            <UIcon
+              name="i-lucide-stethoscope"
+              class="text-7xl text-white"
+            />
+            <p class="text-2xl font-medium text-white mt-4">
+              Nenhuma chamada no momento
+            </p>
+            <p class="text-base text-white mt-1">
+              A lista de chamadas aparecerá aqui automaticamente.
+            </p>
+          </UCard>
+
+          <div class="flex gap-4 shrink-0">
+            <UCard class="flex-1 flex items-center gap-4 p-4!">
+              <UIcon
+                name="i-lucide-clock"
+                class="text-3xl text-muted shrink-0"
+              />
+              <div>
+                <p class="text-sm text-muted uppercase tracking-wider">
+                  Espera Média
+                </p>
+                <p class="text-2xl font-bold tabular-nums text-foreground">
+                  {{ esperaMedia }}<span class="text-base font-normal text-muted"> min</span>
+                </p>
+              </div>
+            </UCard>
+            <UCard class="flex-1 flex items-center gap-4 p-4!">
+              <UIcon
+                name="i-lucide-users"
+                class="text-3xl text-muted shrink-0"
+              />
+              <div>
+                <p class="text-sm text-muted uppercase tracking-wider">
+                  Em Espera
+                </p>
+                <p class="text-2xl font-bold tabular-nums text-foreground">
+                  {{ emEspera }}<span class="text-base font-normal text-muted"> paciente{{ emEspera !== 1 ? 's' : '' }}</span>
+                </p>
+              </div>
+            </UCard>
+          </div>
+        </template>
+      </div>
+
+      <UCard
+        class="flex-1 flex flex-col overflow-hidden"
+        :ui="{ body: 'p-0 md:p-0 lg:p-0' }"
+      >
+        <template #title>
+          <div class="flex items-start gap-3">
+            <UIcon
+              name="i-lucide-list-check"
+              class="text-2xl text-primary shrink-0"
+            />
+            <p class="text-lg font-bold text-primary tracking-widest uppercase">
+              Últimas Chamadas
+            </p>
+          </div>
+        </template>
+
+        <div
+          v-if="ultimasChamadas.length"
+          class="flex-1 flex flex-col justify-center gap-2 p-2 overflow-hidden"
+        >
+          <UCard
+            v-for="chamado in ultimasChamadas"
+            :key="chamado.id"
+          >
+            <p class="text-2xl font-semibold text-foreground truncate">
+              {{ chamado.pacienteNome }}
+            </p>
+            <div class="flex justify-between text-sm text-muted mt-1">
+              <UBadge
+                :label="chamado.localAtendimento"
+                color="primary"
+                variant="soft"
+                size="lg"
+              />
+              <span>
+                {{ chamado.dataChamada }}</span>
+            </div>
+          </UCard>
+        </div>
+
+        <div
+          v-else
+          class="flex-1 flex items-center justify-center"
+        >
+          <p class="text-base text-muted">
+            Nenhuma chamada realizada
+          </p>
+        </div>
+      </UCard>
+    </div>
+  </div>
+</template>

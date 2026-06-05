@@ -1,0 +1,18 @@
+export default defineEventHandler(async (event) => {
+  const body = await readBody<{ pacienteId: number, pacienteNome: string, localAtendimento: string, medicoResponsavel: string }>(event)
+
+  if (!body.pacienteId || !body.pacienteNome || !body.localAtendimento || !body.medicoResponsavel) {
+    throw createError({ statusCode: 400, statusMessage: 'Dados incompletos' })
+  }
+
+  const chamado = criarChamado({
+    pacienteId: body.pacienteId,
+    pacienteNome: body.pacienteNome,
+    localAtendimento: body.localAtendimento,
+    medicoResponsavel: body.medicoResponsavel,
+    dataChamada: new Date().toLocaleTimeString('pt-BR'),
+    status: 'chamando'
+  })
+
+  return chamado
+})
