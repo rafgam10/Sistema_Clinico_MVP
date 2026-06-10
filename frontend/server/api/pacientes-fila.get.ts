@@ -1,0 +1,45 @@
+export default defineEventHandler(async () => {
+  try {
+    const raw = await $fetch<Record<string, unknown>[]>('http://localhost:5000/dashboard/pacientes')
+
+    return raw.map((item) => {
+      const entrada = item.DATA_HORA_ENTRADA ? new Date(String(item.DATA_HORA_ENTRADA)) : new Date()
+      const dataStr = entrada.toISOString().slice(0, 10)
+      const horarioStr = entrada.toISOString().slice(11, 16)
+
+      return {
+        id: Number(item.COD_ATENDIMENTO) || 0,
+        pacienteId: Number(item.PACIENTE_ID) || 0,
+        medicoId: 0,
+        clinicaId: 0,
+        data: dataStr,
+        horario: horarioStr,
+        prioridade: String(item.TP_ATENDIMENTO || ''),
+        status: String(item.ATIVO) === 'T' ? 'confirmado' : 'agendado',
+        descricao: '',
+        criadoEm: dataStr,
+        paciente: {
+          id: Number(item.PACIENTE_ID) || 0,
+          nome: String(item.PACIENTE_NOME || ''),
+          sexo: 'masculino',
+          dataNascimento: '',
+          tipoSanguineo: '',
+          alergias: [],
+          medicamentosEmUso: [],
+          convenio: '',
+          telefone: '',
+          email: '',
+          cpf: '',
+          endereco: '',
+          historicoRecente: []
+        }
+      }
+    })
+  } catch (error) {
+    throw createError({
+      statusCode: 502,
+      statusMessage: 'Falha ao conectar com o backend Flask',
+      data: String(error)
+    })
+  }
+})

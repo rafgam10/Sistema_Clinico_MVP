@@ -13,11 +13,25 @@ const auth = useAuthStore()
 const agendamentosStore = useAgendamentosStore()
 const chamadosStore = useChamadosStore()
 
+const pacientesFila = ref<any[]>([])
+const loadingFila = ref(true)
+
 onMounted(() => {
   const hoje = formatarDataISO(new Date())
   agendamentosStore.init(auth.activeClinicaId ?? undefined, hoje, auth.user?.id)
   chamadosStore.init()
+  carregarPacientesFila()
 })
+
+async function carregarPacientesFila() {
+  try {
+    pacientesFila.value = await $fetch('/api/pacientes-fila')
+  } catch {
+    pacientesFila.value = []
+  } finally {
+    loadingFila.value = false
+  }
+}
 
 const userName = computed(() => auth.user?.nome || 'Usuário')
 
@@ -296,6 +310,95 @@ const cards = computed<CardData[]>(() => {
                 :variant="atendimentoVariant(row.original.status)"
                 :disabled="temPacienteEmAtendimento || atendimentoDisabled(row.original.status) || isCalling(row.original.paciente.id)"
                 @click="atenderAgendamento(row.original as AgendamentoComPaciente)"
+              />
+            </div>
+          </template>
+        </UTable>
+      </UCard>
+
+      <UCard class="w-full">
+        <template #title>
+          <div class="flex items-center gap-2">
+            <span class="size-2 rounded-full bg-primary" />
+            <p class="text-lg font-medium">
+              Fila de Espera — Firebird
+            </p>
+          </div>
+        </template>
+
+        <p v-if="loadingFila" class="text-sm text-muted py-4">
+          Carregando dados do Firebird...
+        </p>
+
+        <p v-else-if="!pacientesFila.length" class="text-sm text-muted py-4">
+          Nenhum paciente encontrado no Firebird.
+        </p>
+
+        <UTable
+          v-else
+          :columns="colunas"
+          :data="pacientesFila"
+        >
+          <template #nome-cell="{ row }">
+            <div class="flex items-center gap-3">
+              <UAvatar
+                :alt="String(row.original.paciente?.nome ?? '')"
+                color="primary"
+                size="sm"
+              />
+              <div>
+                <p class="font-medium">
+                  {{ row.original.paciente?.nome ?? '' }}
+                </p>
+                <p class="text-xs text-muted">
+                  {{ row.original.horario ?? '' }}
+                </p>
+              </div>
+            </div>
+          </template>
+
+          <template #prioridade-cell="{ row }">
+            <UBadge
+              :label="String(row.original.prioridade ?? '')"
+              :color="corPrioridade(String(row.original.prioridade ?? ''))"
+              variant="subtle"
+            />
+          </template>
+
+          <template #status-cell="{ row }">
+            <UBadge
+              :label="rotuloStatus(String(row.original.status ?? ''))"
+              :color="corStatus(String(row.original.status ?? ''))"
+              variant="subtle"
+            />
+          </template>
+
+          <template #acoes-cell="{ row }">
+            <div class="flex items-center gap-1">
+              <UButton
+                icon="i-lucide-phone"
+                label="Chamar"
+                size="sm"
+                class="min-w-20"
+                color="neutral"
+                variant="soft"
+                disabled
+              />
+              <UButton
+                icon="i-lucide-user-x"
+                label="Faltou"
+                size="sm"
+                color="neutral"
+                variant="soft"
+                disabled
+              />
+              <UButton
+                icon="i-lucide-user-check"
+                label="Atender"
+                size="sm"
+                color="neutral"
+                variant="soft"
+                disabled
               />
             </div>
           </template>
