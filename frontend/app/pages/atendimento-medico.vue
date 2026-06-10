@@ -5,8 +5,16 @@ import { buildSolicitacaoExames, buildReceita } from '~/utils/pdf-documents'
 
 const agendamentosStore = useAgendamentosStore()
 const padroesStore = usePadroesStore()
+const cronometro = useCronometroStore()
 
-onMounted(() => padroesStore.fetchAll())
+onMounted(() => {
+  padroesStore.fetchAll()
+  cronometro.start()
+})
+
+onBeforeRouteLeave(() => {
+  if (cronometro.isRunning) cronometro.pause()
+})
 
 const agendamento = computed(() => agendamentosStore.emAtendimento)
 
@@ -97,11 +105,13 @@ async function gerarSolicitacaoExames() {
 
 function finalizarConsulta() {
   if (!agendamento.value) return
+  const duracao = cronometro.stop()
   agendamentosStore.atualizarStatus(agendamento.value.id, 'atendido', {
     anamnese: anamneseTexto.value,
     diagnostico: diagnosticoSelected.value?.value,
     medicamentos: receitaTexto.value,
-    exames: examesTexto.value
+    exames: examesTexto.value,
+    duracao
   })
   navigateTo('/dashboard')
 }
@@ -111,6 +121,22 @@ function finalizarConsulta() {
   <div class="h-screen flex flex-col">
     <UHeader title="Consulta Atual">
       <template #right>
+        <div class="flex items-center gap-2">
+          <UBadge
+            color="neutral"
+            variant="subtle"
+          >
+            <p>`Tempo: {{ cronometro.formatted }}</p>
+            <UButton
+              :key="cronometro.isRunning ? 'pause' : 'play'"
+              :icon="cronometro.isRunning ? 'i-lucide-pause' : 'i-lucide-play'"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              @click="cronometro.isRunning ? cronometro.pause() : cronometro.resume()"
+            />
+          </UBadge>
+        </div>
         <UColorModeButton />
       </template>
     </UHeader>

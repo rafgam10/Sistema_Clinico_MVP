@@ -1,6 +1,6 @@
 export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, 'id'))
-  const body = await readBody<{ status: string, consulta?: { anamnese?: string, diagnostico?: string, medicamentos?: string, exames?: string } }>(event)
+  const body = await readBody<{ status: string, consulta?: { anamnese?: string, diagnostico?: string, medicamentos?: string, exames?: string, duracao?: number } }>(event)
 
   const validStatuses = ['agendado', 'confirmado', 'em_atendimento', 'atendido', 'faltou', 'cancelado']
   if (!body.status || !validStatuses.includes(body.status)) {

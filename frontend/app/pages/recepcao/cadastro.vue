@@ -99,71 +99,166 @@ async function onSubmit() {
     <div class="p-6 bg-neutral-100 dark:bg-neutral-950 min-h-screen">
       <UCard class="max-w-3xl mx-auto">
         <template #title>
-          <p class="text-lg font-medium">Novo Paciente</p>
+          <p class="text-lg font-medium">
+            Novo Paciente
+          </p>
         </template>
 
-        <UAlert v-if="successMsg" :title="successMsg" color="success" variant="subtle" class="mb-4" icon="i-lucide-check-circle" />
-        <UAlert v-if="errorMsg" :title="errorMsg" color="error" variant="subtle" class="mb-4" icon="i-lucide-alert-circle" />
+        <UAlert
+          v-if="successMsg"
+          :title="successMsg"
+          color="success"
+          variant="subtle"
+          class="mb-4"
+          icon="i-lucide-check-circle"
+        />
+        <UAlert
+          v-if="errorMsg"
+          :title="errorMsg"
+          color="error"
+          variant="subtle"
+          class="mb-4"
+          icon="i-lucide-alert-circle"
+        />
 
-        <form class="space-y-6" @submit.prevent="onSubmit">
+        <form
+          class="space-y-6"
+          @submit.prevent="onSubmit"
+        >
           <div class="space-y-4">
-            <h3 class="font-semibold text-sm text-muted uppercase tracking-wider">Dados Pessoais</h3>
+            <h3 class="font-semibold text-sm text-muted uppercase tracking-wider">
+              Dados Pessoais
+            </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <UFormField label="Nome completo" required>
-                <UInput v-model="form.nome" placeholder="Nome do paciente" class="w-full" />
+              <UFormField
+                label="Nome completo"
+                required
+              >
+                <UInput
+                  v-model="form.nome"
+                  placeholder="Nome do paciente"
+                  class="w-full"
+                />
               </UFormField>
               <UFormField label="CPF">
-                <UInput v-model="form.cpf" placeholder="000.000.000-00" class="w-full" />
+                <UInput
+                  v-model="form.cpf"
+                  placeholder="000.000.000-00"
+                  class="w-full"
+                />
               </UFormField>
-              <UFormField label="Sexo" required>
-                <UInputMenu v-model="form.sexo" :items="sexoOptions" placeholder="Selecione" class="w-full" />
+              <UFormField
+                label="Sexo"
+                required
+              >
+                <UInputMenu
+                  v-model="form.sexo"
+                  :items="sexoOptions"
+                  placeholder="Selecione"
+                  class="w-full"
+                />
               </UFormField>
-              <UFormField label="Data de Nascimento" required>
-                <UInput v-model="form.dataNascimento" type="date" class="w-full" />
+              <UFormField
+                label="Data de Nascimento"
+                required
+              >
+                <UInput
+                  v-model="form.dataNascimento"
+                  type="date"
+                  class="w-full"
+                />
               </UFormField>
-              <UFormField label="Telefone" required>
-                <UInput v-model="form.telefone" placeholder="(11) 99999-0000" class="w-full" />
+              <UFormField
+                label="Telefone"
+                required
+              >
+                <UInput
+                  v-model="form.telefone"
+                  placeholder="(11) 99999-0000"
+                  class="w-full"
+                />
               </UFormField>
               <UFormField label="Email">
-                <UInput v-model="form.email" type="email" placeholder="paciente@email.com" class="w-full" />
+                <UInput
+                  v-model="form.email"
+                  type="email"
+                  placeholder="paciente@email.com"
+                  class="w-full"
+                />
               </UFormField>
               <UFormField label="Tipo Sanguíneo">
-                <UInput v-model="form.tipoSanguineo" placeholder="A+" class="w-full" />
+                <UInput
+                  v-model="form.tipoSanguineo"
+                  placeholder="A+"
+                  class="w-full"
+                />
               </UFormField>
               <UFormField label="Convênio">
-                <UInput v-model="form.convenio" placeholder="Unimed, Bradesco..." class="w-full" />
+                <UInput
+                  v-model="form.convenio"
+                  placeholder="Unimed, Bradesco..."
+                  class="w-full"
+                />
               </UFormField>
             </div>
             <UFormField label="Endereço">
-              <UInput v-model="form.endereco" placeholder="Rua, número, bairro, cidade" class="w-full" />
+              <UInput
+                v-model="form.endereco"
+                placeholder="Rua, número, bairro, cidade"
+                class="w-full"
+              />
             </UFormField>
           </div>
 
           <USeparator />
 
           <div class="space-y-4">
-            <h3 class="font-semibold text-sm text-muted uppercase tracking-wider">Informações Médicas</h3>
+            <h3 class="font-semibold text-sm text-muted uppercase tracking-wider">
+              Informações Médicas
+            </h3>
             <UFormField label="Alergias (separadas por vírgula)">
-              <UInput v-model="form.alergias" placeholder="Penicilina, Dipirona, Poeira" class="w-full" />
+              <UInput
+                v-model="form.alergias"
+                placeholder="Penicilina, Dipirona, Poeira"
+                class="w-full"
+              />
             </UFormField>
             <UFormField label="Medicamentos em uso (separados por vírgula)">
-              <UInput v-model="form.medicamentosEmUso" placeholder="Losartana, Omeprazol" class="w-full" />
+              <UInput
+                v-model="form.medicamentosEmUso"
+                placeholder="Losartana, Omeprazol"
+                class="w-full"
+              />
             </UFormField>
           </div>
 
           <USeparator />
 
           <div class="space-y-4">
-            <h3 class="font-semibold text-sm text-muted uppercase tracking-wider">Contato de Emergência</h3>
+            <h3 class="font-semibold text-sm text-muted uppercase tracking-wider">
+              Contato de Emergência
+            </h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <UFormField label="Nome">
-                <UInput v-model="form.contatoEmergenciaNome" placeholder="Nome do contato" class="w-full" />
+                <UInput
+                  v-model="form.contatoEmergenciaNome"
+                  placeholder="Nome do contato"
+                  class="w-full"
+                />
               </UFormField>
               <UFormField label="Telefone">
-                <UInput v-model="form.contatoEmergenciaTelefone" placeholder="(11) 99999-0000" class="w-full" />
+                <UInput
+                  v-model="form.contatoEmergenciaTelefone"
+                  placeholder="(11) 99999-0000"
+                  class="w-full"
+                />
               </UFormField>
               <UFormField label="Parentesco">
-                <UInput v-model="form.contatoEmergenciaParentesco" placeholder="Cônjuge, Filho..." class="w-full" />
+                <UInput
+                  v-model="form.contatoEmergenciaParentesco"
+                  placeholder="Cônjuge, Filho..."
+                  class="w-full"
+                />
               </UFormField>
             </div>
           </div>
@@ -171,23 +266,47 @@ async function onSubmit() {
           <USeparator />
 
           <div class="space-y-4">
-            <h3 class="font-semibold text-sm text-muted uppercase tracking-wider">Responsável (se menor de idade)</h3>
+            <h3 class="font-semibold text-sm text-muted uppercase tracking-wider">
+              Responsável (se menor de idade)
+            </h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <UFormField label="Nome">
-                <UInput v-model="form.responsavelNome" placeholder="Nome do responsável" class="w-full" />
+                <UInput
+                  v-model="form.responsavelNome"
+                  placeholder="Nome do responsável"
+                  class="w-full"
+                />
               </UFormField>
               <UFormField label="Telefone">
-                <UInput v-model="form.responsavelTelefone" placeholder="(11) 99999-0000" class="w-full" />
+                <UInput
+                  v-model="form.responsavelTelefone"
+                  placeholder="(11) 99999-0000"
+                  class="w-full"
+                />
               </UFormField>
               <UFormField label="Parentesco">
-                <UInput v-model="form.responsavelParentesco" placeholder="Pai, Mãe, Tutor..." class="w-full" />
+                <UInput
+                  v-model="form.responsavelParentesco"
+                  placeholder="Pai, Mãe, Tutor..."
+                  class="w-full"
+                />
               </UFormField>
             </div>
           </div>
 
           <div class="flex justify-end gap-2 pt-4">
-            <UButton label="Cancelar" color="neutral" variant="soft" to="/recepcao" />
-            <UButton label="Cadastrar" color="primary" type="submit" :loading="submitting" />
+            <UButton
+              label="Cancelar"
+              color="neutral"
+              variant="soft"
+              to="/recepcao"
+            />
+            <UButton
+              label="Cadastrar"
+              color="primary"
+              type="submit"
+              :loading="submitting"
+            />
           </div>
         </form>
       </UCard>

@@ -1,20 +1,5 @@
 <script setup lang="ts">
 const auth = useAuthStore()
-const route = useRoute()
-
-const clinicaSelecionada = computed({
-  get: () => {
-    const c = auth.clinicas.find(c => c.id === auth.activeClinicaId)
-    if (!c) return undefined
-    return { label: c.nome, value: c.id }
-  },
-  set: (val: { label: string, value: number } | undefined) => {
-    if (val) {
-      auth.setActiveClinica(val.value)
-      navigateTo(route.path)
-    }
-  }
-})
 
 const navItems = [
   { label: 'Painel', icon: 'i-lucide-layout-dashboard', to: '/recepcao' },
@@ -33,14 +18,6 @@ const navItems = [
         <NuxtLink to="/recepcao">
           <logoMed />
         </NuxtLink>
-        <div v-if="auth.clinicas.length > 1" class="px-2 mt-2">
-          <UInputMenu
-            v-model="clinicaSelecionada"
-            :items="auth.clinicas.map(c => ({ label: c.nome, value: c.id }))"
-            size="sm"
-            placeholder="Clínica..."
-          />
-        </div>
       </template>
 
       <UNavigationMenu

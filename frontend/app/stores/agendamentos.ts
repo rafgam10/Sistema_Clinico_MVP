@@ -72,12 +72,14 @@ export const useAgendamentosStore = defineStore('agendamentos', () => {
     await fetchAgendamentos(clinicaId, data, medicoId)
   }
 
-  async function atualizarStatus(id: number, status: AgendamentoStatus, consulta?: { anamnese?: string, diagnostico?: string, medicamentos?: string, exames?: string }) {
+  async function atualizarStatus(id: number, status: AgendamentoStatus, consulta?: { anamnese?: string, diagnostico?: string, medicamentos?: string, exames?: string, duracao?: number }) {
     try {
       await $fetch(`/api/agendamentos/${id}`, {
         method: 'PATCH',
         body: { status, consulta }
       })
+      const ag = agendamentos.value.find(a => a.id === id)
+      if (ag) ag.status = status
     } catch {
       console.error('Erro ao atualizar status do agendamento')
     }

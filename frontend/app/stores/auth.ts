@@ -4,7 +4,6 @@ import type { AuthUser, Clinica } from '~/types'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
   const clinicas = ref<Clinica[]>([])
-  const activeClinicaId = ref<number | null>(null)
 
   const _token = useCookie('auth_token', {
     maxAge: 60 * 60 * 24 * 7
@@ -12,6 +11,16 @@ export const useAuthStore = defineStore('auth', () => {
   const token = computed(() => _token.value)
 
   const isLoggedIn = computed(() => !!_token.value)
+
+  const _activeClinicaCookie = useCookie('active_clinica_id', {
+    maxAge: 60 * 60 * 24 * 7
+  })
+  const activeClinicaId = ref<number | null>(
+    _activeClinicaCookie.value ? Number(_activeClinicaCookie.value) : null
+  )
+  watch(activeClinicaId, (val) => {
+    _activeClinicaCookie.value = val !== null ? String(val) : null
+  })
 
   const activeClinica = computed(() => {
     if (!activeClinicaId.value) return null
@@ -32,17 +41,23 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = response.user
       clinicas.value = response.clinicas
 
-      // Auto-select primeiro [TODO: mostrar seletor se múltiplas]
-      const primeiraClinica = response.clinicas[0]
-      if (primeiraClinica) {
-        activeClinicaId.value = primeiraClinica.id
-      }
-
-      // Redirect based on role
-      if (response.user.role === 'recepcao') {
-        navigateTo('/recepcao')
+      if (response.clinicas.length > 1) {
+        activeClinicaId.value = null
+        if (response.user.role === 'recepcao') {
+          navigateTo('/selecionar-clinica')
+        } else {
+          navigateTo('/selecionar-clinica')
+        }
       } else {
-        navigateTo('/')
+        const primeira = response.clinicas[0]
+        if (primeira) {
+          activeClinicaId.value = primeira.id
+        }
+        if (response.user.role === 'recepcao') {
+          navigateTo('/recepcao')
+        } else {
+          navigateTo('/')
+        }
       }
 
       return { success: true }
@@ -69,9 +84,8 @@ export const useAuthStore = defineStore('auth', () => {
         const response = await $fetch<{ user: AuthUser, clinicas: Clinica[] }>('/api/auth/me')
         user.value = response.user
         clinicas.value = response.clinicas
-        const primeira = response.clinicas[0]
-        if (primeira) {
-          activeClinicaId.value = primeira.id
+        if (response.clinicas.length === 1) {
+          activeClinicaId.value = response.clinicas[0].id
         }
       } catch {
         logout()

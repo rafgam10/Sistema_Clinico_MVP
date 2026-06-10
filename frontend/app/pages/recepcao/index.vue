@@ -108,26 +108,44 @@ async function cancelarAgendamento(id: number) {
 
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <UPageCard>
-          <p class="text-muted font-medium">Total Hoje</p>
-          <p class="text-3xl font-bold">{{ agendamentosStore.totalAgendamentos }}</p>
+          <p class="text-muted font-medium">
+            Total Hoje
+          </p>
+          <p class="text-3xl font-bold">
+            {{ agendamentosStore.totalAgendamentos }}
+          </p>
         </UPageCard>
         <UPageCard>
-          <p class="text-muted font-medium">Na Fila</p>
-          <p class="text-3xl font-bold">{{ agendamentosStore.fila.length }}</p>
+          <p class="text-muted font-medium">
+            Na Fila
+          </p>
+          <p class="text-3xl font-bold">
+            {{ agendamentosStore.fila.length }}
+          </p>
         </UPageCard>
         <UPageCard>
-          <p class="text-muted font-medium">Em Atendimento</p>
-          <p class="text-3xl font-bold">{{ agendamentosStore.emAtendimento ? 1 : 0 }}</p>
+          <p class="text-muted font-medium">
+            Em Atendimento
+          </p>
+          <p class="text-3xl font-bold">
+            {{ agendamentosStore.emAtendimento ? 1 : 0 }}
+          </p>
         </UPageCard>
         <UPageCard>
-          <p class="text-muted font-medium">Faltas</p>
-          <p class="text-3xl font-bold">{{ agendamentosStore.totalFaltas }}</p>
+          <p class="text-muted font-medium">
+            Faltas
+          </p>
+          <p class="text-3xl font-bold">
+            {{ agendamentosStore.totalFaltas }}
+          </p>
         </UPageCard>
       </div>
 
       <UCard>
         <template #title>
-          <p class="text-lg font-medium">Agenda do Dia</p>
+          <p class="text-lg font-medium">
+            Agenda do Dia
+          </p>
         </template>
 
         <UTable
@@ -142,8 +160,12 @@ async function cancelarAgendamento(id: number) {
                 size="sm"
               />
               <div>
-                <p class="font-medium">{{ row.original.paciente.nome }}</p>
-                <p class="text-xs text-muted">{{ row.original.descricao }}</p>
+                <p class="font-medium">
+                  {{ row.original.paciente.nome }}
+                </p>
+                <p class="text-xs text-muted">
+                  {{ row.original.descricao }}
+                </p>
               </div>
             </div>
           </template>

@@ -17,6 +17,19 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/login')
   }
 
+  // Rota de seleção de clínica — permitir se não tiver clínica ativa
+  if (to.path === '/selecionar-clinica') {
+    if (auth.activeClinicaId) {
+      return navigateTo(auth.isRecepcao ? '/recepcao' : '/dashboard')
+    }
+    return
+  }
+
+  // Se tem múltiplas clínicas mas nenhuma selecionada, forçar seleção
+  if (auth.clinicas.length > 1 && !auth.activeClinicaId) {
+    return navigateTo('/selecionar-clinica')
+  }
+
   // Role-based routing
   const isRecepcaoRoute = to.path.startsWith('/recepcao')
   const isMedicoRoute = !isRecepcaoRoute

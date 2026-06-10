@@ -1,19 +1,17 @@
 <script setup lang="ts">
-import type { PadraoReceita, PadraoExame, PadraoAtestado } from '~/types'
+import type { PadraoReceita, PadraoExame } from '~/types'
 
 const padroesStore = usePadroesStore()
 
 onMounted(() => padroesStore.fetchAll())
 
-const activeTab = ref<'receitas' | 'exames' | 'atestados' | null>(null)
+const activeTab = ref<'receitas' | 'exames' | null>(null)
 
 const showReceitaModal = ref(false)
 const showExameModal = ref(false)
-const showAtestadoModal = ref(false)
 
 const editingReceita = ref<PadraoReceita | null>(null)
 const editingExame = ref<PadraoExame | null>(null)
-const editingAtestado = ref<PadraoAtestado | null>(null)
 
 function abrirNovaReceita() {
   editingReceita.value = null
@@ -23,11 +21,6 @@ function abrirNovaReceita() {
 function abrirNovaExame() {
   editingExame.value = null
   showExameModal.value = true
-}
-
-function abrirNovoAtestado() {
-  editingAtestado.value = null
-  showAtestadoModal.value = true
 }
 
 function editarReceita(p: PadraoReceita) {
@@ -40,20 +33,11 @@ function editarExame(p: PadraoExame) {
   showExameModal.value = true
 }
 
-function editarAtestado(p: PadraoAtestado) {
-  editingAtestado.value = p
-  showAtestadoModal.value = true
-}
-
 async function deletarReceita(p: PadraoReceita) {
   await padroesStore.deletar(p.id)
 }
 
 async function deletarExame(p: PadraoExame) {
-  await padroesStore.deletar(p.id)
-}
-
-async function deletarAtestado(p: PadraoAtestado) {
   await padroesStore.deletar(p.id)
 }
 
@@ -65,14 +49,9 @@ function gerenciarExame() {
   activeTab.value = 'exames'
 }
 
-function gerenciarAtestado() {
-  activeTab.value = 'atestados'
-}
-
 function activeTabEmpty(): boolean {
   if (activeTab.value === 'receitas') return padroesStore.receitas.length === 0
   if (activeTab.value === 'exames') return padroesStore.exames.length === 0
-  if (activeTab.value === 'atestados') return padroesStore.atestados.length === 0
   return true
 }
 </script>
@@ -86,7 +65,7 @@ function activeTabEmpty(): boolean {
     </UHeader>
 
     <div class="p-6 space-y-6 bg-neutral-100 dark:bg-neutral-950 min-h-screen">
-      <div class="grid grid-cols-3 gap-6">
+      <div class="grid grid-cols-2 gap-6">
         <UCard>
           <template #title>
             <div class="flex items-center gap-2">
@@ -156,52 +135,17 @@ function activeTabEmpty(): boolean {
             />
           </div>
         </UCard>
-
-        <UCard>
-          <template #title>
-            <div class="flex items-center gap-2">
-              <UIcon
-                name="i-lucide-stamp"
-                class="text-primary"
-              />
-              <p class="font-semibold">
-                Atestados Médicos
-              </p>
-            </div>
-          </template>
-
-          <template #description>
-            <p class="text-sm text-muted">
-              Modelos de atestado com placeholders como <code class="text-xs">{nome_paciente}</code>, <code class="text-xs">{dias}</code>, etc.
-            </p>
-          </template>
-
-          <div class="flex gap-2">
-            <UButton
-              icon="i-lucide-plus"
-              label="Novo Modelo"
-              size="sm"
-              @click="abrirNovoAtestado"
-            />
-            <UButton
-              label="Gerenciar"
-              color="neutral"
-              size="sm"
-              @click="gerenciarAtestado"
-            />
-          </div>
-        </UCard>
       </div>
 
       <UCard v-if="activeTab">
         <template #title>
           <div class="flex items-center gap-2">
             <UIcon
-              :name="activeTab === 'receitas' ? 'i-lucide-pill' : activeTab === 'exames' ? 'i-lucide-flask-conical' : 'i-lucide-stamp'"
+              :name="activeTab === 'receitas' ? 'i-lucide-pill' : 'i-lucide-flask-conical'"
               class="text-primary"
             />
             <p class="font-semibold">
-              Modelos de {{ activeTab === 'receitas' ? 'Receitas Médicas' : activeTab === 'exames' ? 'Pedidos de Exames' : 'Atestados Médicos' }}
+              Modelos de {{ activeTab === 'receitas' ? 'Receitas Médicas' : 'Pedidos de Exames' }}
             </p>
           </div>
         </template>
@@ -275,39 +219,6 @@ function activeTabEmpty(): boolean {
             </div>
           </template>
 
-          <template v-else>
-            <div
-              v-for="p in padroesStore.atestados"
-              :key="p.id"
-              class="flex items-center justify-between p-3 rounded-lg border border-muted hover:bg-muted/50"
-            >
-              <div>
-                <p class="font-medium">
-                  {{ p.nome }}
-                </p>
-                <p class="text-xs text-muted">
-                  {{ new Date(p.updatedAt).toLocaleDateString('pt-BR') }}
-                </p>
-              </div>
-              <div class="flex gap-1">
-                <UButton
-                  icon="i-lucide-pencil"
-                  color="neutral"
-                  variant="ghost"
-                  size="sm"
-                  @click="editarAtestado(p as PadraoAtestado)"
-                />
-                <UButton
-                  icon="i-lucide-trash-2"
-                  color="error"
-                  variant="ghost"
-                  size="sm"
-                  @click="deletarAtestado(p as PadraoAtestado)"
-                />
-              </div>
-            </div>
-          </template>
-
           <p
             v-if="activeTabEmpty()"
             class="text-sm text-muted italic py-4 text-center"
@@ -326,11 +237,6 @@ function activeTabEmpty(): boolean {
     <PadraoExameModal
       v-model:open="showExameModal"
       :padrao="editingExame"
-    />
-
-    <PadraoAtestadoModal
-      v-model:open="showAtestadoModal"
-      :padrao="editingAtestado"
     />
   </div>
 </template>

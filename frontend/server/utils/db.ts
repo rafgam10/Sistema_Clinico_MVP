@@ -35,6 +35,7 @@ interface ServerAgendamento {
   status: 'agendado' | 'confirmado' | 'em_atendimento' | 'atendido' | 'faltou' | 'cancelado'
   descricao: string
   criadoEm: string
+  duracao?: number
 }
 
 interface ServerChamado {
@@ -51,12 +52,35 @@ interface ServerPadrao {
   id: string
   medicoId: number
   nome: string
-  tipo: 'receita' | 'exame' | 'atestado'
+  tipo: 'receita' | 'exame'
   medicamentos?: { nome: string, dosagem: string, detalhes: string }[]
   exames?: string[]
   html?: string
   createdAt: string
   updatedAt: string
+}
+
+// ── DATE SHIFT (ajusta datas mockadas pro dia atual) ──
+const DATA_REF = new Date('2026-06-05T12:00:00')
+const DIFF_DIAS = Math.round((Date.now() - DATA_REF.getTime()) / (1000 * 60 * 60 * 24))
+
+function shiftISO(iso: string): string {
+  const d = new Date(iso + 'T12:00:00')
+  d.setDate(d.getDate() + DIFF_DIAS)
+  return d.toISOString().split('T')[0]
+}
+
+function shiftISOFull(iso: string): string {
+  const d = new Date(iso)
+  d.setDate(d.getDate() + DIFF_DIAS)
+  return d.toISOString()
+}
+
+function shiftBR(br: string): string {
+  const [d, m, y] = br.split('/')
+  const date = new Date(`${y}-${m}-${d}T12:00:00`)
+  date.setDate(date.getDate() + DIFF_DIAS)
+  return date.toLocaleDateString('pt-BR')
 }
 
 // ── CLÍNICAS ──
@@ -305,6 +329,20 @@ const chamados: ServerChamado[] = []
 // ── PADRÕES (preservado) ──
 const padroes: ServerPadrao[] = []
 
+// ── Ajusta todas as datas mockadas pro dia atual ──
+if (DIFF_DIAS !== 0) {
+  for (const a of agendamentos) {
+    a.data = shiftISO(a.data)
+    a.criadoEm = shiftISOFull(a.criadoEm)
+  }
+  for (const p of pacientes) {
+    if (p.ultimaConsulta) p.ultimaConsulta = shiftBR(p.ultimaConsulta)
+    for (const h of p.historicoRecente) {
+      h.data = shiftBR(h.data)
+    }
+  }
+}
+
 // ── SSE ──
 const sseClients: Set<{ write: (data: string) => void, close: () => void }> = new Set()
 
@@ -392,10 +430,11 @@ export function criarAgendamento(data: Omit<ServerAgendamento, 'id' | 'criadoEm'
   return agendamento
 }
 
-export function atualizarStatusAgendamento(id: number, status: ServerAgendamento['status'], consulta?: { anamnese?: string, diagnostico?: string, medicamentos?: string, exames?: string }) {
+export function atualizarStatusAgendamento(id: number, status: ServerAgendamento['status'], consulta?: { anamnese?: string, diagnostico?: string, medicamentos?: string, exames?: string, duracao?: number }) {
   const a = agendamentos.find(a => a.id === id)
   if (!a) return null
   a.status = status
+  if (consulta?.duracao) a.duracao = consulta.duracao
 
   // Se foi atendido, atualiza ultimaConsulta e histórico do paciente
   if (status === 'atendido') {

@@ -86,7 +86,10 @@ const slots = computed<AgendaSlot[]>(() => {
   for (let h = 8; h <= 17; h++) {
     for (let m = 0; m < 60; m += 30) {
       const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-      if (time === '12:00') { result.push({ time, type: 'lunch' }); continue }
+      if (time === '12:00') {
+        result.push({ time, type: 'lunch' })
+        continue
+      }
       if (time >= '12:30' && time < '13:00') continue
 
       const ag = agendamentosStore.agendamentos.find(a => a.horario === time)
@@ -173,43 +176,99 @@ async function criarAgendamento() {
         >
           <template #header>
             <div class="flex items-center justify-between">
-              <UButton icon="i-lucide-chevron-left" color="neutral" variant="ghost" size="lg" @click="prevDay" />
+              <UButton
+                icon="i-lucide-chevron-left"
+                color="neutral"
+                variant="ghost"
+                size="lg"
+                @click="prevDay"
+              />
               <UPopover v-model:open="isPopoverOpen">
-                <UButton color="neutral" variant="link" class="text-lg font-semibold">
+                <UButton
+                  color="neutral"
+                  variant="link"
+                  class="text-lg font-semibold"
+                >
                   {{ formattedDate }}
                 </UButton>
                 <template #content>
                   <div class="p-2">
                     <UCalendar v-model="calendarDate" />
-                    <UButton label="Hoje" color="primary" variant="soft" size="sm" class="mt-2 w-full" @click="goToToday" />
+                    <UButton
+                      label="Hoje"
+                      color="primary"
+                      variant="soft"
+                      size="sm"
+                      class="mt-2 w-full"
+                      @click="goToToday"
+                    />
                   </div>
                 </template>
               </UPopover>
-              <UButton icon="i-lucide-chevron-right" color="neutral" variant="ghost" size="lg" @click="nextDay" />
+              <UButton
+                icon="i-lucide-chevron-right"
+                color="neutral"
+                variant="ghost"
+                size="lg"
+                @click="nextDay"
+              />
             </div>
             <div class="flex gap-4 mt-2">
-              <div v-for="s in statuses" :key="s.id" class="flex items-center gap-1.5 text-sm">
+              <div
+                v-for="s in statuses"
+                :key="s.id"
+                class="flex items-center gap-1.5 text-sm"
+              >
                 <div :class="`size-2.5 rounded-full bg-${s.color}`" />{{ s.name }}
               </div>
             </div>
           </template>
 
-          <UTable :columns="[{ accessorKey: 'time', header: '', size: 100 }, { id: 'content', header: '' }]" :data="slots" class="w-full" :ui="{ thead: 'hidden' }">
+          <UTable
+            :columns="[{ accessorKey: 'time', header: '', size: 100 }, { id: 'content', header: '' }]"
+            :data="slots"
+            class="w-full"
+            :ui="{ thead: 'hidden' }"
+          >
             <template #time-cell="{ row }">
-              <span v-if="row.original.type !== 'lunch'" class="font-mono text-sm whitespace-nowrap">{{ row.original.time }}</span>
+              <span
+                v-if="row.original.type !== 'lunch'"
+                class="font-mono text-sm whitespace-nowrap"
+              >{{ row.original.time }}</span>
             </template>
             <template #content-cell="{ row }">
-              <USeparator v-if="row.original.type === 'lunch'" label="Almoço" class="my-2 w-full" />
-              <p v-else-if="row.original.type === 'available'" class="text-muted text-sm italic py-2">Horário Livre</p>
-              <UPageCard v-else variant="subtle" class="w-full" :ui="{ container: 'p-2 sm:p-2', root: `bg-${statusColor(row.original.patient!.status)}/10 ring-transparent border-l-4 border-${statusColor(row.original.patient!.status)}` }">
+              <USeparator
+                v-if="row.original.type === 'lunch'"
+                label="Almoço"
+                class="my-2 w-full"
+              />
+              <p
+                v-else-if="row.original.type === 'available'"
+                class="text-muted text-sm italic py-2"
+              >
+                Horário Livre
+              </p>
+              <UPageCard
+                v-else
+                variant="subtle"
+                class="w-full"
+                :ui="{ container: 'p-2 sm:p-2', root: `bg-${statusColor(row.original.patient!.status)}/10 ring-transparent border-l-4 border-${statusColor(row.original.patient!.status)}` }"
+              >
                 <template #title>
                   <div class="flex items-center gap-2">
                     <span class="font-medium">{{ row.original.patient!.name }}</span>
-                    <UBadge :label="row.original.patient!.status" :color="statusColor(row.original.patient!.status)" variant="subtle" size="sm" />
+                    <UBadge
+                      :label="row.original.patient!.status"
+                      :color="statusColor(row.original.patient!.status)"
+                      variant="subtle"
+                      size="sm"
+                    />
                   </div>
                 </template>
                 <template #description>
-                  <p class="text-sm">{{ row.original.patient!.description }}</p>
+                  <p class="text-sm">
+                    {{ row.original.patient!.description }}
+                  </p>
                 </template>
               </UPageCard>
             </template>
@@ -217,33 +276,86 @@ async function criarAgendamento() {
         </UCard>
       </div>
 
-      <div v-if="showNovoAgendamento" class="w-80 shrink-0">
+      <div
+        v-if="showNovoAgendamento"
+        class="w-80 shrink-0"
+      >
         <UCard>
           <template #title>
             <div class="flex items-center justify-between">
               <span class="font-medium">Novo Agendamento</span>
-              <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="sm" @click="showNovoAgendamento = false" />
+              <UButton
+                icon="i-lucide-x"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                @click="showNovoAgendamento = false"
+              />
             </div>
           </template>
 
-          <UAlert v-if="successMsg" :title="successMsg" :color="successMsg.includes('sucesso') ? 'success' : 'error'" variant="subtle" class="mb-4" />
+          <UAlert
+            v-if="successMsg"
+            :title="successMsg"
+            :color="successMsg.includes('sucesso') ? 'success' : 'error'"
+            variant="subtle"
+            class="mb-4"
+          />
 
           <div class="space-y-4">
-            <UFormField label="Paciente" required>
-              <UInputMenu v-model="novoAgendamento.paciente" :items="pacientes" placeholder="Buscar paciente..." searchable class="w-full" />
+            <UFormField
+              label="Paciente"
+              required
+            >
+              <UInputMenu
+                v-model="novoAgendamento.paciente"
+                :items="pacientes"
+                placeholder="Buscar paciente..."
+                searchable
+                class="w-full"
+              />
             </UFormField>
-            <UFormField label="Médico" required>
-              <UInputMenu v-model="novoAgendamento.medico" :items="medicos" placeholder="Selecione o médico" class="w-full" />
+            <UFormField
+              label="Médico"
+              required
+            >
+              <UInputMenu
+                v-model="novoAgendamento.medico"
+                :items="medicos"
+                placeholder="Selecione o médico"
+                class="w-full"
+              />
             </UFormField>
-            <UFormField label="Horário" required>
-              <UInput v-model="novoAgendamento.horario" type="time" class="w-full" />
+            <UFormField
+              label="Horário"
+              required
+            >
+              <UInput
+                v-model="novoAgendamento.horario"
+                type="time"
+                class="w-full"
+              />
             </UFormField>
             <UFormField label="Descrição">
-              <UInput v-model="novoAgendamento.descricao" placeholder="Motivo da consulta" class="w-full" />
+              <UInput
+                v-model="novoAgendamento.descricao"
+                placeholder="Motivo da consulta"
+                class="w-full"
+              />
             </UFormField>
             <div class="flex justify-end gap-2 pt-2">
-              <UButton label="Cancelar" color="neutral" variant="soft" @click="showNovoAgendamento = false" />
-              <UButton label="Agendar" color="primary" :loading="submitting" @click="criarAgendamento" />
+              <UButton
+                label="Cancelar"
+                color="neutral"
+                variant="soft"
+                @click="showNovoAgendamento = false"
+              />
+              <UButton
+                label="Agendar"
+                color="primary"
+                :loading="submitting"
+                @click="criarAgendamento"
+              />
             </div>
           </div>
         </UCard>

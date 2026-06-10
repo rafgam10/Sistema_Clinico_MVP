@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { Padrao, PadraoReceita, PadraoExame, PadraoAtestado } from '~/types'
+import type { Padrao, PadraoReceita, PadraoExame } from '~/types'
 
 export const usePadroesStore = defineStore('padroes', () => {
   const padroes = ref<Padrao[]>([])
@@ -7,7 +7,6 @@ export const usePadroesStore = defineStore('padroes', () => {
 
   const receitas = computed(() => padroes.value.filter((p): p is PadraoReceita => p.tipo === 'receita'))
   const exames = computed(() => padroes.value.filter((p): p is PadraoExame => p.tipo === 'exame'))
-  const atestados = computed(() => padroes.value.filter((p): p is PadraoAtestado => p.tipo === 'atestado'))
 
   async function fetchAll() {
     loading.value = true
@@ -49,7 +48,6 @@ export const usePadroesStore = defineStore('padroes', () => {
     loading,
     receitas,
     exames,
-    atestados,
     fetchAll,
     criar,
     atualizar,

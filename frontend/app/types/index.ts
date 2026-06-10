@@ -51,6 +51,7 @@ export interface Agendamento {
   status: AgendamentoStatus
   descricao: string
   criadoEm: string
+  duracao?: number
 }
 
 export interface AgendamentoComPaciente extends Agendamento {
@@ -123,14 +124,4 @@ export interface PadraoExame {
   updatedAt: string
 }
 
-export interface PadraoAtestado {
-  id: string
-  medicoId: number
-  nome: string
-  tipo: 'atestado'
-  html: string
-  createdAt: string
-  updatedAt: string
-}
-
-export type Padrao = PadraoReceita | PadraoExame | PadraoAtestado
+export type Padrao = PadraoReceita | PadraoExame

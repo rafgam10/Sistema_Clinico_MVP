@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgendaSlot, AgendaStatus, AgendamentoComPaciente } from '~/types'
+import type { AgendaSlot, AgendaStatus } from '~/types'
 import { CalendarDate } from '@internationalized/date'
 
 const agendamentosStore = useAgendamentosStore()
