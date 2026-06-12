@@ -8,8 +8,11 @@ class Usuario(db.Model):
     __tablename__ = "usuarios"
 
     id = Column(Integer, primary_key=True)
+    nome_completo = Column(String(255), nullable=False)
+    cnpj_cpf = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False)
     senha = Column(String(255), nullable=False)
+    role = ...
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
@@ -43,7 +46,9 @@ class Usuario(db.Model):
         back_populates="medico"
     )
     
-    def __init__(self, email, senha):
+    def __init__(self, nome_completo, cnpj_cpf, email, senha):
+        self.nome_completo = nome_completo
+        self.cnpj_cpf = cnpj_cpf
         self.email = email
         self.senha = senha
 
