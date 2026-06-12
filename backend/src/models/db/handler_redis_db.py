@@ -8,8 +8,8 @@ class ConnectionDBRedis:
     
     def __init__(self):
         self.host = os.getenv("REDIS_HOST")
-        self.port = os.getenv("REDIS_PORT", 6379)
-        self.db = os.getenv("REDIS_DB", 0)
+        self.port = int(os.getenv("REDIS_PORT", 6379))
+        self.db = int(os.getenv("REDIS_DB", 0))
         self.password = os.getenv("REDIS_PASSWORD", None)
         self._connection = None
         

@@ -12,7 +12,7 @@ dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 CACHE_KEY_PACIENTES = "dashboard:pacientes"
 CACHE_TTL = 300
 
-@dashboard_bp.route("pacientes")
+@dashboard_bp.route("/pacientes", methods=["GET"])
 def dashboard_paciente_lista():
     try:
         redis_connection = ConnectionDBRedis()
@@ -28,21 +28,16 @@ def dashboard_paciente_lista():
             # WHERE a.id_tbcencus = '350'
             # AND CAST(a.DATA_HORA_ENTRADA AS DATE) = CURRENT_DATE;
             # """)
+            
+            # Query de SELECT:
             cursor.execute("""
-                SELECT
-                a.ID,
-                a.COD_ATENDIMENTO,
-                a.GUIA,
-                a.DATA_HORA_ENTRADA,
-                a.DATA_HORA_ALTA_MEDICA,
-                a.TP_ATENDIMENTO,
-                a.ATIVO,
-                p.ID AS PACIENTE_ID,
-                p.NOME AS PACIENTE_NOME
-            FROM ATCABECATEND a
-            JOIN RICADPAC p
-                ON p.ID = a.ID_RICADPAC
-            WHERE a.ID = 309371;         
+                SELECT *
+                    FROM ATCABECATEND A 
+                    JOIN TBCBOPRO TB ON A.ID_TBCBOPRO_ATENDIMENTO = TB.ID
+                    JOIN TBPROFIS TF ON TB.ID_TBPROFIS = TF.ID 
+                WHERE  a.id_tbcencus = '203' AND -- < id_tbcencus > Codigo da unidade
+                tb.cod = '11700' AND -- < TBCBOPRO --:  >
+                CAST(a.DATA_HORA_ENTRADA AS DATE) = CURRENT_DATE - 1;       
             """)
 
             columns = [desc[0] for desc in cursor.description]
