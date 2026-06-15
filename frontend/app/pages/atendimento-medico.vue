@@ -25,43 +25,94 @@ const tabItems = [
   { label: 'Finalizar', icon: 'i-lucide-check-circle' }
 ]
 
+type CidResultado = { cid: string, nome: string }
+
 let buscaTimeout: ReturnType<typeof setTimeout> | null = null
+let cidController: AbortController | null = null
+let cidRequestId = 0
+
 const inputRef = ref()
 const searchCid = ref('')
-const resultadosCid = ref<{ cid: string, nome: string }[]>([])
+const resultadosCid = ref<CidResultado[]>([])
 const popoverOpen = ref(false)
-const cidSelecionado = ref<{ cid: string, nome: string } | null>(null)
+const cidSelecionado = ref<CidResultado | null>(null)
+
+const CID_CODE_PATTERN = /^[A-Za-z][0-9.]*$/
+
+function podeBuscarCid(q: string) {
+  const termo = q.trim()
+
+  if (!termo) return false
+
+  if (CID_CODE_PATTERN.test(termo)) {
+    return termo.length >= 2
+  }
+
+  return termo.length >= 3
+}
+
+function limparResultadosCid() {
+  cidRequestId++
+  cidController?.abort()
+  resultadosCid.value = []
+  popoverOpen.value = false
+}
 
 async function buscarCid(q: string) {
-  if (!q.trim()) {
-    resultadosCid.value = []
+  const termo = q.trim()
+
+  if (!podeBuscarCid(termo)) {
+    limparResultadosCid()
     return
   }
+
+  const requestId = ++cidRequestId
+
+  cidController?.abort()
+  cidController = new AbortController()
+
   try {
-    resultadosCid.value = await $fetch(`/api/cid?q=${encodeURIComponent(q)}`)
-  } catch {
+    const data = await $fetch<CidResultado[]>('/api/cid', {
+      query: {
+        q: termo,
+        limit: 20
+      },
+      signal: cidController.signal
+    })
+
+    if (requestId !== cidRequestId) return
+    if (searchCid.value.trim() !== termo) return
+
+    resultadosCid.value = data
+    popoverOpen.value = data.length > 0
+  } catch (error) {
+    const name = error instanceof Error ? error.name : ''
+
+    if (name === 'AbortError') return
+    if (requestId !== cidRequestId) return
+
     resultadosCid.value = []
+    popoverOpen.value = false
   }
 }
 
 function onSearchInput(val: string) {
   if (buscaTimeout) clearTimeout(buscaTimeout)
-  if (!val.trim()) {
-    resultadosCid.value = []
-    popoverOpen.value = false
+
+  if (!podeBuscarCid(val)) {
+    limparResultadosCid()
     return
   }
-  buscaTimeout = setTimeout(async () => {
-    await buscarCid(val)
-    popoverOpen.value = !!resultadosCid.value.length
+
+  buscaTimeout = setTimeout(() => {
+    buscarCid(val)
   }, 300)
 }
 
-function selecionarCid(cid: { cid: string, nome: string }) {
+function selecionarCid(cid: CidResultado) {
   cidSelecionado.value = cid
   searchCid.value = ''
-  resultadosCid.value = []
-  popoverOpen.value = false
+  limparResultadosCid()
 }
 
 function limparCid() {
