@@ -6,11 +6,22 @@ import { buildSolicitacaoExames, buildReceita } from '~/utils/pdf-documents'
 const agendamentosStore = useAgendamentosStore()
 const padroesStore = usePadroesStore()
 const cronometro = useCronometroStore()
+const cidLista = ref<{ cid: string, nome: string }[]>([])
 
 onMounted(() => {
   padroesStore.fetchAll()
   cronometro.start()
+
+  fetchCids()
 })
+
+async function fetchCids() {
+  try {
+    cidLista.value = await $fetch('/api/cid')
+  } catch {
+    cidLista.value = []
+  }
+}
 
 onBeforeRouteLeave(() => {
   if (cronometro.isRunning) cronometro.pause()
@@ -25,6 +36,13 @@ const tabItems = [
   { label: 'Solicitar Exames', icon: 'i-lucide-flask-conical' },
   { label: 'Finalizar', icon: 'i-lucide-check-circle' }
 ]
+
+const cidItems = computed(() =>
+  cidLista.value.map(c => ({
+    label: `${c.nome} (${c.cid})`,
+    value: c.cid
+  }))
+)
 
 const anamneseTexto = ref('')
 const diagnosticoSelected = ref<{ label: string, value: string }>()
@@ -299,13 +317,7 @@ function finalizarConsulta() {
             </template>
             <UInputMenu
               v-model="diagnosticoSelected"
-              :items="[
-                { label: 'Gripe (J10)', value: 'J10' },
-                { label: 'Diabetes (E11)', value: 'E11' },
-                { label: 'Hipertensão (I10)', value: 'I10' },
-                { label: 'Asma (J45)', value: 'J45' },
-                { label: 'Depressão (F32)', value: 'F32' }
-              ]"
+              :items="cidItems"
               placeholder="Selecione os diagnósticos..."
               class="w-full"
             />
