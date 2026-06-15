@@ -34,11 +34,12 @@ def create_app():
         from src.routes.login_route import login_bp
         from src.routes.dashboard_route import dashboard_bp
         from src.routes.check_in_route import check_in_bp
+        from src.routes.prontuario_route import prontuario_bp
         
         app.register_blueprint(login_bp)
         app.register_blueprint(dashboard_bp)
         app.register_blueprint(check_in_bp)
-        
+        app.register_blueprint(prontuario_bp)
         
         
     except Exception:

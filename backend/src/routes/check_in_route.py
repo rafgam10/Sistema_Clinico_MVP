@@ -24,7 +24,7 @@ def home_check_in():
             cursor = con.cursor()
 
             sql = """
-                SELECT 
+                SELECT
                     NOME AS MEDICO,
                     DATA AS DATA,
                     HORA AS HORA,
@@ -35,6 +35,8 @@ def home_check_in():
                         ELSE 'DESCONHECIDO'
                     END AS STATUS
                 FROM REPACAGD
+                ORDER BY DATA DESC, HORA DESC
+                ROWS 15;
             """
 
             cursor.execute(sql)
@@ -53,3 +55,4 @@ def home_check_in():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
