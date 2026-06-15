@@ -66,8 +66,8 @@ function mapStatus(agStatus: string): AgendaStatus {
       return 'presente'
     case 'faltou':
       return 'falta'
-    case 'confirmado':
-      return 'confirmado'
+    case 'em-espera':
+      return 'em-espera'
     case 'agendado':
     default:
       return 'aguardando'
@@ -109,8 +109,8 @@ const slots = computed<AgendaSlot[]>(() => {
   return result
 })
 
-const statuses: { id: AgendaStatus, name: string, color: 'success' | 'warning' | 'info' | 'error' | 'neutral' }[] = [
-  { id: 'confirmado', name: 'Confirmado', color: 'success' },
+const statuses: { id: AgendaStatus, name: string, color: 'primary' | 'warning' | 'info' | 'error' | 'neutral' }[] = [
+  { id: 'em-espera', name: 'Em espera', color: 'primary' },
   { id: 'aguardando', name: 'Aguardando', color: 'warning' },
   { id: 'presente', name: 'Presente', color: 'info' },
   { id: 'falta', name: 'Falta', color: 'error' }

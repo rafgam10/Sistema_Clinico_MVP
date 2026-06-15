@@ -2,7 +2,7 @@ export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, 'id'))
   const body = await readBody<{ status: string, consulta?: { anamnese?: string, diagnostico?: string, medicamentos?: string, exames?: string, duracao?: number } }>(event)
 
-  const validStatuses = ['agendado', 'confirmado', 'em_atendimento', 'atendido', 'faltou', 'cancelado']
+  const validStatuses = ['agendado', 'em-espera', 'em_atendimento', 'atendido', 'faltou', 'cancelado']
   if (!body.status || !validStatuses.includes(body.status)) {
     throw createError({ statusCode: 400, statusMessage: 'Status inválido' })
   }
@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const result = atualizarStatusAgendamento(id, body.status as 'agendado' | 'confirmado' | 'em_atendimento' | 'atendido' | 'faltou' | 'cancelado', body.consulta)
+  const result = atualizarStatusAgendamento(id, body.status as 'agendado' | 'em-espera' | 'em_atendimento' | 'atendido' | 'faltou' | 'cancelado', body.consulta)
   if (!result) {
     throw createError({ statusCode: 404, statusMessage: 'Agendamento não encontrado' })
   }

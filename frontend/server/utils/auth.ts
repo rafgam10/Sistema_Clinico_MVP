@@ -8,9 +8,9 @@ interface AuthUser {
 }
 
 const users: AuthUser[] = [
-  { id: 1, nome: 'Dr. João Medeiros', email: 'admin@adm.com', role: 'medico', especialidades: ['Cardiologia', 'Clínico Geral'], clinicaIds: [1] },
-  { id: 2, nome: 'Dra. Maria Santos', email: 'maria@adm.com', role: 'medico', especialidades: ['Dermatologia', 'Pediatria'], clinicaIds: [2] },
-  { id: 3, nome: 'Dr. Carlos Oliveira', email: 'carlos@adm.com', role: 'medico', especialidades: ['Ortopedia', 'Medicina Esportiva'], clinicaIds: [1, 2] },
+  { id: 1, nome: 'Dr. João Medeiros', email: 'admin@adm.com', role: 'medico', especialidades: ['Cardiologia'], clinicaIds: [1] },
+  { id: 2, nome: 'Dra. Maria Santos', email: 'maria@adm.com', role: 'medico', especialidades: ['Dermatologia'], clinicaIds: [2] },
+  { id: 3, nome: 'Dr. Carlos Oliveira', email: 'carlos@adm.com', role: 'medico', especialidades: ['Ortopedia'], clinicaIds: [1, 2] },
   { id: 4, nome: 'Ana Paula Costa', email: 'recepcao@adm.com', role: 'recepcao', clinicaIds: [1] }
 ]
 

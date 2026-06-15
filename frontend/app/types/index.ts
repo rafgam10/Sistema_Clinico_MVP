@@ -38,7 +38,7 @@ export interface Clinica {
   telefone: string
 }
 
-export type AgendamentoStatus = 'agendado' | 'confirmado' | 'em_atendimento' | 'atendido' | 'faltou' | 'cancelado'
+export type AgendamentoStatus = 'agendado' | 'em-espera' | 'em_atendimento' | 'atendido' | 'faltou' | 'cancelado'
 
 export interface Agendamento {
   id: number
@@ -58,7 +58,7 @@ export interface AgendamentoComPaciente extends Agendamento {
   paciente: Paciente
 }
 
-export type AgendaStatus = 'confirmado' | 'aguardando' | 'presente' | 'falta'
+export type AgendaStatus = 'em-espera' | 'aguardando' | 'atendido' | 'falta' | 'presente'
 
 export interface AgendaSlot {
   time: string
@@ -68,6 +68,8 @@ export interface AgendaSlot {
     name: string
     status: AgendaStatus
     description: string
+    agendamentoId?: number
+    statusOriginal?: string
   }
 }
 

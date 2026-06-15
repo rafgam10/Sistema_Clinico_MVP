@@ -1,18 +1,11 @@
 <script setup lang="ts">
 import type { AgendamentoComPaciente, AgendamentoStatus } from '~/types'
 
-interface CardData {
-  title: string
-  value: number
-  suffix?: string
-  change?: string
-  changeType?: 'success' | 'neutral' | 'primary' | 'secondary' | 'info' | 'warning' | 'error' | undefined
-}
-
 const auth = useAuthStore()
 const agendamentosStore = useAgendamentosStore()
 const chamadosStore = useChamadosStore()
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const pacientesFila = ref<any[]>([])
 const loadingFila = ref(true)
 
@@ -25,7 +18,7 @@ onMounted(() => {
 
 async function carregarPacientesFila() {
   try {
-    pacientesFila.value = await $fetch('/api/pacientes-fila')
+    pacientesFila.value = await $fetch<Record<string, unknown>[]>('/api/pacientes-fila')
   } catch {
     pacientesFila.value = []
   } finally {
@@ -54,9 +47,8 @@ function corPrioridade(prioridade: string) {
 
 function corStatus(status: string) {
   switch (status) {
-    case 'agendado':
-    case 'confirmado':
-      return 'warning'
+    case 'agendado': return 'tertiary'
+    case 'em-espera': return 'secondary'
     case 'em_atendimento': return 'info'
     case 'atendido': return 'success'
     case 'faltou': return 'error'
@@ -67,7 +59,7 @@ function corStatus(status: string) {
 function rotuloStatus(status: string) {
   switch (status) {
     case 'agendado': return 'Agendado'
-    case 'confirmado': return 'Confirmado'
+    case 'em-espera': return 'Em espera'
     case 'em_atendimento': return 'Em Atendimento'
     case 'atendido': return 'Atendido'
     case 'faltou': return 'Faltou'
@@ -128,6 +120,18 @@ async function atenderAgendamento(ag: AgendamentoComPaciente) {
   }
 }
 
+const pacientesNaFila = computed(() =>
+  agendamentosStore.ordenados.filter(
+    a => a.status === 'em-espera' || a.status === 'em_atendimento'
+  )
+)
+
+const pacientesFinalizados = computed(() =>
+  agendamentosStore.ordenados.filter(
+    a => a.status === 'atendido' || a.status === 'faltou'
+  )
+)
+
 function statusLabel(status: AgendamentoStatus) {
   switch (status) {
     case 'em_atendimento': return 'Em Atendimento'
@@ -147,33 +151,20 @@ function statusColor(status: AgendamentoStatus) {
 function atendimentoVariant(status: AgendamentoStatus) {
   switch (status) {
     case 'agendado':
-    case 'confirmado':
+    case 'em-espera':
       return 'solid'
     default: return 'soft'
   }
 }
 
 function atendimentoDisabled(status: AgendamentoStatus) {
-  return status !== 'agendado' && status !== 'confirmado'
+  return status !== 'agendado' && status !== 'em-espera'
 }
 
-const cards = computed<CardData[]>(() => {
+const tempoMedioEspera = computed(() => {
   const lista = agendamentosStore.agendamentos
-  const total = lista.length
-  const atendidos = lista.filter(a => a.status === 'atendido').length
-  const naFila = lista.filter(a => a.status === 'agendado' || a.status === 'confirmado').length
-  const faltas = lista.filter(a => a.status === 'faltou').length
-
   const tempos = lista.map(a => calcularMinutosDesde(a.horario, agora.value))
-  const tempoMedio = tempos.length ? Math.round(tempos.reduce((a, b) => a + b, 0) / tempos.length) : 0
-
-  return [
-    { title: 'Pacientes do dia', value: total },
-    { title: 'Atendidos', value: atendidos },
-    { title: 'Na Fila', value: naFila },
-    { title: 'Faltas', value: faltas },
-    { title: 'Tempo médio espera', value: tempoMedio, suffix: 'm' }
-  ]
+  return tempos.length ? Math.round(tempos.reduce((a, b) => a + b, 0) / tempos.length) : 0
 })
 </script>
 
@@ -214,25 +205,21 @@ const cards = computed<CardData[]>(() => {
           {{ dataFormatada }}. Veja o resumo do dia.
         </p>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
-        <UPageCard
-          v-for="card in cards"
-          :key="card.title"
-        >
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ChartResumo
+          :total="agendamentosStore.totalAgendamentos"
+          :fila="agendamentosStore.fila.length"
+          :em-atendimento="agendamentosStore.emAtendimento ? 1 : 0"
+          :atendidos="agendamentosStore.totalAtendidos"
+          :faltas="agendamentosStore.totalFaltas"
+        />
+        <UPageCard>
           <p class="text-muted font-medium">
-            {{ card.title }}
+            Tempo médio espera
           </p>
-          <div class="flex items-center gap-2">
-            <h2 class="text-3xl font-bold">
-              {{ card.value }}{{ card.suffix }}
-            </h2>
-            <UBadge
-              v-if="card.change"
-              :label="card.change"
-              :color="card.changeType"
-              variant="soft"
-            />
-          </div>
+          <h2 class="text-3xl font-bold">
+            {{ tempoMedioEspera }}m
+          </h2>
         </UPageCard>
       </div>
       <UCard class="w-full">
@@ -244,7 +231,7 @@ const cards = computed<CardData[]>(() => {
 
         <UTable
           :columns="colunas"
-          :data="agendamentosStore.ordenados"
+          :data="pacientesNaFila"
         >
           <template #nome-cell="{ row }">
             <div class="flex items-center gap-3">
@@ -258,7 +245,7 @@ const cards = computed<CardData[]>(() => {
                   {{ row.original.paciente.nome }}
                 </p>
                 <p class="text-xs text-muted">
-                  {{ row.original.horario }}
+                  {{ row.original.paciente.convenio }}
                 </p>
               </div>
             </div>
@@ -318,6 +305,53 @@ const cards = computed<CardData[]>(() => {
 
       <UCard class="w-full">
         <template #title>
+          <p class="text-lg font-medium">
+            Pacientes Atendidos / Faltas
+          </p>
+        </template>
+
+        <UTable
+          :columns="colunas.filter(c => c.id !== 'acoes')"
+          :data="pacientesFinalizados"
+        >
+          <template #nome-cell="{ row }">
+            <div class="flex items-center gap-3">
+              <UAvatar
+                :alt="row.original.paciente.nome"
+                color="primary"
+                size="sm"
+              />
+              <div>
+                <p class="font-medium">
+                  {{ row.original.paciente.nome }}
+                </p>
+                <p class="text-xs text-muted">
+                  {{ row.original.paciente.convenio }}
+                </p>
+              </div>
+            </div>
+          </template>
+
+          <template #prioridade-cell="{ row }">
+            <UBadge
+              :label="row.original.prioridade"
+              :color="corPrioridade(row.original.prioridade)"
+              variant="subtle"
+            />
+          </template>
+
+          <template #status-cell="{ row }">
+            <UBadge
+              :label="rotuloStatus(row.original.status)"
+              :color="corStatus(row.original.status)"
+              variant="subtle"
+            />
+          </template>
+        </UTable>
+      </UCard>
+
+      <UCard class="w-full">
+        <template #title>
           <div class="flex items-center gap-2">
             <span class="size-2 rounded-full bg-primary" />
             <p class="text-lg font-medium">
@@ -326,11 +360,17 @@ const cards = computed<CardData[]>(() => {
           </div>
         </template>
 
-        <p v-if="loadingFila" class="text-sm text-muted py-4">
+        <p
+          v-if="loadingFila"
+          class="text-sm text-muted py-4"
+        >
           Carregando dados do Firebird...
         </p>
 
-        <p v-else-if="!pacientesFila.length" class="text-sm text-muted py-4">
+        <p
+          v-else-if="!pacientesFila.length"
+          class="text-sm text-muted py-4"
+        >
           Nenhum paciente encontrado no Firebird.
         </p>
 
@@ -373,7 +413,7 @@ const cards = computed<CardData[]>(() => {
             />
           </template>
 
-          <template #acoes-cell="{ row }">
+          <template #acoes-cell>
             <div class="flex items-center gap-1">
               <UButton
                 icon="i-lucide-phone"

@@ -32,7 +32,7 @@ interface ServerAgendamento {
   data: string
   horario: string
   prioridade: 'normal' | 'preferencial'
-  status: 'agendado' | 'confirmado' | 'em_atendimento' | 'atendido' | 'faltou' | 'cancelado'
+  status: 'agendado' | 'em-espera' | 'em_atendimento' | 'atendido' | 'faltou' | 'cancelado'
   descricao: string
   criadoEm: string
   duracao?: number
@@ -278,34 +278,34 @@ let nextAgendamentoId = 100
 
 const agendamentos: ServerAgendamento[] = [
   // 05/06/2026 — Clínica Centro — Dr. João (medicoId: 1)
-  { id: 1, pacienteId: 1, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '08:00', prioridade: 'preferencial', status: 'confirmado', descricao: 'Consulta geral — Hipertensão arterial', criadoEm: '2026-05-20T10:00:00Z' },
-  { id: 2, pacienteId: 2, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '08:30', prioridade: 'normal', status: 'confirmado', descricao: 'Check-up anual — Rotina', criadoEm: '2026-05-19T14:30:00Z' },
+  { id: 1, pacienteId: 1, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '08:00', prioridade: 'preferencial', status: 'em-espera', descricao: 'Consulta geral — Hipertensão arterial', criadoEm: '2026-05-20T10:00:00Z' },
+  { id: 2, pacienteId: 2, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '08:30', prioridade: 'normal', status: 'em-espera', descricao: 'Check-up anual — Rotina', criadoEm: '2026-05-19T14:30:00Z' },
   { id: 3, pacienteId: 3, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '09:30', prioridade: 'normal', status: 'agendado', descricao: 'Retorno — Cefaleia persistente', criadoEm: '2026-05-25T09:00:00Z' },
-  { id: 4, pacienteId: 4, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '10:00', prioridade: 'preferencial', status: 'confirmado', descricao: 'Cardiologia — Avaliação de risco cirúrgico', criadoEm: '2026-05-18T11:00:00Z' },
+  { id: 4, pacienteId: 4, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '10:00', prioridade: 'preferencial', status: 'em-espera', descricao: 'Cardiologia — Avaliação de risco cirúrgico', criadoEm: '2026-05-18T11:00:00Z' },
   { id: 5, pacienteId: 5, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '10:30', prioridade: 'normal', status: 'faltou', descricao: 'Endocrinologia — Ajuste de medicação diabetes', criadoEm: '2026-05-10T08:00:00Z' },
-  { id: 6, pacienteId: 6, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '11:00', prioridade: 'normal', status: 'confirmado', descricao: 'Consulta pré-operatória — Cirurgia de vesícula', criadoEm: '2026-05-30T15:00:00Z' },
+  { id: 6, pacienteId: 6, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '11:00', prioridade: 'normal', status: 'em-espera', descricao: 'Consulta pré-operatória — Cirurgia de vesícula', criadoEm: '2026-05-30T15:00:00Z' },
   { id: 7, pacienteId: 7, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '14:00', prioridade: 'normal', status: 'agendado', descricao: 'Ortopedia — Dor no joelho direito', criadoEm: '2026-06-01T09:00:00Z' },
   { id: 8, pacienteId: 8, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '14:30', prioridade: 'normal', status: 'em_atendimento', descricao: 'Dermatologia — Alergia cutânea recorrente', criadoEm: '2026-05-22T10:00:00Z' },
   { id: 9, pacienteId: 11, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '15:00', prioridade: 'normal', status: 'agendado', descricao: 'Retorno — Resultados de exames', criadoEm: '2026-06-02T11:00:00Z' },
-  { id: 10, pacienteId: 12, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '16:00', prioridade: 'normal', status: 'confirmado', descricao: 'Ginecologia — Cólicas intensas', criadoEm: '2026-05-28T13:00:00Z' },
+  { id: 10, pacienteId: 12, medicoId: 1, clinicaId: 1, data: '2026-06-05', horario: '16:00', prioridade: 'normal', status: 'em-espera', descricao: 'Ginecologia — Cólicas intensas', criadoEm: '2026-05-28T13:00:00Z' },
 
   // 05/06/2026 — Clínica Norte — Dra. Maria (medicoId: 2)
-  { id: 11, pacienteId: 14, medicoId: 2, clinicaId: 2, data: '2026-06-05', horario: '08:00', prioridade: 'normal', status: 'confirmado', descricao: 'Retorno — Resultados de exames laboratoriais', criadoEm: '2026-05-21T09:00:00Z' },
+  { id: 11, pacienteId: 14, medicoId: 2, clinicaId: 2, data: '2026-06-05', horario: '08:00', prioridade: 'normal', status: 'em-espera', descricao: 'Retorno — Resultados de exames laboratoriais', criadoEm: '2026-05-21T09:00:00Z' },
   { id: 12, pacienteId: 15, medicoId: 2, clinicaId: 2, data: '2026-06-05', horario: '09:00', prioridade: 'preferencial', status: 'agendado', descricao: 'Cardiologia — Acompanhamento hipertensão', criadoEm: '2026-05-15T08:00:00Z' },
-  { id: 13, pacienteId: 16, medicoId: 2, clinicaId: 2, data: '2026-06-05', horario: '10:00', prioridade: 'normal', status: 'confirmado', descricao: 'Dermatologia — Acne persistente', criadoEm: '2026-05-26T10:00:00Z' },
+  { id: 13, pacienteId: 16, medicoId: 2, clinicaId: 2, data: '2026-06-05', horario: '10:00', prioridade: 'normal', status: 'em-espera', descricao: 'Dermatologia — Acne persistente', criadoEm: '2026-05-26T10:00:00Z' },
   { id: 14, pacienteId: 17, medicoId: 2, clinicaId: 2, data: '2026-06-05', horario: '14:30', prioridade: 'normal', status: 'agendado', descricao: 'Gastroenterologia — Retorno gastrite', criadoEm: '2026-06-01T14:00:00Z' },
-  { id: 15, pacienteId: 18, medicoId: 2, clinicaId: 2, data: '2026-06-05', horario: '15:30', prioridade: 'normal', status: 'confirmado', descricao: 'Ginecologia — Consulta de rotina', criadoEm: '2026-05-27T16:00:00Z' },
+  { id: 15, pacienteId: 18, medicoId: 2, clinicaId: 2, data: '2026-06-05', horario: '15:30', prioridade: 'normal', status: 'em-espera', descricao: 'Ginecologia — Consulta de rotina', criadoEm: '2026-05-27T16:00:00Z' },
 
   // 05/06/2026 — Clínica Centro — Dr. Carlos (medicoId: 3, clinicaId: 1)
   { id: 16, pacienteId: 7, medicoId: 3, clinicaId: 1, data: '2026-06-05', horario: '11:00', prioridade: 'normal', status: 'agendado', descricao: 'Medicina Esportiva — Avaliação de retorno ao esporte', criadoEm: '2026-06-03T10:00:00Z' },
-  { id: 17, pacienteId: 9, medicoId: 3, clinicaId: 1, data: '2026-06-05', horario: '15:00', prioridade: 'normal', status: 'confirmado', descricao: 'Ortopedia — Dor no ombro', criadoEm: '2026-05-29T10:00:00Z' },
+  { id: 17, pacienteId: 9, medicoId: 3, clinicaId: 1, data: '2026-06-05', horario: '15:00', prioridade: 'normal', status: 'em-espera', descricao: 'Ortopedia — Dor no ombro', criadoEm: '2026-05-29T10:00:00Z' },
 
   // 06/06/2026 — Clínica Centro — Dr. João (medicoId: 1)
-  { id: 18, pacienteId: 9, medicoId: 1, clinicaId: 1, data: '2026-06-06', horario: '08:00', prioridade: 'normal', status: 'confirmado', descricao: 'Exame admissional — Nova empresa', criadoEm: '2026-05-18T10:00:00Z' },
+  { id: 18, pacienteId: 9, medicoId: 1, clinicaId: 1, data: '2026-06-06', horario: '08:00', prioridade: 'normal', status: 'em-espera', descricao: 'Exame admissional — Nova empresa', criadoEm: '2026-05-18T10:00:00Z' },
   { id: 19, pacienteId: 13, medicoId: 1, clinicaId: 1, data: '2026-06-06', horario: '08:30', prioridade: 'normal', status: 'agendado', descricao: 'Gastroenterologia — Retorno DRGE', criadoEm: '2026-06-02T10:00:00Z' },
-  { id: 20, pacienteId: 4, medicoId: 1, clinicaId: 1, data: '2026-06-06', horario: '09:00', prioridade: 'normal', status: 'confirmado', descricao: 'Pré-natal — 2º trimestre', criadoEm: '2026-05-25T11:00:00Z' },
+  { id: 20, pacienteId: 4, medicoId: 1, clinicaId: 1, data: '2026-06-06', horario: '09:00', prioridade: 'normal', status: 'em-espera', descricao: 'Pré-natal — 2º trimestre', criadoEm: '2026-05-25T11:00:00Z' },
   { id: 21, pacienteId: 4, medicoId: 1, clinicaId: 1, data: '2026-06-06', horario: '10:00', prioridade: 'preferencial', status: 'agendado', descricao: 'Clínico geral — Acompanhamento diabetes e HAS', criadoEm: '2026-05-20T08:00:00Z' },
-  { id: 22, pacienteId: 8, medicoId: 1, clinicaId: 1, data: '2026-06-06', horario: '11:00', prioridade: 'normal', status: 'confirmado', descricao: 'Retorno — Rinite alérgica sazonal', criadoEm: '2026-06-01T10:00:00Z' },
+  { id: 22, pacienteId: 8, medicoId: 1, clinicaId: 1, data: '2026-06-06', horario: '11:00', prioridade: 'normal', status: 'em-espera', descricao: 'Retorno — Rinite alérgica sazonal', criadoEm: '2026-06-01T10:00:00Z' },
   { id: 23, pacienteId: 7, medicoId: 1, clinicaId: 1, data: '2026-06-06', horario: '14:00', prioridade: 'normal', status: 'em_atendimento', descricao: 'Ortopedia — Avaliação de fratura por estresse', criadoEm: '2026-06-01T15:00:00Z' },
   { id: 24, pacienteId: 6, medicoId: 1, clinicaId: 1, data: '2026-06-06', horario: '15:00', prioridade: 'normal', status: 'agendado', descricao: 'Psiquiatria — Retorno tratamento depressão', criadoEm: '2026-06-03T09:00:00Z' },
 

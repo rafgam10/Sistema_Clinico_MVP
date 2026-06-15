@@ -11,18 +11,19 @@ export const useAgendamentosStore = defineStore('agendamentos', () => {
   )
 
   const fila = computed(() =>
-    agendamentos.value.filter(a => a.status === 'agendado' || a.status === 'confirmado')
+    agendamentos.value.filter(a => a.status === 'agendado' || a.status === 'em-espera')
   )
 
   const totalAgendamentos = computed(() => agendamentos.value.length)
+  const totalAtendidos = computed(() => agendamentos.value.filter(a => a.status === 'atendido').length)
   const totalFaltas = computed(() => agendamentos.value.filter(a => a.status === 'faltou').length)
 
   const ordemStatus: Record<string, number> = {
-    agendado: 0,
-    confirmado: 1,
-    em_atendimento: 2,
-    atendido: 3,
-    faltou: 4
+    'agendado': 0,
+    'em-espera': 1,
+    'em_atendimento': 2,
+    'atendido': 3,
+    'faltou': 4
   }
 
   const ordenados = computed(() =>
@@ -43,8 +44,6 @@ export const useAgendamentosStore = defineStore('agendamentos', () => {
 
       const raw = await $fetch<Agendamento[]>(`/api/agendamentos${qs ? `?${qs}` : ''}`)
 
-      // Load pacientes for these agendamentos
-      const pacienteIds = [...new Set(raw.map(a => a.pacienteId))]
       const allPacientes = await $fetch<Paciente[]>('/api/pacientes')
       const pacienteMap = new Map(allPacientes.map(p => [p.id, p]))
 
@@ -92,6 +91,7 @@ export const useAgendamentosStore = defineStore('agendamentos', () => {
     fila,
     ordenados,
     totalAgendamentos,
+    totalAtendidos,
     totalFaltas,
     init,
     fetchAgendamentos,

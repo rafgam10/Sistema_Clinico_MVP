@@ -3,12 +3,12 @@ const auth = useAuthStore()
 const agendamentosStore = useAgendamentosStore()
 
 const hoje = formatarDataISO(new Date())
-const medicos = ref<{ id: number, nome: string }[]>([])
+const medicos = ref<{ id: number, nome: string, especialidades?: string[] }[]>([])
 
 onMounted(async () => {
   agendamentosStore.fetchAgendamentos(auth.activeClinicaId ?? undefined, hoje)
   const params = auth.activeClinicaId ? `?clinicaId=${auth.activeClinicaId}` : ''
-  medicos.value = await $fetch<{ id: number, nome: string }[]>(`/api/medicos${params}`)
+  medicos.value = await $fetch<{ id: number, nome: string, especialidades?: string[] }[]>(`/api/medicos${params}`)
 })
 
 function nomeMedico(medicoId: number) {
@@ -19,7 +19,42 @@ const { agora, dataFormatada } = useRelogio(60000)
 
 const userName = computed(() => auth.user?.nome || 'Usuário')
 
-const colunas = [
+const SLOTS_POR_MEDICO = 20
+
+const selectedEspecialidade = ref<string | undefined>('Todos')
+const selectedMedico = ref<number | null>(null)
+
+const selectedMedicoNome = computed(() => {
+  if (!selectedMedico.value) return null
+  return medicos.value.find(m => m.id === selectedMedico.value)?.nome ?? ''
+})
+
+const especialidades = computed(() => {
+  const all = new Set<string>()
+  medicos.value.forEach(m => m.especialidades?.forEach(e => all.add(e)))
+  return ['Todos', ...Array.from(all).sort()]
+})
+
+const medicosDoDia = computed(() => {
+  let lista = medicos.value
+  if (selectedEspecialidade.value && selectedEspecialidade.value !== 'Todos') {
+    lista = lista.filter(m => m.especialidades?.includes(selectedEspecialidade.value!))
+  }
+  return lista.map(m => ({
+    id: m.id,
+    nome: m.nome,
+    especialidade: m.especialidades?.[0] || '',
+    pacientesCount: agendamentosStore.agendamentos.filter(a => a.medicoId === m.id).length
+  }))
+})
+
+const medicosColunas = [
+  { accessorKey: 'nome', header: 'Médico' },
+  { accessorKey: 'especialidade', header: 'Especialidade' },
+  { accessorKey: 'pacientes', header: 'Pacientes Agendados' }
+]
+
+const atendimentosColunas = [
   { accessorKey: 'horario', header: 'Horário' },
   { accessorKey: 'nome', header: 'Paciente' },
   { accessorKey: 'medico', header: 'Médico' },
@@ -28,6 +63,16 @@ const colunas = [
   { id: 'acoes', header: 'Ações' }
 ]
 
+const atendimentos = computed(() =>
+  agendamentosStore.ordenados.filter(a => {
+    if (a.status === 'agendado' || a.status === 'cancelado') return false
+    if (selectedMedico.value !== null && a.medicoId !== selectedMedico.value) return false
+    return true
+  })
+)
+
+
+
 function corPrioridade(p: string) {
   return p === 'preferencial' ? 'warning' : 'neutral'
 }
@@ -35,7 +80,7 @@ function corPrioridade(p: string) {
 function corStatus(s: string) {
   switch (s) {
     case 'agendado': return 'warning'
-    case 'confirmado': return 'success'
+    case 'em-espera': return 'primary'
     case 'em_atendimento': return 'info'
     case 'atendido': return 'success'
     case 'faltou': return 'error'
@@ -47,7 +92,7 @@ function corStatus(s: string) {
 function rotuloStatus(s: string) {
   switch (s) {
     case 'agendado': return 'Agendado'
-    case 'confirmado': return 'Confirmado'
+    case 'em-espera': return 'Em espera'
     case 'em_atendimento': return 'Em Atendimento'
     case 'atendido': return 'Atendido'
     case 'faltou': return 'Faltou'
@@ -56,12 +101,20 @@ function rotuloStatus(s: string) {
   }
 }
 
-async function confirmarAgendamento(id: number) {
-  await agendamentosStore.atualizarStatus(id, 'confirmado')
+async function fazerCheckin(id: number) {
+  await agendamentosStore.atualizarStatus(id, 'em-espera')
 }
 
 async function cancelarAgendamento(id: number) {
   await agendamentosStore.atualizarStatus(id, 'cancelado')
+}
+
+function selecionarMedico(id: number) {
+  selectedMedico.value = selectedMedico.value === id ? null : id
+}
+
+function limparFiltro() {
+  selectedMedico.value = null
 }
 </script>
 
@@ -106,51 +159,90 @@ async function cancelarAgendamento(id: number) {
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <UPageCard>
-          <p class="text-muted font-medium">
-            Total Hoje
-          </p>
-          <p class="text-3xl font-bold">
-            {{ agendamentosStore.totalAgendamentos }}
-          </p>
-        </UPageCard>
-        <UPageCard>
-          <p class="text-muted font-medium">
-            Na Fila
-          </p>
-          <p class="text-3xl font-bold">
-            {{ agendamentosStore.fila.length }}
-          </p>
-        </UPageCard>
-        <UPageCard>
-          <p class="text-muted font-medium">
-            Em Atendimento
-          </p>
-          <p class="text-3xl font-bold">
-            {{ agendamentosStore.emAtendimento ? 1 : 0 }}
-          </p>
-        </UPageCard>
-        <UPageCard>
-          <p class="text-muted font-medium">
-            Faltas
-          </p>
-          <p class="text-3xl font-bold">
-            {{ agendamentosStore.totalFaltas }}
-          </p>
-        </UPageCard>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ChartResumo
+          :total="agendamentosStore.totalAgendamentos"
+          :fila="agendamentosStore.fila.length"
+          :em-atendimento="agendamentosStore.emAtendimento ? 1 : 0"
+          :atendidos="agendamentosStore.totalAtendidos"
+          :faltas="agendamentosStore.totalFaltas"
+        />
+
+        <UCard>
+          <template #title>
+            <div class="flex items-center justify-between">
+              <p class="text-lg font-medium">
+                Médicos do Dia
+              </p>
+              <UInputMenu
+                v-model="selectedEspecialidade"
+                :items="especialidades"
+                placeholder="Filtrar por especialidade"
+                clearable
+                size="sm"
+                class="w-48"
+              />
+            </div>
+          </template>
+
+          <UTable
+            :columns="medicosColunas"
+            :data="medicosDoDia"
+          >
+            <template #nome-cell="{ row }">
+              <div
+                class="flex items-center gap-3 cursor-pointer"
+                @click="selecionarMedico(row.original.id)"
+              >
+                <UAvatar
+                  :alt="row.original.nome"
+                  color="primary"
+                  size="sm"
+                />
+                <p
+                  class="font-medium"
+                  :class="selectedMedico === row.original.id ? 'text-primary' : ''"
+                >
+                  {{ row.original.nome }}
+                </p>
+              </div>
+            </template>
+
+            <template #especialidade-cell="{ row }">
+              <span class="text-sm">{{ row.original.especialidade }}</span>
+            </template>
+
+            <template #pacientes-cell="{ row }">
+              <UBadge
+                :label="`${row.original.pacientesCount}/${SLOTS_POR_MEDICO}`"
+                :color="row.original.pacientesCount >= SLOTS_POR_MEDICO ? 'error' : 'neutral'"
+                variant="soft"
+              />
+            </template>
+          </UTable>
+        </UCard>
       </div>
 
       <UCard>
         <template #title>
-          <p class="text-lg font-medium">
-            Agenda do Dia
-          </p>
+          <div class="flex items-center justify-between">
+            <p class="text-lg font-medium">
+              {{ selectedMedico ? `Atendimentos de ${selectedMedicoNome}` : 'Atendimentos do Dia' }}
+            </p>
+            <UButton
+              v-if="selectedMedico"
+              icon="i-lucide-x"
+              size="sm"
+              color="neutral"
+              variant="ghost"
+              @click="limparFiltro"
+            />
+          </div>
         </template>
 
         <UTable
-          :columns="colunas"
-          :data="agendamentosStore.ordenados"
+          :columns="atendimentosColunas"
+          :data="atendimentos"
         >
           <template #nome-cell="{ row }">
             <div class="flex items-center gap-3">
@@ -191,26 +283,15 @@ async function cancelarAgendamento(id: number) {
           </template>
 
           <template #acoes-cell="{ row }">
-            <div class="flex items-center gap-1">
-              <UButton
-                v-if="row.original.status === 'agendado'"
-                icon="i-lucide-check"
-                label="Confirmar"
-                size="sm"
-                color="success"
-                variant="solid"
-                @click="confirmarAgendamento(row.original.id)"
-              />
-              <UButton
-                v-if="row.original.status === 'agendado' || row.original.status === 'confirmado'"
-                icon="i-lucide-x"
-                label="Cancelar"
-                size="sm"
-                color="error"
-                variant="soft"
-                @click="cancelarAgendamento(row.original.id)"
-              />
-            </div>
+            <UButton
+              v-if="row.original.status === 'em-espera'"
+              icon="i-lucide-x"
+              label="Cancelar"
+              size="sm"
+              color="error"
+              variant="soft"
+              @click="cancelarAgendamento(row.original.id)"
+            />
           </template>
         </UTable>
       </UCard>

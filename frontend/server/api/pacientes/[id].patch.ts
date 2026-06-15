@@ -4,7 +4,7 @@ export default defineEventHandler(async (event) => {
 
   // If updating status (old behavior from agenda)
   if (body.status) {
-    const validStatuses = ['agendado', 'confirmado', 'em_atendimento', 'atendido', 'faltou', 'cancelado']
+    const validStatuses = ['agendado', 'em-espera', 'em_atendimento', 'atendido', 'faltou', 'cancelado']
     if (!validStatuses.includes(body.status)) {
       throw createError({ statusCode: 400, statusMessage: 'Status inválido' })
     }
@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
 
     if (agendamentosPaciente.length > 0) {
       const ultimoAgendamento = agendamentosPaciente[0]!
-      return atualizarStatusAgendamento(ultimoAgendamento.id, body.status as 'agendado' | 'confirmado' | 'em_atendimento' | 'atendido' | 'faltou' | 'cancelado')
+      return atualizarStatusAgendamento(ultimoAgendamento.id, body.status as 'agendado' | 'em-espera' | 'em_atendimento' | 'atendido' | 'faltou' | 'cancelado')
     }
 
     throw createError({ statusCode: 404, statusMessage: 'Nenhum agendamento encontrado para o paciente' })
