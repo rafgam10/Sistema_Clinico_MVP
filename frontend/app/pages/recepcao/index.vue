@@ -64,14 +64,12 @@ const atendimentosColunas = [
 ]
 
 const atendimentos = computed(() =>
-  agendamentosStore.ordenados.filter(a => {
+  agendamentosStore.ordenados.filter((a) => {
     if (a.status === 'agendado' || a.status === 'cancelado') return false
     if (selectedMedico.value !== null && a.medicoId !== selectedMedico.value) return false
     return true
   })
 )
-
-
 
 function corPrioridade(p: string) {
   return p === 'preferencial' ? 'warning' : 'neutral'
@@ -99,10 +97,6 @@ function rotuloStatus(s: string) {
     case 'cancelado': return 'Cancelado'
     default: return s
   }
-}
-
-async function fazerCheckin(id: number) {
-  await agendamentosStore.atualizarStatus(id, 'em-espera')
 }
 
 async function cancelarAgendamento(id: number) {
