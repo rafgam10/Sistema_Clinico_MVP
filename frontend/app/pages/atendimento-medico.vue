@@ -6,22 +6,10 @@ import { buildSolicitacaoExames, buildReceita } from '~/utils/pdf-documents'
 const agendamentosStore = useAgendamentosStore()
 const padroesStore = usePadroesStore()
 const cronometro = useCronometroStore()
-const cidLista = ref<{ cid: string, nome: string }[]>([])
-
 onMounted(() => {
   padroesStore.fetchAll()
   cronometro.start()
-
-  fetchCids()
 })
-
-async function fetchCids() {
-  try {
-    cidLista.value = await $fetch('/api/cid')
-  } catch {
-    cidLista.value = []
-  }
-}
 
 onBeforeRouteLeave(() => {
   if (cronometro.isRunning) cronometro.pause()
@@ -37,15 +25,54 @@ const tabItems = [
   { label: 'Finalizar', icon: 'i-lucide-check-circle' }
 ]
 
-const cidItems = computed(() =>
-  cidLista.value.map(c => ({
-    label: `${c.nome} (${c.cid})`,
-    value: c.cid
-  }))
-)
+let buscaTimeout: ReturnType<typeof setTimeout> | null = null
+const inputRef = ref()
+const searchCid = ref('')
+const resultadosCid = ref<{ cid: string, nome: string }[]>([])
+const popoverOpen = ref(false)
+const cidSelecionado = ref<{ cid: string, nome: string } | null>(null)
+
+async function buscarCid(q: string) {
+  if (!q.trim()) {
+    resultadosCid.value = []
+    return
+  }
+  try {
+    resultadosCid.value = await $fetch(`/api/cid?q=${encodeURIComponent(q)}`)
+  } catch {
+    resultadosCid.value = []
+  }
+}
+
+function onSearchInput(val: string) {
+  if (buscaTimeout) clearTimeout(buscaTimeout)
+  if (!val.trim()) {
+    resultadosCid.value = []
+    popoverOpen.value = false
+    return
+  }
+  buscaTimeout = setTimeout(async () => {
+    await buscarCid(val)
+    popoverOpen.value = !!resultadosCid.value.length
+  }, 300)
+}
+
+function selecionarCid(cid: { cid: string, nome: string }) {
+  cidSelecionado.value = cid
+  searchCid.value = ''
+  resultadosCid.value = []
+  popoverOpen.value = false
+}
+
+function limparCid() {
+  cidSelecionado.value = null
+}
 
 const anamneseTexto = ref('')
-const diagnosticoSelected = ref<{ label: string, value: string }>()
+const diagnosticoSelected = computed(() => {
+  if (!cidSelecionado.value) return undefined
+  return { label: `${cidSelecionado.value.nome} (${cidSelecionado.value.cid})`, value: cidSelecionado.value.cid }
+})
 
 const receitaTexto = ref('')
 const remedioNome = ref('')
@@ -315,12 +342,69 @@ function finalizarConsulta() {
                 </p>
               </div>
             </template>
-            <UInputMenu
-              v-model="diagnosticoSelected"
-              :items="cidItems"
-              placeholder="Selecione os diagnósticos..."
-              class="w-full"
-            />
+            <div class="relative">
+              <UInput
+                ref="inputRef"
+                v-model="searchCid"
+                placeholder="Buscar CID por código ou nome..."
+                icon="i-lucide-search"
+                class="w-full"
+                @input="onSearchInput(searchCid)"
+                @focus="popoverOpen = !!resultadosCid.length"
+                @blur="popoverOpen = false"
+              />
+
+              <UPopover
+                v-model:open="popoverOpen"
+                :reference="inputRef?.$el"
+                :dismissible="false"
+                :content="{ side: 'bottom', align: 'start', sideOffset: 4 }"
+              >
+                <template #default>
+                  <span />
+                </template>
+
+                <template #content>
+                  <div class="w-80 max-h-60 overflow-y-auto">
+                    <button
+                      v-for="cid in resultadosCid"
+                      :key="cid.cid"
+                      class="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 border-b border-muted last:border-0"
+                      @mousedown.prevent="selecionarCid(cid)"
+                    >
+                      <span class="font-mono text-xs font-semibold text-primary min-w-10">{{ cid.cid }}</span>
+                      <span class="truncate">{{ cid.nome }}</span>
+                    </button>
+                    <p
+                      v-if="searchCid && !resultadosCid.length"
+                      class="px-3 py-4 text-sm text-muted text-center"
+                    >
+                      Nenhum CID encontrado
+                    </p>
+                  </div>
+                </template>
+              </UPopover>
+
+              <div
+                v-if="cidSelecionado"
+                class="mt-2"
+              >
+                <UBadge
+                  color="primary"
+                  variant="soft"
+                  size="lg"
+                >
+                  {{ cidSelecionado.cid }} — {{ cidSelecionado.nome }}
+                  <UButton
+                    icon="i-lucide-x"
+                    size="xs"
+                    color="neutral"
+                    variant="ghost"
+                    @click="limparCid()"
+                  />
+                </UBadge>
+              </div>
+            </div>
           </UCard>
         </div>
 

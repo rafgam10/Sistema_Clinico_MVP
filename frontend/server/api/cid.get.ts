@@ -1,8 +1,16 @@
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
   try {
-    const raw = await $fetch<Record<string, unknown>[]>('http://localhost:5000/prontuario/doenca-cid')
+    const query = getQuery(event)
+    const params = new URLSearchParams()
+    if (query.q) params.set('q', String(query.q))
+    params.set('limit', '50')
 
-    return raw.map(item => ({
+    const qs = params.toString()
+    const raw = await $fetch<{ items: Record<string, unknown>[] }>(
+      `http://localhost:5000/prontuario/doenca-cid?${qs}`
+    )
+
+    return raw.items.map(item => ({
       cid: item.CID,
       nome: item.DOENCA
     }))
