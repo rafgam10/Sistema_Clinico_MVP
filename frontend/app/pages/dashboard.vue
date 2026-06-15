@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import type { AgendamentoComPaciente, AgendamentoStatus } from '~/types'
 
+interface FirebirdPaciente {
+  id: number
+  pacienteId: number
+  paciente?: { id: number, nome: string }
+  status: string
+}
+
 const auth = useAuthStore()
 const agendamentosStore = useAgendamentosStore()
 const chamadosStore = useChamadosStore()
@@ -118,6 +125,43 @@ async function atenderAgendamento(ag: AgendamentoComPaciente) {
   } catch {
     console.error('Erro ao iniciar atendimento')
   }
+}
+
+// --- Firebird action handlers (local-only, no DB write) ---
+
+function chamarPacienteFirebird(pac: FirebirdPaciente) {
+  const pacienteId = pac.paciente?.id ?? pac.pacienteId ?? 0
+  const nome = pac.paciente?.nome ?? ''
+  const salas = ['Consultório 1', 'Consultório 2', 'Consultório 3', 'Sala de Triagem', 'Sala de Curativos']
+  const sala = salas[Math.floor(Math.random() * salas.length)]!
+  chamadosStore.chamarPaciente(pacienteId, nome, sala, auth.user?.nome ?? 'Dr.')
+  if (callingInterval) clearInterval(callingInterval)
+  callingState.value = { pacienteId, secondsLeft: 5 }
+  callingInterval = setInterval(() => {
+    if (callingState.value && callingState.value.secondsLeft > 1) {
+      callingState.value = { ...callingState.value, secondsLeft: callingState.value.secondsLeft - 1 }
+    } else {
+      callingState.value = null
+      if (callingInterval) {
+        clearInterval(callingInterval)
+        callingInterval = null
+      }
+    }
+  }, 500)
+}
+
+function faltouFirebird(pac: FirebirdPaciente) {
+  const item = pacientesFila.value.find((p: FirebirdPaciente) => p.id === pac.id)
+  if (item) item.status = 'faltou'
+}
+
+async function atenderFirebird(pac: FirebirdPaciente) {
+  const item = pacientesFila.value.find((p: FirebirdPaciente) => p.id === pac.id)
+  if (item) {
+    item.status = 'em_atendimento'
+    agendamentosStore.agendamentos.push(item)
+  }
+  await navigateTo('/atendimento-medico')
 }
 
 const pacientesNaFila = computed(() =>
@@ -413,32 +457,36 @@ const tempoMedioEspera = computed(() => {
             />
           </template>
 
-          <template #acoes-cell>
+          <template #acoes-cell="{ row }">
             <div class="flex items-center gap-1">
               <UButton
                 icon="i-lucide-phone"
-                label="Chamar"
+                :label="isCalling(row.original.paciente?.id ?? row.original.pacienteId) ? String(callingState!.secondsLeft) : 'Chamar'"
                 size="sm"
                 class="min-w-20"
-                color="neutral"
-                variant="soft"
-                disabled
+                :color="isTerminal(row.original.status) ? 'neutral' : 'primary'"
+                :variant="isTerminal(row.original.status) ? 'soft' : 'solid'"
+                :loading="isCalling(row.original.paciente?.id ?? row.original.pacienteId)"
+                :disabled="temPacienteEmAtendimento || isTerminal(row.original.status) || isCalling(row.original.paciente?.id ?? row.original.pacienteId)"
+                @click="chamarPacienteFirebird(row.original)"
               />
               <UButton
                 icon="i-lucide-user-x"
                 label="Faltou"
                 size="sm"
-                color="neutral"
-                variant="soft"
-                disabled
+                :color="row.original.status === 'faltou' ? 'error' : (isTerminal(row.original.status) ? 'neutral' : 'error')"
+                :variant="isTerminal(row.original.status) ? 'soft' : 'solid'"
+                :disabled="temPacienteEmAtendimento || isTerminal(row.original.status) || isCalling(row.original.paciente?.id ?? row.original.pacienteId)"
+                @click="faltouFirebird(row.original)"
               />
               <UButton
                 icon="i-lucide-user-check"
-                label="Atender"
+                :label="row.original.status === 'em_atendimento' ? 'Em Atendimento' : (row.original.status === 'atendido' ? 'Finalizado' : 'Atender')"
                 size="sm"
-                color="neutral"
-                variant="soft"
-                disabled
+                :color="row.original.status === 'em_atendimento' ? 'info' : (row.original.status === 'atendido' ? 'success' : 'success')"
+                :variant="row.original.status === 'agendado' || row.original.status === 'em-espera' ? 'solid' : 'soft'"
+                :disabled="temPacienteEmAtendimento || isTerminal(row.original.status) || isCalling(row.original.paciente?.id ?? row.original.pacienteId)"
+                @click="atenderFirebird(row.original)"
               />
             </div>
           </template>

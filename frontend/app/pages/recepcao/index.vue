@@ -4,11 +4,20 @@ const agendamentosStore = useAgendamentosStore()
 
 const hoje = formatarDataISO(new Date())
 const medicos = ref<{ id: number, nome: string, especialidades?: string[] }[]>([])
+const checkInData = ref<{ id: number, medico: string, data: string, horario: string, paciente: string, status: string }[]>([])
+const loadingCheckIn = ref(true)
 
 onMounted(async () => {
   agendamentosStore.fetchAgendamentos(auth.activeClinicaId ?? undefined, hoje)
   const params = auth.activeClinicaId ? `?clinicaId=${auth.activeClinicaId}` : ''
   medicos.value = await $fetch<{ id: number, nome: string, especialidades?: string[] }[]>(`/api/medicos${params}`)
+  try {
+    checkInData.value = await $fetch('/api/check-in')
+  } catch {
+    checkInData.value = []
+  } finally {
+    loadingCheckIn.value = false
+  }
 })
 
 function nomeMedico(medicoId: number) {
@@ -54,6 +63,13 @@ const medicosColunas = [
   { accessorKey: 'pacientes', header: 'Pacientes Agendados' }
 ]
 
+const checkInColunas = [
+  { accessorKey: 'horario', header: 'Horário' },
+  { accessorKey: 'paciente', header: 'Paciente' },
+  { accessorKey: 'medico', header: 'Médico' },
+  { accessorKey: 'status', header: 'Status' }
+]
+
 const atendimentosColunas = [
   { accessorKey: 'horario', header: 'Horário' },
   { accessorKey: 'nome', header: 'Paciente' },
@@ -70,6 +86,10 @@ const atendimentos = computed(() =>
     return true
   })
 )
+
+function corStatusCheckIn(status: string) {
+  return status === 'ATENDIDO' ? 'success' : 'warning'
+}
 
 function corPrioridade(p: string) {
   return p === 'preferencial' ? 'warning' : 'neutral'
@@ -285,6 +305,62 @@ function limparFiltro() {
               color="error"
               variant="soft"
               @click="cancelarAgendamento(row.original.id)"
+            />
+          </template>
+        </UTable>
+      </UCard>
+
+      <UCard class="w-full">
+        <template #title>
+          <div class="flex items-center gap-2">
+            <span class="size-2 rounded-full bg-primary" />
+            <p class="text-lg font-medium">
+              Atendimentos — Firebird
+            </p>
+          </div>
+        </template>
+
+        <p
+          v-if="loadingCheckIn"
+          class="text-sm text-muted py-4"
+        >
+          Carregando dados do Firebird...
+        </p>
+
+        <p
+          v-else-if="!checkInData.length"
+          class="text-sm text-muted py-4"
+        >
+          Nenhum atendimento encontrado no Firebird.
+        </p>
+
+        <UTable
+          v-else
+          :columns="checkInColunas"
+          :data="checkInData"
+        >
+          <template #paciente-cell="{ row }">
+            <div class="flex items-center gap-3">
+              <UAvatar
+                :alt="row.original.paciente"
+                color="primary"
+                size="sm"
+              />
+              <p class="font-medium">
+                {{ row.original.paciente }}
+              </p>
+            </div>
+          </template>
+
+          <template #medico-cell="{ row }">
+            <span class="text-sm">{{ row.original.medico }}</span>
+          </template>
+
+          <template #status-cell="{ row }">
+            <UBadge
+              :label="row.original.status"
+              :color="corStatusCheckIn(row.original.status)"
+              variant="subtle"
             />
           </template>
         </UTable>
