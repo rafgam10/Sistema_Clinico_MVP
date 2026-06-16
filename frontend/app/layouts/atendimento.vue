@@ -1,13 +1,46 @@
 <script setup lang="ts">
+import type { HistoricoRecord } from '~/types'
+import { formatarDataHistorico } from '~/utils/time'
+
 const agendamentosStore = useAgendamentosStore()
 
 onMounted(() => {
   if (!agendamentosStore.emAtendimento) {
     navigateTo('/dashboard')
+    return
   }
+  fetchHistorico()
 })
 
 const agendamento = computed(() => agendamentosStore.emAtendimento)
+
+const historicoItems = ref<{ title: string, subtitle?: string, icon: string, content: Record<string, { icon: string, description: string }> }[]>([])
+const isLoadingHistorico = ref(false)
+
+async function fetchHistorico() {
+  const pacienteId = agendamento.value?.paciente?.id
+  if (!pacienteId) return
+
+  isLoadingHistorico.value = true
+  try {
+    const data = await $fetch<HistoricoRecord[]>(`/api/historico-paciente/${pacienteId}`)
+    historicoItems.value = data.map(r => ({
+      title: formatarDataHistorico(r.DATA_CONSULTA),
+      icon: 'i-lucide-calendar',
+      subtitle: r.MEDICO || undefined,
+      content: {
+        Anamnese: { icon: 'i-lucide-file-text', description: r.OBS_ATENDIMENTO || r.DIAGNOSTICO_PRINCIPAL || '' },
+        diagnostico: { icon: 'i-lucide-clipboard-check', description: `${r.CID_PRINCIPAL} — ${r.DIAGNOSTICO_PRINCIPAL}` },
+        receita: { icon: 'i-lucide-pill', description: '' },
+        exames: { icon: 'i-lucide-flask-conical', description: '' }
+      }
+    }))
+  } catch {
+    historicoItems.value = []
+  } finally {
+    isLoadingHistorico.value = false
+  }
+}
 
 function calcularIdade(dataNascimento: string) {
   const hoje = new Date()
@@ -21,38 +54,6 @@ function calcularIdade(dataNascimento: string) {
 function voltarDashboard() {
   navigateTo('/dashboard')
 }
-
-const cardHeaderColors: Record<string, string> = {
-  Anamnese: 'bg-primary dark:bg-primary-800',
-  diagnostico: 'bg-neutral-600 dark:bg-neutral-800',
-  receita: 'bg-secondary dark:bg-secondary-800',
-  exames: 'bg-tertiary dark:bg-tertiary-800'
-}
-
-const historicoItems = computed(() =>
-  (agendamento.value?.paciente.historicoRecente ?? []).map(item => ({
-    title: item.data,
-    icon: 'i-lucide-calendar',
-    content: {
-      Anamnese: {
-        icon: 'i-lucide-file-text',
-        description: item.descricao
-      },
-      diagnostico: {
-        icon: 'i-lucide-clipboard-check',
-        description: item.diagnostico
-      },
-      receita: {
-        icon: 'i-lucide-pill',
-        description: item.medicamentos
-      },
-      exames: {
-        icon: 'i-lucide-flask-conical',
-        description: item.exames
-      }
-    }
-  }))
-)
 </script>
 
 <template>
@@ -159,6 +160,15 @@ const historicoItems = computed(() =>
             :default-value="historicoItems.length"
             size="xs"
           >
+            <template #title="{ item }">
+              <div class="flex items-center justify-between w-full">
+                <span>{{ item.title }}</span>
+                <span
+                  v-if="item.subtitle"
+                  class="text-xs text-muted truncate ml-2"
+                >{{ item.subtitle }}</span>
+              </div>
+            </template>
             <template #description="{ item }">
               <div class="space-y-2 py-2">
                 <UCard
@@ -166,7 +176,6 @@ const historicoItems = computed(() =>
                   :key="key"
                   class="rounded-lg border border-muted hover:bg-muted/50"
                   :ui="{
-                    header: `p-0.5 sm:px-2 ${cardHeaderColors[key] ?? 'bg-primary dark:bg-primary-800'}`,
                     body: 'p-2 sm:p-2'
                   }"
                 >

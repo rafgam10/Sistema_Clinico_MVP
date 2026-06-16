@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { pt_br as ptBR } from '@nuxt/ui/locale'
+
 const auth = useAuthStore()
 onMounted(() => auth.fetchUser())
 
@@ -36,7 +38,7 @@ useSeoMeta({
 </script>
 
 <template>
-  <UApp>
+  <UApp :locale="ptBR">
     <NuxtLayout :name="layoutName">
       <NuxtPage :key="$route.fullPath" />
     </NuxtLayout>

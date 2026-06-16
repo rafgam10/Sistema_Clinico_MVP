@@ -92,6 +92,19 @@ export interface Chamado {
   medicoResponsavel: string
 }
 
+export interface HistoricoRecord {
+  CID_PRINCIPAL: string
+  DATA_CONSULTA: string
+  DIAGNOSTICO_PRINCIPAL: string
+  ID_ATENDIMENTO: string
+  ID_EVOLUCAO: string | null
+  ID_SOLICITACAO_EXAME: string | null
+  ID_PACIENTE: number
+  MEDICO: string | null
+  OBS_ATENDIMENTO: string | null
+  PACIENTE: string
+}
+
 export interface Atendimento {
   id: number
   pacienteId: number

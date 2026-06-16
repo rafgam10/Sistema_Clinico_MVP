@@ -35,6 +35,14 @@ export function formatarDataISO(d: Date) {
   return `${y}-${m}-${day}`
 }
 
+export function formatarDataHistorico(dataStr: string): string {
+  const d = new Date(dataStr)
+  const dia = String(d.getDate()).padStart(2, '0')
+  const mes = String(d.getMonth() + 1).padStart(2, '0')
+  const ano = d.getFullYear()
+  return `${dia}/${mes}/${ano}`
+}
+
 export function getSaudacao(d: Date = new Date()) {
   const hour = d.getHours()
   if (hour < 12) return 'Bom dia'
