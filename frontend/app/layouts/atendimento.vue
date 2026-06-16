@@ -17,6 +17,13 @@ const agendamento = computed(() => agendamentosStore.emAtendimento)
 const historicoItems = ref<{ title: string, subtitle?: string, icon: string, content: Record<string, { icon: string, description: string }> }[]>([])
 const isLoadingHistorico = ref(false)
 
+const cardHeaderColors: Record<string, string> = {
+  Anamnese: 'bg-primary dark:bg-primary-800',
+  diagnostico: 'bg-neutral-600 dark:bg-neutral-800',
+  receita: 'bg-secondary dark:bg-secondary-800',
+  exames: 'bg-tertiary dark:bg-tertiary-800'
+}
+
 async function fetchHistorico() {
   const pacienteId = agendamento.value?.paciente?.id
   console.log('>>> fetchHistorico pacienteId:', pacienteId)
@@ -180,6 +187,7 @@ function voltarDashboard() {
                   :key="key"
                   class="rounded-lg border border-muted hover:bg-muted/50"
                   :ui="{
+                    header: `p-0.5 sm:px-2 ${cardHeaderColors[key] ?? 'bg-primary dark:bg-primary-800'}`,
                     body: 'p-2 sm:p-2'
                   }"
                 >
