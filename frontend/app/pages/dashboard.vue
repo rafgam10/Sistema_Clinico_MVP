@@ -157,6 +157,8 @@ function faltouFirebird(pac: FirebirdPaciente) {
 
 async function atenderFirebird(pac: FirebirdPaciente) {
   const item = pacientesFila.value.find((p: FirebirdPaciente) => p.id === pac.id)
+  console.log('>>> atenderFirebird item:', item)
+  console.log('>>> atenderFirebird paciente.id:', item?.paciente?.id)
   if (item) {
     item.status = 'em_atendimento'
     agendamentosStore.agendamentos.push(item)

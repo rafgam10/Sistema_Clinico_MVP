@@ -19,11 +19,14 @@ const isLoadingHistorico = ref(false)
 
 async function fetchHistorico() {
   const pacienteId = agendamento.value?.paciente?.id
+  console.log('>>> fetchHistorico pacienteId:', pacienteId)
+  console.log('>>> agendamento:', agendamento.value)
   if (!pacienteId) return
 
   isLoadingHistorico.value = true
   try {
     const data = await $fetch<HistoricoRecord[]>(`/api/historico-paciente/${pacienteId}`)
+    console.log('>>> historico data:', data)
     historicoItems.value = data.map(r => ({
       title: formatarDataHistorico(r.DATA_CONSULTA),
       icon: 'i-lucide-calendar',
@@ -35,7 +38,8 @@ async function fetchHistorico() {
         exames: { icon: 'i-lucide-flask-conical', description: '' }
       }
     }))
-  } catch {
+  } catch (err) {
+    console.error('>>> fetchHistorico error:', err)
     historicoItems.value = []
   } finally {
     isLoadingHistorico.value = false
