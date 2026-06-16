@@ -258,12 +258,30 @@ const tempoMedioEspera = computed(() => {
           :faltas="agendamentosStore.totalFaltas"
         />
         <UPageCard>
-          <p class="text-muted font-medium">
-            Tempo médio espera
-          </p>
-          <h2 class="text-3xl font-bold">
-            {{ tempoMedioEspera }}m
-          </h2>
+          <div class="flex gap-2 items-center">
+            <div class="size-3 bg-warning rounded-full" />
+            <p class="text-xl font-medium">
+              Tempo médio espera: {{ tempoMedioEspera }}<span class="font-medium text-sm text-muted"> min</span>
+            </p>
+          </div>
+          <div class="flex gap-2 items-center">
+            <div class="size-3 bg-azu-500 rounded-full" />
+            <p class="text-xl font-medium">
+              Pacientes em espera: {{ agendamentosStore.fila.length }}
+            </p>
+          </div>
+          <div class="flex gap-2 items-center">
+            <div class="size-3 bg-[#00c950] rounded-full" />
+            <p class="text-xl font-medium">
+              Pacientes atendidos: {{ agendamentosStore.totalAtendidos }}
+            </p>
+          </div>
+          <div class="flex gap-2 items-center">
+            <div class="size-3 bg-[#fb2c36] rounded-full" />
+            <p class="text-xl font-medium">
+              Pacientes faltantes: {{ agendamentosStore.totalFaltas }}
+            </p>
+          </div>
         </UPageCard>
       </div>
       <UCard class="w-full">
