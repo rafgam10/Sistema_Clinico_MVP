@@ -406,10 +406,14 @@ function finalizarConsulta() {
               >
                 <template #item-label="{ item }">
                   <span class="font-mono text-xs font-semibold text-primary min-w-10">{{ item.cid }}</span>
+                  <span class="text-muted"> — </span>
                   <span class="truncate">{{ item.nome }}</span>
                 </template>
                 <template #empty>
-                  <p v-if="searchCid" class="px-3 py-4 text-sm text-muted text-center">
+                  <p
+                    v-if="searchCid"
+                    class="px-3 py-4 text-sm text-muted text-center"
+                  >
                     Nenhum CID encontrado
                   </p>
                 </template>
