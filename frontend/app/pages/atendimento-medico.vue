@@ -31,11 +31,14 @@ let buscaTimeout: ReturnType<typeof setTimeout> | null = null
 let cidController: AbortController | null = null
 let cidRequestId = 0
 
-const inputRef = ref()
 const searchCid = ref('')
 const resultadosCid = ref<CidResultado[]>([])
-const popoverOpen = ref(false)
 const cidSelecionado = ref<CidResultado | null>(null)
+const isLoadingCid = ref(false)
+
+watch(searchCid, (val) => {
+  onSearchInput(val)
+})
 
 const CID_CODE_PATTERN = /^[A-Za-z][0-9.]*$/
 
@@ -55,7 +58,6 @@ function limparResultadosCid() {
   cidRequestId++
   cidController?.abort()
   resultadosCid.value = []
-  popoverOpen.value = false
 }
 
 async function buscarCid(q: string) {
@@ -71,6 +73,8 @@ async function buscarCid(q: string) {
   cidController?.abort()
   cidController = new AbortController()
 
+  isLoadingCid.value = true
+
   try {
     const data = await $fetch<CidResultado[]>('/api/cid', {
       query: {
@@ -84,7 +88,6 @@ async function buscarCid(q: string) {
     if (searchCid.value.trim() !== termo) return
 
     resultadosCid.value = data
-    popoverOpen.value = data.length > 0
   } catch (error) {
     const name = error instanceof Error ? error.name : ''
 
@@ -92,7 +95,8 @@ async function buscarCid(q: string) {
     if (requestId !== cidRequestId) return
 
     resultadosCid.value = []
-    popoverOpen.value = false
+  } finally {
+    isLoadingCid.value = false
   }
 }
 
@@ -107,12 +111,6 @@ function onSearchInput(val: string) {
   buscaTimeout = setTimeout(() => {
     buscarCid(val)
   }, 300)
-}
-
-function selecionarCid(cid: CidResultado) {
-  cidSelecionado.value = cid
-  searchCid.value = ''
-  limparResultadosCid()
 }
 
 function limparCid() {
@@ -394,47 +392,28 @@ function finalizarConsulta() {
               </div>
             </template>
             <div class="relative">
-              <UInput
-                ref="inputRef"
-                v-model="searchCid"
+              <UInputMenu
+                v-model="cidSelecionado"
+                v-model:search-term="searchCid"
+                :items="resultadosCid"
+                :loading="isLoadingCid"
+                label-key="nome"
                 placeholder="Buscar CID por código ou nome..."
                 icon="i-lucide-search"
+                clear
+                ignore-filter
                 class="w-full"
-                @input="onSearchInput(searchCid)"
-                @focus="popoverOpen = !!resultadosCid.length"
-                @blur="popoverOpen = false"
-              />
-
-              <UPopover
-                v-model:open="popoverOpen"
-                :reference="inputRef?.$el"
-                :dismissible="false"
-                :content="{ side: 'bottom', align: 'start', sideOffset: 4 }"
               >
-                <template #default>
-                  <span />
+                <template #item-label="{ item }">
+                  <span class="font-mono text-xs font-semibold text-primary min-w-10">{{ item.cid }}</span>
+                  <span class="truncate">{{ item.nome }}</span>
                 </template>
-
-                <template #content>
-                  <div class="w-80 max-h-60 overflow-y-auto">
-                    <button
-                      v-for="cid in resultadosCid"
-                      :key="cid.cid"
-                      class="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 border-b border-muted last:border-0"
-                      @mousedown.prevent="selecionarCid(cid)"
-                    >
-                      <span class="font-mono text-xs font-semibold text-primary min-w-10">{{ cid.cid }}</span>
-                      <span class="truncate">{{ cid.nome }}</span>
-                    </button>
-                    <p
-                      v-if="searchCid && !resultadosCid.length"
-                      class="px-3 py-4 text-sm text-muted text-center"
-                    >
-                      Nenhum CID encontrado
-                    </p>
-                  </div>
+                <template #empty>
+                  <p v-if="searchCid" class="px-3 py-4 text-sm text-muted text-center">
+                    Nenhum CID encontrado
+                  </p>
                 </template>
-              </UPopover>
+              </UInputMenu>
 
               <div
                 v-if="cidSelecionado"
