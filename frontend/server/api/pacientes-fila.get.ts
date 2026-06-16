@@ -19,7 +19,7 @@ export default defineEventHandler(async () => {
         descricao: '',
         criadoEm: dataStr,
         paciente: {
-          id: Number(item.PACIENTE_ID) || 0,
+          id: Number(item.ID_RICADPAC) || null,
           nome: String(item.NOME || ''),
           sexo: String(item.SEXO) === 'F' ? 'Feminino' : 'Masculino',
           dataNascimento: String(item.NASC || ''),
