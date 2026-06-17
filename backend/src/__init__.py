@@ -26,6 +26,9 @@ def create_app():
         from src.models.auditoria_model import Auditoria
         from src.models.usuario_model import Usuario
         
+        # Cruzamento:
+        from src.models.model_mydsystem.med_spdata_agenda_model import MedSpdataAgenda
+        from src.models.model_mydsystem.med_atendimentos_model import MedAtendimentos
         
         # Importações de Routes/Rotas:
         from .routes import register_routes
