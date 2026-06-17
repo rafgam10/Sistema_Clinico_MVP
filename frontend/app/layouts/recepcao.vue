@@ -4,7 +4,8 @@ const auth = useAuthStore()
 const navItems = [
   { label: 'Painel', icon: 'i-lucide-layout-dashboard', to: '/recepcao' },
   { label: 'Agenda', icon: 'i-lucide-calendar', to: '/recepcao/agenda' },
-  { label: 'Cadastro', icon: 'i-lucide-user-plus', to: '/recepcao/cadastro' }
+  { label: 'Cadastro', icon: 'i-lucide-user-plus', to: '/recepcao/cadastro' },
+  { label: 'No-show', icon: 'i-lucide-user-x', to: '/recepcao/noshow' }
 ]
 </script>
 

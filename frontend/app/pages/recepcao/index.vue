@@ -170,6 +170,12 @@ function limparFiltro() {
             color="secondary"
             to="/recepcao/cadastro"
           />
+          <UButton
+            label="No-show"
+            icon="i-lucide-user-x"
+            color="tertiary"
+            to="/recepcao/noshow"
+          />
         </div>
       </div>
 
