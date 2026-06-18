@@ -102,7 +102,7 @@ const pacientes: ServerPaciente[] = [
     contatoEmergencia: { nome: 'Marina Pereira', telefone: '(11) 99999-0002', parentesco: 'Cônjuge' },
     ultimaConsulta: '10/05/2026',
     historicoRecente: [
-      { data: '10/05/2026', descricao: 'Consulta geral', diagnostico: 'J00 — Infecção respiratória', medicamentos: 'Amoxicilina 500mg 3x/dia por 7 dias', exames: 'Raio-X de tórax' },
+      { data: '10/05/2026', descricao: '<p><strong>Paciente</strong> relata <em>dor de cabeça</em> persistente há 3 dias, localizada na região frontal, com intensidade 7/10. Nega febre ou náuseas.</p><ul><li>Sem sinais neurológicos focais</li><li>PA: 120x80 mmHg</li><li>FC: 72 bpm</li></ul><p>Conduta: solicitar <u>hemograma</u> e RNM de crânio. Prescrever <strong>Paracetamol 750mg</strong> 6/6h se dor.</p>', diagnostico: 'J00 — Infecção respiratória', medicamentos: 'Amoxicilina 500mg 3x/dia por 7 dias', exames: 'Raio-X de tórax' },
       { data: '22/04/2026', descricao: 'Exame de sangue', diagnostico: 'E78.0 — Colesterol alto', medicamentos: 'Sinvastatina 20mg 1x/dia', exames: 'Hemograma completo, Glicemia em jejum' }
     ]
   },
@@ -127,7 +127,7 @@ const pacientes: ServerPaciente[] = [
     endereco: 'Rua dos Pinheiros, 200 - Pinheiros, São Paulo - SP',
     ultimaConsulta: '03/03/2026',
     historicoRecente: [
-      { data: '03/03/2026', descricao: 'Consulta geral', diagnostico: 'R51 — Cefaleia', medicamentos: 'Paracetamol 750mg 6/6h', exames: 'Nenhum' }
+      { data: '03/03/2026', descricao: '<p>Paciente comparece para <strong>retorno</strong> de cefaleia. Relata melhora parcial com Paracetamol.</p><p><em>Exame físico:</em></p><ul><li>PA: 130x85 mmHg</li><li>FC: 80 bpm</li><li>Tax: 36.5°C</li></ul><p>Manteve prescrição anterior. <u>Retorno em 30 dias</u> se sem melhora.</p>', diagnostico: 'R51 — Cefaleia', medicamentos: 'Paracetamol 750mg 6/6h', exames: 'Nenhum' }
     ]
   },
   {
@@ -152,7 +152,7 @@ const pacientes: ServerPaciente[] = [
     contatoEmergencia: { nome: 'Tereza Alves', telefone: '(11) 99999-0009', parentesco: 'Cônjuge' },
     ultimaConsulta: '28/02/2026',
     historicoRecente: [
-      { data: '28/02/2026', descricao: 'Check-up', diagnostico: 'I10 — Hipertensão estágio 1', medicamentos: 'Losartana 50mg 1x/dia', exames: 'Hemograma, Creatinina, Uréia' },
+      { data: '28/02/2026', descricao: '<p><strong>Paciente</strong> assintomático, em consulta de <strong>check-up</strong> rotineiro.</p><p>Exames solicitados na consulta anterior:</p><ol><li><strong>Hemograma</strong> — sem alterações</li><li><strong>Creatinina</strong> — 0.9 mg/dL (normal)</li><li><strong>Uréia</strong> — 32 mg/dL (normal)</li></ol><p>PA: <strong>135x85 mmHg</strong>. Frequência cardíaca: 76 bpm.</p><p>Conduta: manter <strong>Losartana 50mg</strong> 1x/dia. <u>Solicitado novo lipidograma</u> para controle. Retorno em 6 meses.</p>', diagnostico: 'I10 — Hipertensão estágio 1', medicamentos: 'Losartana 50mg 1x/dia', exames: 'Hemograma, Creatinina, Uréia' },
       { data: '30/08/2025', descricao: 'Exame de sangue', diagnostico: 'E11.9 — Diabetes tipo 2', medicamentos: 'Metformina 850mg 2x/dia', exames: 'Glicemia, Hemoglobina glicada' }
     ]
   },
@@ -188,7 +188,7 @@ const pacientes: ServerPaciente[] = [
     contatoEmergencia: { nome: 'Clara Brito', telefone: '(11) 99999-0014', parentesco: 'Mãe' },
     ultimaConsulta: '12/03/2026',
     historicoRecente: [
-      { data: '12/03/2026', descricao: 'Dermatologia', diagnostico: 'L20.8 — Dermatite alérgica', medicamentos: 'Hidrocortisona creme 2x/dia', exames: 'Teste de alergia' }
+      { data: '12/03/2026', descricao: '<p>Paciente retorna ao consultório com <strong>lesões eritematosas</strong> em membros superiores e tronco. Relata piora após contato com <em>perfumes</em> e <em>produtos de limpeza</em>.</p><p><u>Exame dermatológico:</u></p><ul><li>Lesões eritemato-descamativas em antebraços bilateral</li><li>Pápulas pruriginosas em tronco anterior</li><li>Sem sinais de infecção secundária</li></ul><p>Conduta: manter <strong>Hidrocortisona creme 2x/dia</strong> por 14 dias. Orientado evitar exposição a alérgenos. <u>Retorno em 30 dias</u> para reavaliação.</p>', diagnostico: 'L20.8 — Dermatite alérgica', medicamentos: 'Hidrocortisona creme 2x/dia', exames: 'Teste de alergia' }
     ]
   },
   {

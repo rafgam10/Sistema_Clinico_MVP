@@ -286,7 +286,10 @@ function recusou(paciente: PacienteNoShow) {
         </UCard>
         <div class="flex-1 flex items-stretch gap-4">
           <UCard class="flex-1 flex flex-col items-center py-6 gap-3">
-            <UIcon name="i-lucide-trending-up" class="size-8 text-primary" />
+            <UIcon
+              name="i-lucide-trending-up"
+              class="size-8 text-primary"
+            />
             <p class="text-xl font-bold text-center">
               Taxa de Recuperação
             </p>
@@ -297,7 +300,10 @@ function recusou(paciente: PacienteNoShow) {
             </div>
           </UCard>
           <UCard class="flex-1 flex flex-col items-center py-6 gap-3">
-            <UIcon name="i-lucide-calendar-x" class="size-8 text-error" />
+            <UIcon
+              name="i-lucide-calendar-x"
+              class="size-8 text-error"
+            />
             <p class="text-xl font-bold text-center">
               Total Faltas (mês)
             </p>
@@ -308,7 +314,10 @@ function recusou(paciente: PacienteNoShow) {
             </div>
           </UCard>
           <UCard class="flex-1 flex flex-col items-center py-6 gap-3">
-            <UIcon name="i-lucide-calendar-check" class="size-8 text-success" />
+            <UIcon
+              name="i-lucide-calendar-check"
+              class="size-8 text-success"
+            />
             <p class="text-xl font-bold text-center">
               Agend. Recuperados
             </p>

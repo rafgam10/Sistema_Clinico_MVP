@@ -22,7 +22,7 @@ const tabItems = [
   { label: 'Anamnese e Evolução', icon: 'i-lucide-notebook-text' },
   { label: 'Receita', icon: 'i-lucide-pill' },
   { label: 'Solicitar Exames', icon: 'i-lucide-flask-conical' },
-  { label: 'Finalizar', icon: 'i-lucide-check-circle' }
+  { label: 'Conclusão', icon: 'i-lucide-check-circle' }
 ]
 
 type CidResultado = { cid: string, nome: string }
@@ -635,7 +635,7 @@ function finalizarConsulta() {
         >
           <UCard>
             <template #title>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center justify-center gap-2">
                 <UIcon
                   name="i-lucide-printer"
                   class="text-primary"
@@ -650,32 +650,32 @@ function finalizarConsulta() {
                 icon="i-lucide-file-check"
                 label="Atestado de Comparecimento"
                 color="primary"
-                class="w-full"
+                class="w-full p-3 text-lg font-bold"
               />
               <UButton
                 icon="i-lucide-stamp"
                 label="Atestado Médico"
                 color="neutral"
-                class="w-full"
+                class="w-full p-3 text-lg font-bold"
                 @click="showAtestadoModal = true"
               />
               <UButton
                 icon="i-lucide-send"
                 label="Encaminhamento Médico"
                 color="secondary"
-                class="w-full"
+                class="w-full p-3 text-lg font-bold"
               />
               <UButton
                 icon="i-lucide-clipboard-list"
                 label="Solicitação de Procedimento"
                 color="tertiary"
-                class="w-full"
+                class="w-full p-3 text-lg font-bold"
               />
               <UButton
                 icon="i-lucide-file-text"
                 label="Gerar Receita (PDF)"
                 color="success"
-                class="w-full"
+                class="w-full p-3 text-lg font-bold"
                 :disabled="!receitaTexto.trim()"
                 @click="tabAtiva = '1'"
               />
@@ -683,21 +683,24 @@ function finalizarConsulta() {
                 icon="i-lucide-flask-conical"
                 label="Gerar Exames (PDF)"
                 color="warning"
-                class="w-full"
+                class="w-full p-3 text-lg font-bold"
                 :disabled="!examesTexto.trim()"
                 @click="tabAtiva = '2'"
               />
             </div>
           </UCard>
-
-          <UButton
-            icon="i-lucide-check-circle"
-            label="Finalizar Consulta"
-            color="success"
-            size="xl"
-            class="w-full py-6 text-lg font-bold"
-            @click="finalizarConsulta"
-          />
+          <UCard
+            :ui="{ body: 'flex justify-center' }"
+          >
+            <UButton
+              icon="i-lucide-check-circle"
+              label="Finalizar Consulta"
+              color="success"
+              size="xl"
+              class="p-3 text-lg font-bold min-w-110"
+              @click="finalizarConsulta"
+            />
+          </UCard>
         </div>
       </template>
     </UTabs>

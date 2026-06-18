@@ -1,8 +1,17 @@
+<!-- eslint-disable vue/no-v-html -->
 <script setup lang="ts">
 import type { HistoricoRecord } from '~/types'
 import { formatarDataHistorico } from '~/utils/time'
 
+const { sanitizeHtml } = useSanitize()
+
 const agendamentosStore = useAgendamentosStore()
+
+const expandedContent = ref<Record<string, boolean>>({})
+
+function toggleContent(id: string) {
+  expandedContent.value[id] = !expandedContent.value[id]
+}
 
 onMounted(() => {
   if (!agendamentosStore.emAtendimento) {
@@ -202,9 +211,21 @@ function voltarDashboard() {
                       </p>
                     </div>
                   </template>
-                  <p class="text-sm">
-                    {{ contentitem.description }}
-                  </p>
+                  <div class="relative">
+                    <!-- eslint-disable-next-line vue/no-v-html -->
+                    <div
+                      class="text-sm cursor-pointer"
+                      :class="expandedContent[item.title + '-' + key] ? '' : 'line-clamp-3'"
+                      @click="toggleContent(item.title + '-' + key)"
+                      v-html="sanitizeHtml(contentitem.description)"
+                    />
+                    <UIcon
+                      v-if="contentitem.description.length > 100"
+                      :name="expandedContent[item.title + '-' + key] ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                      class="absolute bottom-0 right-0 dark:bg-neutral-900 px-1 cursor-pointer text-muted"
+                      @click.stop="toggleContent(item.title + '-' + key)"
+                    />
+                  </div>
                 </UCard>
               </div>
             </template>
