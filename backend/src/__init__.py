@@ -30,6 +30,10 @@ def create_app():
         from src.models.model_mydsystem.med_spdata_agenda_model import MedSpdataAgenda
         from src.models.model_mydsystem.med_atendimentos_model import MedAtendimentos
         
+        # Modelos Médicos:
+        from src.models.model_padroes_solicitacoes.modelo_receita_model import ModeloReceita
+        from src.models.model_padroes_solicitacoes.medicamentos_para_modelo_receita_model import Medicamentos
+        
         # Importações de Routes/Rotas:
         from .routes import register_routes
         register_routes(app)
@@ -38,11 +42,13 @@ def create_app():
         from src.routes.dashboard_route import dashboard_bp
         from src.routes.check_in_route import check_in_bp
         from src.routes.prontuario_route import prontuario_bp
+        from src.routes.modelo_solicitacao_medicos_route import padrao_medico_bp
         
         app.register_blueprint(login_bp)
         app.register_blueprint(dashboard_bp)
         app.register_blueprint(check_in_bp)
         app.register_blueprint(prontuario_bp)
+        app.register_blueprint(padrao_medico_bp)
         
         
     except Exception:

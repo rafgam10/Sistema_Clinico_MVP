@@ -37,7 +37,7 @@ def dashboard_paciente_lista():
                     JOIN TBPROFIS TF ON TB.ID_TBPROFIS = TF.ID 
                 WHERE  a.id_tbcencus = '203' AND -- < id_tbcencus > Codigo da unidade
                 tb.cod = '11700' AND -- < TBCBOPRO --:  >
-                CAST(a.DATA_HORA_ENTRADA AS DATE) = CURRENT_DATE - 5;       
+                CAST(a.DATA_HORA_ENTRADA AS DATE) = CURRENT_DATE - 6;       
             """)
 
             columns = [desc[0] for desc in cursor.description]
