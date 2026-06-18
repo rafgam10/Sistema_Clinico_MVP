@@ -6,27 +6,27 @@ ChartJS.register(ArcElement, Tooltip, Legend)
 
 const props = defineProps<{
   total: number
-  naoConfirmado: number
-  recuperados: number
-  faltas: number
+  esquecimento: number
+  transporte: number
+  outros: number
 }>()
 
-const colors = ref<string[]>(['#0ea5e9', '#22c55e', '#ef4444'])
+const colors = ref<string[]>(['#0ea5e9', '#d97706', '#5f7198'])
 
 onMounted(() => {
   const el = document.documentElement
   colors.value = [
-    getComputedStyle(el).getPropertyValue('--color-warning-500').trim() || '#0ea5e9',
-    getComputedStyle(el).getPropertyValue('--color-success-500').trim() || '#22c55e',
-    getComputedStyle(el).getPropertyValue('--color-error-500').trim() || '#ef4444'
+    getComputedStyle(el).getPropertyValue('--color-info-500').trim() || '#0ea5e9',
+    getComputedStyle(el).getPropertyValue('--color-warning-500').trim() || '#d97706',
+    getComputedStyle(el).getPropertyValue('--color-secondary-500').trim() || '#5f7198'
   ]
 })
 
 const data = computed(() => ({
-  labels: ['não confirmado', 'Recuperados', 'total de Faltas'],
+  labels: ['Esquecimento', 'Transporte', 'Outros'],
   datasets: [
     {
-      data: [props.naoConfirmado, props.recuperados, props.faltas],
+      data: [props.esquecimento, props.transporte, props.outros],
       backgroundColor: colors.value,
       borderWidth: 0
     }
@@ -70,7 +70,7 @@ const options = {
           <div class="size-48 rounded-full bg-neutral-200 dark:bg-neutral-800 animate-pulse" />
           <div class="space-y-3">
             <div
-              v-for="i in 4"
+              v-for="i in 3"
               :key="i"
               class="h-4 w-24 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse"
             />
