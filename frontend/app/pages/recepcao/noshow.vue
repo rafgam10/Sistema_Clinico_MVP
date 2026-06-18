@@ -200,78 +200,133 @@ function recusou(paciente: PacienteNoShow) {
       </template>
     </UHeader>
     <div class="p-6 space-y-8 bg-neutral-100 dark:bg-neutral-950 min-h-screen">
-      <UCard>
-        <template #title>
-          <p class="text-lg font-medium">
-            Filtros de Análise
-          </p>
-        </template>
-        <div class="flex flex-wrap items-end gap-4">
-          <div class="flex items-center gap-2">
-            <p class="text-sm text-muted whitespace-nowrap">
-              Período:
+      <div class="w-full grid grid-cols-3 gap-4">
+        <div class="col-span-1">
+          <div class="flex-1 flex flex-col gap-4">
+            <UCard
+              :ui="{
+                body: 'p-3 sm:p-3'
+              }"
+            >
+              <div class="flex items-center gap-2">
+                <UIcon
+                  name="i-lucide-trending-up"
+                  class="size-6 text-primary"
+                />
+                <p class="text-lg font-medium text-center">
+                  Taxa de Recuperação:
+                </p>
+                <p class="text-xl font-black text-primary">
+                  {{ taxaRecuperacao }}%
+                </p>
+              </div>
+            </UCard>
+            <UCard
+              :ui="{
+                body: 'p-3 sm:p-3'
+              }"
+            >
+              <div class="flex items-center gap-2">
+                <UIcon
+                  name="i-lucide-calendar-x"
+                  class="size-6 text-error"
+                />
+                <p class="text-lg font-medium text-center">
+                  Total Faltas:
+                </p>
+                <p class="text-xl font-black text-error">
+                  {{ totalFaltasMes }}
+                </p>
+              </div>
+            </UCard>
+            <UCard
+              :ui="{
+                body: 'p-3 sm:p-3'
+              }"
+            >
+              <div class="flex items-center gap-2">
+                <UIcon
+                  name="i-lucide-calendar-check"
+                  class="size-6 text-success"
+                />
+                <p class="text-lg font-medium text-center">
+                  Agend. Recuperados:
+                </p>
+
+                <p class="text-xl font-black text-success">
+                  {{ agendamentosRecuperados }}
+                </p>
+              </div>
+            </UCard>
+          </div>
+        </div>
+        <UCard class="col-span-2">
+          <template #title>
+            <p class="text-lg font-medium">
+              Filtros de Análise
             </p>
+          </template>
+          <div class="flex flex-wrap items-end gap-4">
+            <div class="flex items-center gap-2">
+              <p class="text-sm text-muted whitespace-nowrap">
+                Período:
+              </p>
+              <UInputMenu
+                v-model="filtroAno"
+                :items="anosDisponiveis"
+                placeholder="Ano"
+                size="sm"
+                class="w-24"
+              />
+              <UInputMenu
+                v-model="filtroMesInicio"
+                :items="mesesOpcoes"
+                placeholder="Mês início"
+                size="sm"
+                class="w-36"
+              />
+              <span class="text-muted">até</span>
+              <UInputMenu
+                v-model="filtroMesFim"
+                :items="mesesOpcoes"
+                placeholder="Mês fim"
+                size="sm"
+                class="w-36"
+              />
+            </div>
             <UInputMenu
-              v-model="filtroAno"
-              :items="anosDisponiveis"
-              placeholder="Ano"
+              v-model="filtroMedico"
+              :items="medicosOptions"
+              placeholder="Médico"
               size="sm"
-              class="w-24"
+              class="w-48"
             />
             <UInputMenu
-              v-model="filtroMesInicio"
-              :items="mesesOpcoes"
-              placeholder="Mês início"
+              v-model="filtroMedico"
+              :items="medicosOptions"
+              placeholder="Médico"
               size="sm"
-              class="w-36"
+              class="w-48"
             />
-            <span class="text-muted">até</span>
             <UInputMenu
-              v-model="filtroMesFim"
-              :items="mesesOpcoes"
-              placeholder="Mês fim"
+              v-model="filtroConvenio"
+              :items="conveniosOptions"
+              placeholder="Convênio"
               size="sm"
-              class="w-36"
+              class="w-48"
+            />
+            <UButton
+              label="Aplicar Filtros"
+              icon="i-lucide-filter"
+              size="sm"
+              color="primary"
+              @click="aplicarFiltros"
             />
           </div>
-          <UInputMenu
-            v-model="filtroMedico"
-            :items="medicosOptions"
-            placeholder="Médico"
-            size="sm"
-            class="w-48"
-          />
-          <UInputMenu
-            v-model="filtroConvenio"
-            :items="conveniosOptions"
-            placeholder="Convênio"
-            size="sm"
-            class="w-48"
-          />
-          <UButton
-            label="Aplicar Filtros"
-            icon="i-lucide-filter"
-            size="sm"
-            color="primary"
-            @click="aplicarFiltros"
-          />
-        </div>
-      </UCard>
-
-      <UCard>
-        <template #title>
-          <p class="text-lg font-medium">
-            Tendência de No-Show
-          </p>
-        </template>
-        <ChartTendencia
-          :labels="chartMeses"
-          :dados="chartDados"
-        />
-      </UCard>
-
-      <div class="flex flex-col lg:flex-row gap-6">
-        <UCard class="w-full lg:w-1/3">
+        </UCard>
+      </div>
+      <div class="w-full grid grid-cols-3 gap-4">
+        <UCard class="col-span-1">
           <template #title>
             <p class="text-lg font-medium">
               Motivos de Falta
@@ -284,51 +339,21 @@ function recusou(paciente: PacienteNoShow) {
             :outros="totalOutros"
           />
         </UCard>
-        <div class="flex-1 flex items-stretch gap-4">
-          <UCard class="flex-1 flex flex-col items-center py-6 gap-3">
-            <UIcon
-              name="i-lucide-trending-up"
-              class="size-8 text-primary"
-            />
-            <p class="text-xl font-bold text-center">
-              Taxa de Recuperação
+        <UCard class="col-span-2">
+          <template #title>
+            <p class="text-lg font-medium">
+              Tendência de No-Show
             </p>
-            <div class="flex-1 flex items-center justify-center w-full">
-              <p class="text-5xl font-bold text-primary">
-                {{ taxaRecuperacao }}%
-              </p>
-            </div>
-          </UCard>
-          <UCard class="flex-1 flex flex-col items-center py-6 gap-3">
-            <UIcon
-              name="i-lucide-calendar-x"
-              class="size-8 text-error"
-            />
-            <p class="text-xl font-bold text-center">
-              Total Faltas (mês)
-            </p>
-            <div class="flex-1 flex items-center justify-center w-full">
-              <p class="text-5xl font-bold text-error">
-                {{ totalFaltasMes }}
-              </p>
-            </div>
-          </UCard>
-          <UCard class="flex-1 flex flex-col items-center py-6 gap-3">
-            <UIcon
-              name="i-lucide-calendar-check"
-              class="size-8 text-success"
-            />
-            <p class="text-xl font-bold text-center">
-              Agend. Recuperados
-            </p>
-            <div class="flex-1 flex items-center justify-center w-full">
-              <p class="text-5xl font-bold text-success">
-                {{ agendamentosRecuperados }}
-              </p>
-            </div>
-          </UCard>
-        </div>
+          </template>
+
+          <ChartTendencia
+            :labels="chartMeses"
+            :dados="chartDados"
+          />
+        </UCard>
       </div>
+
+      <div class="flex flex-col lg:flex-row gap-6" />
 
       <UCard class="w-full">
         <template #title>
