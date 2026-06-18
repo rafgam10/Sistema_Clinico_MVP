@@ -259,32 +259,60 @@ const tempoMedioEspera = computed(() => {
           :atendidos="agendamentosStore.totalAtendidos"
           :faltas="agendamentosStore.totalFaltas"
         />
-        <UPageCard>
-          <div class="flex gap-2 items-center">
-            <div class="size-3 bg-warning rounded-full" />
-            <p class="text-xl font-medium">
-              Tempo médio espera: {{ tempoMedioEspera }}<span class="font-medium text-sm text-muted"> min</span>
-            </p>
-          </div>
-          <div class="flex gap-2 items-center">
-            <div class="size-3 bg-azu-500 rounded-full" />
-            <p class="text-xl font-medium">
-              Pacientes em espera: {{ agendamentosStore.fila.length }}
-            </p>
-          </div>
-          <div class="flex gap-2 items-center">
-            <div class="size-3 bg-[#00c950] rounded-full" />
-            <p class="text-xl font-medium">
-              Pacientes atendidos: {{ agendamentosStore.totalAtendidos }}
-            </p>
-          </div>
-          <div class="flex gap-2 items-center">
-            <div class="size-3 bg-[#fb2c36] rounded-full" />
-            <p class="text-xl font-medium">
-              Pacientes faltantes: {{ agendamentosStore.totalFaltas }}
-            </p>
-          </div>
-        </UPageCard>
+        <div class="grid grid-cols-2 gap-2 items-center ">
+          <UPageCard>
+            <div class="flex flex-col gap-2 items-center">
+              <div class="flex items-center gap-2">
+                <div class="size-3 bg-warning rounded-full" />
+                <p class="text-xl font-medium">
+                  Tempo médio espera:
+                </p>
+              </div>
+              <p class="text-3xl font-bold ">
+                {{ tempoMedioEspera }} min.
+              </p>
+            </div>
+          </UPageCard>
+          <UPageCard>
+            <div class="flex flex-col gap-2 items-center">
+              <div class="flex items-center gap-2">
+                <div class="size-3 bg-azu-500 rounded-full" />
+                <p class="text-xl font-medium">
+                  Em espera:
+                </p>
+              </div>
+              <p class="text-3xl font-bold ">
+                {{ agendamentosStore.fila.length }} Pessoas
+              </p>
+            </div>
+          </UPageCard>
+          <UPageCard>
+            <div class="flex flex-col gap-2 items-center">
+              <div class="flex items-center gap-2">
+                <div class="size-3 bg-success rounded-full" />
+                <p class="text-xl font-medium">
+                  atendidos:
+                </p>
+              </div>
+              <p class="text-3xl font-bold ">
+                {{ agendamentosStore.totalAtendidos }} Pessoas
+              </p>
+            </div>
+          </UPageCard>
+          <UPageCard>
+            <div class="flex flex-col gap-2 items-center">
+              <div class="flex items-center gap-2">
+                <div class="size-3 bg-error rounded-full" />
+                <p class="text-xl font-medium">
+                  Faltantes:
+                </p>
+              </div>
+              <p class="text-3xl font-bold ">
+                {{ agendamentosStore.totalFaltas }} Pessoas
+              </p>
+            </div>
+          </UPageCard>
+        </div>
       </div>
       <UCard class="w-full">
         <template #title>
