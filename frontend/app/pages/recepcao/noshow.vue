@@ -9,6 +9,7 @@ interface PacienteNoShow {
   telefone: string
   convenio: string
   medico: string
+  especialidade: string
   dataFalta: string
   status: 'nao-confirmado' | 'faltou'
   motivo: 'esquecimento' | 'transporte' | 'outros'
@@ -16,22 +17,22 @@ interface PacienteNoShow {
 }
 
 const pacientesNoShow = ref<PacienteNoShow[]>([
-  { id: 1, nome: 'Maria da Silva', telefone: '(11) 99999-0001', convenio: 'Unimed', medico: 'Dr. Carlos Almeida', dataFalta: '2025-01-15', status: 'faltou', motivo: 'esquecimento', recuperado: true },
-  { id: 2, nome: 'João Santos', telefone: '(11) 99999-0002', convenio: 'SUS', medico: 'Dra. Marina Costa', dataFalta: '2025-01-22', status: 'nao-confirmado', motivo: 'transporte', recuperado: false },
-  { id: 3, nome: 'Ana Oliveira', telefone: '(11) 99999-0003', convenio: 'Bradesco Saúde', medico: 'Dr. Paulo Oliveira', dataFalta: '2025-02-05', status: 'faltou', motivo: 'outros', recuperado: true },
-  { id: 4, nome: 'Carlos Pereira', telefone: '(11) 99999-0004', convenio: 'Amil', medico: 'Dr. Carlos Almeida', dataFalta: '2025-02-12', status: 'faltou', motivo: 'esquecimento', recuperado: false },
-  { id: 5, nome: 'Juliana Costa', telefone: '(11) 99999-0005', convenio: 'SulAmérica', medico: 'Dra. Renata Santos', dataFalta: '2025-02-18', status: 'nao-confirmado', motivo: 'esquecimento', recuperado: false },
-  { id: 6, nome: 'Pedro Almeida', telefone: '(11) 99999-0006', convenio: 'Unimed', medico: 'Dr. Paulo Oliveira', dataFalta: '2025-03-10', status: 'faltou', motivo: 'transporte', recuperado: true },
-  { id: 7, nome: 'Lucia Fernandes', telefone: '(11) 99999-0007', convenio: 'SUS', medico: 'Dra. Marina Costa', dataFalta: '2025-04-03', status: 'faltou', motivo: 'esquecimento', recuperado: true },
-  { id: 8, nome: 'Roberto Lima', telefone: '(11) 99999-0008', convenio: 'NotreDame', medico: 'Dr. Carlos Almeida', dataFalta: '2025-04-14', status: 'nao-confirmado', motivo: 'outros', recuperado: false },
-  { id: 9, nome: 'Cristina Rocha', telefone: '(11) 99999-0009', convenio: 'Unimed', medico: 'Dra. Renata Santos', dataFalta: '2025-04-28', status: 'faltou', motivo: 'transporte', recuperado: true },
-  { id: 10, nome: 'Fernando Barbosa', telefone: '(11) 99999-0010', convenio: 'Amil', medico: 'Dr. Paulo Oliveira', dataFalta: '2025-05-07', status: 'faltou', motivo: 'esquecimento', recuperado: true },
-  { id: 11, nome: 'Marina Duarte', telefone: '(11) 99999-0011', convenio: 'Bradesco Saúde', medico: 'Dra. Marina Costa', dataFalta: '2025-05-19', status: 'nao-confirmado', motivo: 'esquecimento', recuperado: false },
-  { id: 12, nome: 'Ricardo Campos', telefone: '(11) 99999-0012', convenio: 'SulAmérica', medico: 'Dr. Carlos Almeida', dataFalta: '2025-06-02', status: 'faltou', motivo: 'transporte', recuperado: false },
-  { id: 13, nome: 'Tatiana Neves', telefone: '(11) 99999-0013', convenio: 'Unimed', medico: 'Dra. Renata Santos', dataFalta: '2025-06-15', status: 'faltou', motivo: 'esquecimento', recuperado: true },
-  { id: 14, nome: 'Gustavo Martins', telefone: '(11) 99999-0014', convenio: 'SUS', medico: 'Dr. Paulo Oliveira', dataFalta: '2025-06-25', status: 'nao-confirmado', motivo: 'outros', recuperado: false },
-  { id: 15, nome: 'Sandra Vieira', telefone: '(11) 99999-0015', convenio: 'NotreDame', medico: 'Dra. Marina Costa', dataFalta: '2025-07-08', status: 'faltou', motivo: 'esquecimento', recuperado: true },
-  { id: 16, nome: 'Marcos Souza', telefone: '(11) 99999-0016', convenio: 'Amil', medico: 'Dr. Carlos Almeida', dataFalta: '2025-07-21', status: 'faltou', motivo: 'transporte', recuperado: true }
+  { id: 1, nome: 'Maria da Silva', telefone: '(11) 99999-0001', convenio: 'Unimed', medico: 'Dr. Carlos Almeida', especialidade: 'Cardiologia', dataFalta: '2025-01-15', status: 'faltou', motivo: 'esquecimento', recuperado: true },
+  { id: 2, nome: 'João Santos', telefone: '(11) 99999-0002', convenio: 'SUS', medico: 'Dra. Marina Costa', especialidade: 'Clínica Médica', dataFalta: '2025-01-22', status: 'nao-confirmado', motivo: 'transporte', recuperado: false },
+  { id: 3, nome: 'Ana Oliveira', telefone: '(11) 99999-0003', convenio: 'Bradesco Saúde', medico: 'Dr. Paulo Oliveira', especialidade: 'Ortopedia', dataFalta: '2025-02-05', status: 'faltou', motivo: 'outros', recuperado: true },
+  { id: 4, nome: 'Carlos Pereira', telefone: '(11) 99999-0004', convenio: 'Amil', medico: 'Dr. Carlos Almeida', especialidade: 'Cardiologia', dataFalta: '2025-02-12', status: 'faltou', motivo: 'esquecimento', recuperado: false },
+  { id: 5, nome: 'Juliana Costa', telefone: '(11) 99999-0005', convenio: 'SulAmérica', medico: 'Dra. Renata Santos', especialidade: 'Ginecologia', dataFalta: '2025-02-18', status: 'nao-confirmado', motivo: 'esquecimento', recuperado: false },
+  { id: 6, nome: 'Pedro Almeida', telefone: '(11) 99999-0006', convenio: 'Unimed', medico: 'Dr. Paulo Oliveira', especialidade: 'Ortopedia', dataFalta: '2025-03-10', status: 'faltou', motivo: 'transporte', recuperado: true },
+  { id: 7, nome: 'Lucia Fernandes', telefone: '(11) 99999-0007', convenio: 'SUS', medico: 'Dra. Marina Costa', especialidade: 'Clínica Médica', dataFalta: '2025-04-03', status: 'faltou', motivo: 'esquecimento', recuperado: true },
+  { id: 8, nome: 'Roberto Lima', telefone: '(11) 99999-0008', convenio: 'NotreDame', medico: 'Dr. Carlos Almeida', especialidade: 'Cardiologia', dataFalta: '2025-04-14', status: 'nao-confirmado', motivo: 'outros', recuperado: false },
+  { id: 9, nome: 'Cristina Rocha', telefone: '(11) 99999-0009', convenio: 'Unimed', medico: 'Dra. Renata Santos', especialidade: 'Ginecologia', dataFalta: '2025-04-28', status: 'faltou', motivo: 'transporte', recuperado: true },
+  { id: 10, nome: 'Fernando Barbosa', telefone: '(11) 99999-0010', convenio: 'Amil', medico: 'Dr. Paulo Oliveira', especialidade: 'Ortopedia', dataFalta: '2025-05-07', status: 'faltou', motivo: 'esquecimento', recuperado: true },
+  { id: 11, nome: 'Marina Duarte', telefone: '(11) 99999-0011', convenio: 'Bradesco Saúde', medico: 'Dra. Marina Costa', especialidade: 'Clínica Médica', dataFalta: '2025-05-19', status: 'nao-confirmado', motivo: 'esquecimento', recuperado: false },
+  { id: 12, nome: 'Ricardo Campos', telefone: '(11) 99999-0012', convenio: 'SulAmérica', medico: 'Dr. Carlos Almeida', especialidade: 'Cardiologia', dataFalta: '2025-06-02', status: 'faltou', motivo: 'transporte', recuperado: false },
+  { id: 13, nome: 'Tatiana Neves', telefone: '(11) 99999-0013', convenio: 'Unimed', medico: 'Dra. Renata Santos', especialidade: 'Ginecologia', dataFalta: '2025-06-15', status: 'faltou', motivo: 'esquecimento', recuperado: true },
+  { id: 14, nome: 'Gustavo Martins', telefone: '(11) 99999-0014', convenio: 'SUS', medico: 'Dr. Paulo Oliveira', especialidade: 'Ortopedia', dataFalta: '2025-06-25', status: 'nao-confirmado', motivo: 'outros', recuperado: false },
+  { id: 15, nome: 'Sandra Vieira', telefone: '(11) 99999-0015', convenio: 'NotreDame', medico: 'Dra. Marina Costa', especialidade: 'Clínica Médica', dataFalta: '2025-07-08', status: 'faltou', motivo: 'esquecimento', recuperado: true },
+  { id: 16, nome: 'Marcos Souza', telefone: '(11) 99999-0016', convenio: 'Amil', medico: 'Dr. Carlos Almeida', especialidade: 'Cardiologia', dataFalta: '2025-07-21', status: 'faltou', motivo: 'transporte', recuperado: true }
 ])
 
 const filtro = ref('')
@@ -39,12 +40,14 @@ const filtroAno = ref('2025')
 const filtroMesInicio = ref('Fevereiro')
 const filtroMesFim = ref('Julho')
 const filtroMedico = ref('Todos')
+const filtroEspecialidade = ref('Todos')
 const filtroConvenio = ref('Todos')
 
 const filtroAnoActive = ref('2025')
 const filtroMesInicioActive = ref('Fevereiro')
 const filtroMesFimActive = ref('Julho')
 const filtroMedicoActive = ref('Todos')
+const filtroEspecialidadeActive = ref('Todos')
 const filtroConvenioActive = ref('Todos')
 
 const MES_PARA_NUMERO: Record<string, string> = {
@@ -61,6 +64,7 @@ function aplicarFiltros() {
   filtroMesInicioActive.value = filtroMesInicio.value
   filtroMesFimActive.value = filtroMesFim.value
   filtroMedicoActive.value = filtroMedico.value
+  filtroEspecialidadeActive.value = filtroEspecialidade.value
   filtroConvenioActive.value = filtroConvenio.value
 }
 
@@ -81,9 +85,15 @@ const conveniosOptions = computed(() => {
   return ['Todos', ...all.sort()]
 })
 
+const especialidadesOptions = computed(() => {
+  const all = [...new Set(pacientesNoShow.value.map(p => p.especialidade))]
+  return ['Todos', ...all.sort()]
+})
+
 const dadosFiltrados = computed(() => {
   return pacientesNoShow.value.filter((p) => {
     if (filtroMedicoActive.value !== 'Todos' && p.medico !== filtroMedicoActive.value) return false
+    if (filtroEspecialidadeActive.value !== 'Todos' && p.especialidade !== filtroEspecialidadeActive.value) return false
     if (filtroConvenioActive.value !== 'Todos' && p.convenio !== filtroConvenioActive.value) return false
     if (p.dataFalta.substring(0, 7) < filtroPeriodoInicioActive.value) return false
     if (p.dataFalta.substring(0, 7) > filtroPeriodoFimActive.value) return false
@@ -266,62 +276,75 @@ function recusou(paciente: PacienteNoShow) {
               Filtros de Análise
             </p>
           </template>
-          <div class="flex flex-wrap items-end gap-4">
-            <div class="flex items-center gap-2">
-              <p class="text-sm text-muted whitespace-nowrap">
-                Período:
-              </p>
-              <UInputMenu
-                v-model="filtroAno"
-                :items="anosDisponiveis"
-                placeholder="Ano"
+          <div class="space-y-4">
+            <div class="flex flex-wrap items-end gap-4">
+              <div class="flex items-end gap-2">
+                <UFormField label="Ano">
+                  <UInputMenu
+                    v-model="filtroAno"
+                    :items="anosDisponiveis"
+                    placeholder="Ano"
+                    size="sm"
+                    class="w-24"
+                  />
+                </UFormField>
+                <UFormField label="Mês início">
+                  <UInputMenu
+                    v-model="filtroMesInicio"
+                    :items="mesesOpcoes"
+                    placeholder="Mês início"
+                    size="sm"
+                    class="w-36"
+                  />
+                </UFormField>
+                <span class="text-muted mb-1">até</span>
+                <UFormField label="Mês fim">
+                  <UInputMenu
+                    v-model="filtroMesFim"
+                    :items="mesesOpcoes"
+                    placeholder="Mês fim"
+                    size="sm"
+                    class="w-36"
+                  />
+                </UFormField>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-end gap-4">
+              <UFormField label="Médico">
+                <UInputMenu
+                  v-model="filtroMedico"
+                  :items="medicosOptions"
+                  placeholder="Médico"
+                  size="sm"
+                  class="w-48"
+                />
+              </UFormField>
+              <UFormField label="Especialidade">
+                <UInputMenu
+                  v-model="filtroEspecialidade"
+                  :items="especialidadesOptions"
+                  placeholder="Especialidade"
+                  size="sm"
+                  class="w-48"
+                />
+              </UFormField>
+              <UFormField label="Convênio">
+                <UInputMenu
+                  v-model="filtroConvenio"
+                  :items="conveniosOptions"
+                  placeholder="Convênio"
+                  size="sm"
+                  class="w-48"
+                />
+              </UFormField>
+              <UButton
+                label="Aplicar Filtros"
+                icon="i-lucide-filter"
                 size="sm"
-                class="w-24"
-              />
-              <UInputMenu
-                v-model="filtroMesInicio"
-                :items="mesesOpcoes"
-                placeholder="Mês início"
-                size="sm"
-                class="w-36"
-              />
-              <span class="text-muted">até</span>
-              <UInputMenu
-                v-model="filtroMesFim"
-                :items="mesesOpcoes"
-                placeholder="Mês fim"
-                size="sm"
-                class="w-36"
+                color="primary"
+                @click="aplicarFiltros"
               />
             </div>
-            <UInputMenu
-              v-model="filtroMedico"
-              :items="medicosOptions"
-              placeholder="Médico"
-              size="sm"
-              class="w-48"
-            />
-            <UInputMenu
-              v-model="filtroMedico"
-              :items="medicosOptions"
-              placeholder="Médico"
-              size="sm"
-              class="w-48"
-            />
-            <UInputMenu
-              v-model="filtroConvenio"
-              :items="conveniosOptions"
-              placeholder="Convênio"
-              size="sm"
-              class="w-48"
-            />
-            <UButton
-              label="Aplicar Filtros"
-              icon="i-lucide-filter"
-              size="sm"
-              color="primary"
-              @click="aplicarFiltros"
-            />
           </div>
         </UCard>
       </div>
