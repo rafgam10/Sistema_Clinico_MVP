@@ -1,4 +1,3 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime
 from datetime import datetime
 
 from src.settings.extensions import db
@@ -18,8 +17,8 @@ class Medico(db.Model):
 
     spdata_id = db.Column(db.Integer, nullable=True, unique=True, index=True)
 
-    crm = db.Column(db.String(20), nullable=False)
-    crm_uf = db.Column(db.String(2), nullable=False)
+    crm = db.Column(db.String(20), nullable=True)
+    crm_uf = db.Column(db.String(2), nullable=True)
     rqe = db.Column(db.String(30), nullable=True)
     especialidade = db.Column(db.String(120), nullable=True)
 
@@ -38,9 +37,9 @@ class Medico(db.Model):
         back_populates="medico"
     )
     
-    def __init__(self, usuario_id, spdate_id, crm, crm_uf, rqe, especialidade, ativo):
+    def __init__(self, usuario_id, spdata_id, crm=None, crm_uf=None, rqe=None, especialidade=None, ativo=True):
         self.usuario_id = usuario_id
-        self.spdata_id = self.spdata_id
+        self.spdata_id = spdata_id
         self.crm = crm
         self.crm_uf = crm_uf
         self.rqe = rqe
@@ -56,6 +55,6 @@ class Medico(db.Model):
             "crm_uf": self.crm_uf,
             "especialidade": self.especialidade,
             "ativo": self.ativo,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }

@@ -21,6 +21,7 @@ class ModeloReceita(db.Model):
     updated_at = db.Column(
         db.DateTime,
         default=datetime.utcnow,
+        onupdate=datetime.utcnow,
         nullable=False
     )
 
@@ -42,5 +43,5 @@ class ModeloReceita(db.Model):
             "id": self.id,
             "nome_modelo": self.nome_modelo,
             "created_at": self.created_at,
-            "updated_at": self.created_at
+            "updated_at": self.updated_at
         }
