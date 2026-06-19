@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum as ModelEnum
 
-from sqlalchemy import Column, String, Integer, DateTime, Time, Enum, ForeignKey
+from sqlalchemy import Column, String, Integer, DateTime, Time
 
 from src.settings.extensions import db
 
@@ -29,9 +29,9 @@ class Atendimento(db.Model):
     id = Column(Integer, primary_key=True)
     
     # As FKs
-    spdata_paciente_id = ...
-    spdata_agenda_id = ...
-    spdata_medico_id = ...
+    spdata_paciente_id = Column(Integer, nullable=True)
+    spdata_agenda_id = Column(Integer, nullable=True)
+    spdata_medico_id = Column(Integer, nullable=True)
     
     # Colunas da tabela
     paciente_nome = Column(String(255), nullable=False)
@@ -41,8 +41,8 @@ class Atendimento(db.Model):
     hora_inicio = Column(Time, nullable=False)
     hora_fim = Column(Time, nullable=False)
     
-    status = Column(String(50), default=StatusAtendimento.AGENDADO)
-    sync_status = Column(String(50), default=SyncStatusAtendimento.PENDENTE_SINCRONIZACAO)
+    status = Column(String(50), default=StatusAtendimento.AGENDADO.value)
+    sync_status = Column(String(50), default=SyncStatusAtendimento.PENDENTE_SINCRONIZACAO.value)
     
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -82,6 +82,13 @@ class Atendimento(db.Model):
         cascade="all, delete-orphan",
         order_by="DocumentoMedico.created_at.desc()"
     )
+    
+    anamnese = db.relationship(
+        "Anamnese",
+        back_populates="atendimento",
+        cascade="all, delete-orphan",
+        uselist=False
+    )
         
     def __init__(
         self,
@@ -117,8 +124,8 @@ class Atendimento(db.Model):
             "data_atendimento": self.data_atendimento.isoformat() if self.data_atendimento else None,
             "hora_inicio": str(self.hora_inicio) if self.hora_inicio else None,
             "hora_fim": str(self.hora_fim) if self.hora_fim else None,
-            "status": self.status.value if self.status else None,
-            "sync_status": self.sync_status.value if self.sync_status else None,
+            "status": self.status.value if hasattr(self.status, "value") else self.status,
+            "sync_status": self.sync_status.value if hasattr(self.sync_status, "value") else self.sync_status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

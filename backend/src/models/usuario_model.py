@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime
+from sqlalchemy import Column, String, Integer, DateTime
 from datetime import datetime
 
 from src.settings.extensions import db
@@ -12,7 +12,7 @@ class Usuario(db.Model):
     cnpj_cpf = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False)
     senha = Column(String(255), nullable=False)
-    role = ...
+    role = Column(String(50), nullable=False, default="medico")
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
@@ -46,19 +46,35 @@ class Usuario(db.Model):
         back_populates="medico"
     )
     
-    def __init__(self, nome_completo, cnpj_cpf, email, senha):
+    
+    ## Tipos de usuários:
+    medico = db.relationship(
+        "Medico",
+        back_populates="usuario",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+    
+    
+    def __init__(self, nome_completo, cnpj_cpf, email, senha, role="medico"):
         self.nome_completo = nome_completo
         self.cnpj_cpf = cnpj_cpf
         self.email = email
         self.senha = senha
+        self.role = role
 
 
     def __repr__(self):
-        return f"Usuario: {self.email} - {self.senha}"
+        return f"Usuario: {self.email}"
     
-    def _to_dict_(self):
+    def _to_dict(self):
         return {
             "id": self.id,
+            "nome_completo": self.nome_completo,
+            "cnpj_cpf": self.cnpj_cpf,
             "email": self.email,
-            "senha": self.senha
+            "role": self.role,
         }
+
+    def _to_dict_(self):
+        return self._to_dict()

@@ -17,8 +17,8 @@ class MedSpdataAgenda(db.Model):
     prontuario = Column(Integer, nullable=False)
     atendido_spdata = Column(String(50), nullable=False)
     
-    created_at = Column(DateTime, default=datetime.utcnow(), nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow(), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     def __init__(self, medico, data_agenda, hora_agenda, paciente, id_paciente_spdata, cpf, prontuario, atendido_spdata):
         self.medico = medico

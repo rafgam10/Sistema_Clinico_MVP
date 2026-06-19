@@ -31,8 +31,8 @@ class MedAtendimentos(db.Model):
     finished_at = Column(DateTime, nullable=False)
     faltou_at = Column(DateTime, nullable=True)
     
-    def __init__(self, id_medico_spdara, medico, data_agenda, hora_agenda, id_paciente_spdata, paciente, cpf, prontuario, status, started_at, finished_at, faltou_at):
-        self.id_medico_spdata = self.id_medico_spdara
+    def __init__(self, id_medico_spdata, medico, data_agenda, hora_agenda, id_paciente_spdata, paciente, cpf, prontuario, status, started_at, finished_at, faltou_at=None):
+        self.id_medico_spdata = id_medico_spdata
         self.medico = medico
         self.data_agenda = data_agenda
         self.hora_agenda = hora_agenda
@@ -40,23 +40,23 @@ class MedAtendimentos(db.Model):
         self.paciente = paciente
         self.cpf = cpf
         self.prontuario = prontuario
-        self.status = status,
+        self.status = status
         self.started_at = started_at
         self.finished_at = finished_at
         self.faltou_at = faltou_at
         
     def _to_dict(self):
         return {
-            self.id_medico_spdata,
-            self.medico,
-            self.data_agenda,
-            self.hora_agenda,
-            self.id_paciente_spdata,
-            self.paciente,
-            self.cpf,
-            self.prontuario,
-            self.status,
-            self.started_at,
-            self.finished_at,
-            self.faltou_at
+            "id_medico_spdata": self.id_medico_spdata,
+            "medico": self.medico,
+            "data_agenda": self.data_agenda,
+            "hora_agenda": self.hora_agenda,
+            "id_paciente_spdata": self.id_paciente_spdata,
+            "paciente": self.paciente,
+            "cpf": self.cpf,
+            "prontuario": self.prontuario,
+            "status": self.status.value if hasattr(self.status, "value") else self.status,
+            "started_at": self.started_at,
+            "finished_at": self.finished_at,
+            "faltou_at": self.faltou_at
         }
