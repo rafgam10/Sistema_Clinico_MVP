@@ -4,7 +4,8 @@ export default defineAppConfig({
       primary: 'azu',
       neutral: 'slate',
       secondary: 'sec',
-      tertiary: 'ter'
+      tertiary: 'terc',
+      quaternary: 'violet'
     }
   }
 })

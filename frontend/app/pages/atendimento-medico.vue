@@ -674,7 +674,7 @@ function finalizarConsulta() {
               <UButton
                 icon="i-lucide-file-text"
                 label="Gerar Receita (PDF)"
-                color="success"
+                color="quaternary"
                 class="w-full p-3 text-lg font-bold"
                 :disabled="!receitaTexto.trim()"
                 @click="tabAtiva = '1'"

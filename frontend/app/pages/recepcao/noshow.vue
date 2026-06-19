@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { DropdownMenuItem } from '@nuxt/ui/'
+
 const auth = useAuthStore()
 
 const userName = computed(() => auth.user?.nome || 'Usuário')
@@ -15,6 +17,13 @@ interface PacienteNoShow {
   motivo: 'esquecimento' | 'transporte' | 'outros'
   recuperado: boolean
 }
+
+const itensMais = ref<DropdownMenuItem[]>([
+  {
+    label: 'temporario',
+    icon: 'i-lucide-user'
+  }
+])
 
 const pacientesNoShow = ref<PacienteNoShow[]>([
   { id: 1, nome: 'Maria da Silva', telefone: '(11) 99999-0001', convenio: 'Unimed', medico: 'Dr. Carlos Almeida', especialidade: 'Cardiologia', dataFalta: '2025-01-15', status: 'faltou', motivo: 'esquecimento', recuperado: true },
@@ -210,67 +219,8 @@ function recusou(paciente: PacienteNoShow) {
       </template>
     </UHeader>
     <div class="p-6 space-y-8 bg-neutral-100 dark:bg-neutral-950 min-h-screen">
-      <div class="w-full grid grid-cols-3 gap-4">
-        <div class="col-span-1">
-          <div class="flex-1 flex flex-col gap-4">
-            <UCard
-              :ui="{
-                body: 'p-3 sm:p-3'
-              }"
-            >
-              <div class="flex items-center gap-2">
-                <UIcon
-                  name="i-lucide-trending-up"
-                  class="size-6 text-primary"
-                />
-                <p class="text-lg font-medium text-center">
-                  Taxa de Recuperação:
-                </p>
-                <p class="text-xl font-black text-primary">
-                  {{ taxaRecuperacao }}%
-                </p>
-              </div>
-            </UCard>
-            <UCard
-              :ui="{
-                body: 'p-3 sm:p-3'
-              }"
-            >
-              <div class="flex items-center gap-2">
-                <UIcon
-                  name="i-lucide-calendar-x"
-                  class="size-6 text-error"
-                />
-                <p class="text-lg font-medium text-center">
-                  Total Faltas:
-                </p>
-                <p class="text-xl font-black text-error">
-                  {{ totalFaltasMes }}
-                </p>
-              </div>
-            </UCard>
-            <UCard
-              :ui="{
-                body: 'p-3 sm:p-3'
-              }"
-            >
-              <div class="flex items-center gap-2">
-                <UIcon
-                  name="i-lucide-calendar-check"
-                  class="size-6 text-success"
-                />
-                <p class="text-lg font-medium text-center">
-                  Agend. Recuperados:
-                </p>
-
-                <p class="text-xl font-black text-success">
-                  {{ agendamentosRecuperados }}
-                </p>
-              </div>
-            </UCard>
-          </div>
-        </div>
-        <UCard class="col-span-2">
+      <div class="w-full gap-4">
+        <UCard class="w-full">
           <template #title>
             <p class="text-lg font-medium">
               Filtros de Análise
@@ -308,8 +258,7 @@ function recusou(paciente: PacienteNoShow) {
                   />
                 </UFormField>
               </div>
-            </div>
-            <div class="flex flex-wrap items-end gap-4">
+
               <UFormField label="Médico">
                 <UInputMenu
                   v-model="filtroMedico"
@@ -375,8 +324,69 @@ function recusou(paciente: PacienteNoShow) {
           />
         </UCard>
       </div>
+      <div class="w-full grid grid-cols-3 gap-4">
+        <UCard class="col-span-2">
+          <template #title>
+            <p class="text-lg font-medium">
+              Taxa de no show por dia da semana
+            </p>
+          </template>
 
-      <div class="flex flex-col lg:flex-row gap-6" />
+          <ChartTendencia
+            :labels="chartMeses"
+            :dados="chartDados"
+          />
+        </UCard>
+        <UCard class="col-span-1">
+          <template #title>
+            <p class="text-lg font-medium">
+              Taxa de no show por especialidade
+            </p>
+          </template>
+          <ChartMotivosFaltas
+            :total="totalFiltrado"
+            :esquecimento="totalEsquecimento"
+            :transporte="totalTransporte"
+            :outros="totalOutros"
+          />
+        </UCard>
+      </div>
+
+      <div class="flex flex-col lg:flex-row gap-6">
+        <div class="w-full flex justify-center items-center gap-4">
+          <CardNoShow
+            titulo="Taxa de Recuperação"
+            :valor="taxaRecuperacao"
+            medida="%"
+            cor="primary"
+            icone="i-lucide-trending-up"
+          />
+          <CardNoShow
+            titulo="Faltosos"
+            :valor="totalFaltasMes"
+            cor="error"
+            icone="lucide:user-round-x"
+          />
+          <CardNoShow
+            titulo="Recuperados"
+            :valor="agendamentosRecuperados"
+            cor="success"
+            icone="i-lucide-calendar-check"
+          />
+          <CardNoShow
+            titulo="Sem contato"
+            :valor="283"
+            cor="secondary"
+            icone="i-lucide-clock"
+          />
+          <CardNoShow
+            titulo="lista de espera preenchida"
+            valor="sei la"
+            cor="tertiary"
+            icone="lucide:user-round-search"
+          />
+        </div>
+      </div>
 
       <UCard class="w-full">
         <template #title>
@@ -457,6 +467,20 @@ function recusou(paciente: PacienteNoShow) {
                 variant="soft"
                 @click="recusou(row.original)"
               />
+              <UDropdownMenu
+                :items="itensMais "
+              >
+                <UButton
+                  icon="lucide:menu"
+                  label="mais"
+                  size="sm"
+                  color="neutral"
+                  variant="soft"
+                />
+                <template #content>
+                  <Placeholder class="size-48 m-4 inline-flex" />
+                </template>
+              </UDropdownMenu>
             </div>
           </template>
         </UTable>

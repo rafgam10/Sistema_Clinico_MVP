@@ -39,4 +39,17 @@
   --color-ter-800: #680b00;
   --color-ter-900: #451500;
   --color-ter-950: #310300;
+
+  --color-terc-50: #dbfef3;
+  --color-terc-100: #cef1e6;
+  --color-terc-200: #67f0ce;
+  --color-terc-300: #43d2b1;
+  --color-terc-400: #00ab8c;
+  --color-terc-500: #00896c;
+  --color-terc-600: #007155;
+  --color-terc-700: #005c42;
+  --color-terc-800: #004830;
+  --color-terc-900: #003223;
+  --color-terc-950: #002013;
+
 }
