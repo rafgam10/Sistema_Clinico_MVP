@@ -14,11 +14,12 @@ export default defineEventHandler(async (event) => {
     params.set('offset', String(Math.max(offset, 0)))
 
     const qs = params.toString()
-    const raw = await $fetch<{ items: Record<string, unknown>[] }>(
-      `http://localhost:5000/prontuario/doenca-cid?${qs}`
+    const raw = await flaskFetch<{ items: Record<string, unknown>[] }>(
+      event,
+      `/prontuario/doenca-cid?${qs}`
     )
 
-    return raw.items.map(item => ({
+    return raw.items.map((item: Record<string, unknown>) => ({
       cid: item.CID,
       nome: item.DOENCA
     }))

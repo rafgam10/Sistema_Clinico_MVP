@@ -26,6 +26,7 @@
     "chart.js": "^4.5.1",
     "dompurify": "^3.4.11",
     "html-to-pdfmake": "^2.5.33",
+    "jwt-decode": "^4.0.0",
     "nuxt": "^4.4.5",
     "pdfmake": "^0.3.9",
     "pinia": "^3.0.4",

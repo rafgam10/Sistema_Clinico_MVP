@@ -1,8 +1,8 @@
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
   try {
-    const raw = await $fetch<Record<string, unknown>[]>('http://localhost:5000/dashboard/pacientes')
+    const raw = await flaskFetch<Record<string, unknown>[]>(event, '/dashboard/pacientes')
 
-    return raw.map((item) => {
+    return raw.map((item: Record<string, unknown>) => {
       const entrada = item.DATA_HORA_ENTRADA ? new Date(String(item.DATA_HORA_ENTRADA)) : new Date()
       const dataStr = entrada.toISOString().slice(0, 10)
       const horarioStr = entrada.toISOString().slice(11, 16)

@@ -1,8 +1,8 @@
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
   try {
-    const raw = await $fetch<Record<string, unknown>[]>('http://localhost:5000/check_in/')
+    const raw = await flaskFetch<Record<string, unknown>[]>(event, '/check_in/')
 
-    return raw.map(item => ({
+    return raw.map((item: Record<string, unknown>) => ({
       id: Number(item.ID) || 0,
       medico: String(item.MEDICO || ''),
       data: String(item.DATA || ''),
