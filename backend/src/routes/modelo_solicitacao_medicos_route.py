@@ -4,10 +4,14 @@ from src.settings.extensions import db
 from src.models.model_padroes_solicitacoes.modelo_receita_model import ModeloReceita
 from src.models.model_padroes_solicitacoes.medicamentos_para_modelo_receita_model import Medicamentos
 
-padrao_medico_bp = Blueprint("padroes_medicos", __name__, url_prefix="/padroes_medicos")
+padrao_medico_receita_bp = Blueprint(
+    "padrao_medico_receita",
+    __name__,
+    url_prefix="/padrao_medico_receita",
+)
 
 
-def _padrao_receita_to_dict(padrao):
+def _padrao_medico_receita_to_dict(padrao):
     return {
         **padrao._to_dict(),
         "medicamentos": [
@@ -17,8 +21,8 @@ def _padrao_receita_to_dict(padrao):
     }
 
 
-@padrao_medico_bp.route("/criar_padrao_medico", methods=["POST"])
-def create_padrao_medico():
+@padrao_medico_receita_bp.route("/criar", methods=["POST"])
+def create_padrao_medico_receita():
     try:
         data = request.get_json() or {}
         nome_modelo = (data.get("nome_modelo") or "").strip()
@@ -26,24 +30,24 @@ def create_padrao_medico():
         if not nome_modelo:
             return jsonify({"error": "Campo nome_modelo é obrigatório"}), 400
 
-        new_padrao_medico = ModeloReceita(nome_modelo)
-        db.session.add(new_padrao_medico)
+        new_padrao_medico_receita = ModeloReceita(nome_modelo)
+        db.session.add(new_padrao_medico_receita)
         db.session.commit()
 
-        return jsonify(new_padrao_medico._to_dict()), 201
+        return jsonify(new_padrao_medico_receita._to_dict()), 201
 
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
 
-@padrao_medico_bp.route("/add_medicamento_padrao_medico/<int:id_padrao_medico>", methods=["POST"])
-def add_medicamento_padrao_medico(id_padrao_medico: int):
+@padrao_medico_receita_bp.route("/add_medicamento/<int:id_padrao_medico_receita>", methods=["POST"])
+def add_medicamento_padrao_medico_receita(id_padrao_medico_receita: int):
     try:
-        padrao = db.session.query(ModeloReceita).filter(ModeloReceita.id == id_padrao_medico).first()
+        padrao = db.session.query(ModeloReceita).filter(ModeloReceita.id == id_padrao_medico_receita).first()
 
         if not padrao:
-            return jsonify({"error": "Padrão médico não encontrado"}), 404
+            return jsonify({"error": "Padrão médico de receita não encontrado"}), 404
 
         data = request.get_json() or {}
 
@@ -57,7 +61,7 @@ def add_medicamento_padrao_medico(id_padrao_medico: int):
         if not dosagem:
             return jsonify({"error": "Campo dosagem é obrigatório"}), 400
 
-        new_medicamento = Medicamentos(nome_medicamento, dosagem, detalhes, id_padrao_medico)
+        new_medicamento = Medicamentos(nome_medicamento, dosagem, detalhes, id_padrao_medico_receita)
 
         db.session.add(new_medicamento)
         db.session.commit()
@@ -71,14 +75,14 @@ def add_medicamento_padrao_medico(id_padrao_medico: int):
 
 ### ROTAS DE GET
 
-@padrao_medico_bp.route("/lista_padroes_medicos_receitas", methods=["GET"])
+@padrao_medico_receita_bp.route("/lista", methods=["GET"])
 def lista_padroes_medicos_receita():
     try:
         lista_padroes_receitas = db.session.query(ModeloReceita).all()
 
         return jsonify({
             "padroes_receitas": [
-                _padrao_receita_to_dict(padrao)
+                _padrao_medico_receita_to_dict(padrao)
                 for padrao in lista_padroes_receitas
             ]
         }), 200
@@ -87,15 +91,15 @@ def lista_padroes_medicos_receita():
         return jsonify({"error": str(e)}), 500
 
 
-@padrao_medico_bp.route("/padrao_medico_receita/<int:id>", methods=["GET"])
+@padrao_medico_receita_bp.route("/<int:id>", methods=["GET"])
 def detalhes_padrao_medico_receita(id: int):
     try:
         detalhe_padrao_receita_select = db.session.query(ModeloReceita).filter(ModeloReceita.id == id).first()
 
         if not detalhe_padrao_receita_select:
-            return jsonify({"error": "Padrão médico não encontrado"}), 404
+            return jsonify({"error": "Padrão médico de receita não encontrado"}), 404
 
-        return jsonify(_padrao_receita_to_dict(detalhe_padrao_receita_select)), 200
+        return jsonify(_padrao_medico_receita_to_dict(detalhe_padrao_receita_select)), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -103,13 +107,13 @@ def detalhes_padrao_medico_receita(id: int):
 
 ### ROTAS DE UPDATE
 
-@padrao_medico_bp.route("/editar_padrao_medico/<int:id>", methods=["PUT", "PATCH"])
-def editar_padrao_medico(id: int):
+@padrao_medico_receita_bp.route("/editar/<int:id>", methods=["PUT", "PATCH"])
+def editar_padrao_medico_receita(id: int):
     try:
         padrao = db.session.query(ModeloReceita).filter(ModeloReceita.id == id).first()
 
         if not padrao:
-            return jsonify({"error": "Padrão médico não encontrado"}), 404
+            return jsonify({"error": "Padrão médico de receita não encontrado"}), 404
 
         data = request.get_json() or {}
         nome_modelo = (data.get("nome_modelo") or "").strip()
@@ -121,15 +125,15 @@ def editar_padrao_medico(id: int):
 
         db.session.commit()
 
-        return jsonify(_padrao_receita_to_dict(padrao)), 200
+        return jsonify(_padrao_medico_receita_to_dict(padrao)), 200
 
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
 
-@padrao_medico_bp.route("/editar_medicamento_padrao_medico/<int:id>", methods=["PUT", "PATCH"])
-def editar_medicamento_padrao_medico(id: int):
+@padrao_medico_receita_bp.route("/editar_medicamento/<int:id>", methods=["PUT", "PATCH"])
+def editar_medicamento_padrao_medico_receita(id: int):
     try:
         medicamento = db.session.query(Medicamentos).filter(Medicamentos.id == id).first()
 
@@ -175,26 +179,26 @@ def editar_medicamento_padrao_medico(id: int):
 
 ### ROTAS DE DELETE
 
-@padrao_medico_bp.route("/deletar_padrao_medico/<int:id>", methods=["DELETE"])
-def deletar_padrao_medico(id: int):
+@padrao_medico_receita_bp.route("/deletar/<int:id>", methods=["DELETE"])
+def deletar_padrao_medico_receita(id: int):
     try:
         padrao = db.session.query(ModeloReceita).filter(ModeloReceita.id == id).first()
 
         if not padrao:
-            return jsonify({"error": "Padrão médico não encontrado"}), 404
+            return jsonify({"error": "Padrão médico de receita não encontrado"}), 404
 
         db.session.delete(padrao)
         db.session.commit()
 
-        return jsonify({"message": "Padrão médico deletado com sucesso"}), 200
+        return jsonify({"message": "Padrão médico de receita deletado com sucesso"}), 200
 
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
 
-@padrao_medico_bp.route("/deletar_medicamento_padrao_medico/<int:id>", methods=["DELETE"])
-def deletar_medicamento_padrao_medico(id: int):
+@padrao_medico_receita_bp.route("/deletar_medicamento/<int:id>", methods=["DELETE"])
+def deletar_medicamento_padrao_medico_receita(id: int):
     try:
         medicamento = db.session.query(Medicamentos).filter(Medicamentos.id == id).first()
 
