@@ -20,7 +20,8 @@ class LoginController:
             identity=str(usuario.id),
             additional_claims={
                 "id": usuario.id,
-                "email": usuario.email
+                "email": usuario.email,
+                "role": usuario.role
             }
         )
         return token
