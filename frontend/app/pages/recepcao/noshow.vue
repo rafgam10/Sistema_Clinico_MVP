@@ -18,11 +18,62 @@ interface PacienteNoShow {
   recuperado: boolean
 }
 
-const itensMais = ref<DropdownMenuItem[]>([
-  {
-    label: 'temporario',
-    icon: 'i-lucide-user'
-  }
+const itensMais = ref<DropdownMenuItem[][]>([
+  // Grupo: Histórico e Ficha
+  [
+    {
+      label: 'Histórico do Paciente',
+      icon: 'i-lucide-clock'
+    },
+    {
+      label: 'Ficha do Paciente',
+      icon: 'i-lucide-file-text'
+    }
+  ],
+
+  // Grupo: Ações da Consulta
+  [
+    {
+      label: 'Reagendar Consulta',
+      icon: 'i-lucide-calendar-clock'
+    },
+    {
+      label: 'Registrar Motivo da Falta',
+      icon: 'i-lucide-message-square'
+    },
+    {
+      label: 'Registrar Contato',
+      icon: 'i-lucide-phone'
+    }
+  ],
+
+  // Grupo: Classificação e Bloqueio
+  [
+    {
+      label: 'Alterar Classificação',
+      icon: 'i-lucide-tag'
+    },
+    {
+      label: 'Bloquear Agendamento Futuro',
+      icon: 'i-lucide-ban'
+    },
+    {
+      label: 'Remover No Show',
+      icon: 'i-lucide-user-x'
+    }
+  ],
+
+  // Grupo: Indicadores
+  [
+    {
+      label: 'Impacto Financeiro',
+      icon: 'i-lucide-dollar-sign'
+    },
+    {
+      label: 'Indicadores do Paciente',
+      icon: 'i-lucide-bar-chart-3'
+    }
+  ]
 ])
 
 const pacientesNoShow = ref<PacienteNoShow[]>([
