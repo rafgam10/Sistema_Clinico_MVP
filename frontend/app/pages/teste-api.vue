@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const result = ref<{ success: boolean; data?: Record<string, unknown>[] } | null>(null)
+const result = ref<{ success: boolean, data?: Record<string, unknown>[] } | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const showRaw = ref(false)
@@ -32,9 +32,14 @@ onMounted(async () => {
       <ULoading />
     </UCard>
 
-    <UCard v-else-if="error" color="error">
+    <UCard
+      v-else-if="error"
+      color="error"
+    >
       <template #title>
-        <p class="text-red-500 font-semibold">Erro</p>
+        <p class="text-red-500 font-semibold">
+          Erro
+        </p>
       </template>
       <pre class="text-sm">{{ error }}</pre>
     </UCard>
@@ -46,12 +51,18 @@ onMounted(async () => {
             {{ result.success ? 'Conectado ao Flask!' : 'Falha na conexão' }}
           </p>
         </template>
-        <p v-if="result.success" class="text-sm">
+        <p
+          v-if="result.success"
+          class="text-sm"
+        >
           Total de registros: {{ totalItems }}
         </p>
       </UCard>
 
-      <div v-if="result.success && totalItems" class="flex justify-end">
+      <div
+        v-if="result.success && totalItems"
+        class="flex justify-end"
+      >
         <UButton
           :icon="showRaw ? 'i-lucide-table' : 'i-lucide-code'"
           :label="showRaw ? 'Ver Cards' : 'Ver Raw JSON'"
@@ -61,11 +72,19 @@ onMounted(async () => {
         />
       </div>
 
-      <div v-if="result.success && totalItems && !showRaw" class="space-y-6">
-        <div v-for="(item, i) in result.data" :key="i">
+      <div
+        v-if="result.success && totalItems && !showRaw"
+        class="space-y-6"
+      >
+        <div
+          v-for="(item, i) in result.data"
+          :key="i"
+        >
           <div class="flex items-center gap-2 mb-3">
             <span class="size-2 rounded-full bg-primary" />
-            <p class="text-sm font-semibold text-foreground">Registro #{{ i + 1 }}</p>
+            <p class="text-sm font-semibold text-foreground">
+              Registro #{{ i + 1 }}
+            </p>
           </div>
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             <div
@@ -76,7 +95,10 @@ onMounted(async () => {
               <p class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted bg-neutral-100 dark:bg-neutral-800 truncate border-b border-muted">
                 {{ key }}
               </p>
-              <p class="px-3 py-2 text-sm text-foreground break-words" :class="val === null || val === undefined ? 'text-muted italic' : ''">
+              <p
+                class="px-3 py-2 text-sm text-foreground wrap-break-word"
+                :class="val === null || val === undefined ? 'text-muted italic' : ''"
+              >
                 {{ formatValue(val) }}
               </p>
             </div>
@@ -86,9 +108,11 @@ onMounted(async () => {
 
       <UCard v-if="result.success && totalItems && showRaw">
         <template #title>
-          <p class="font-semibold">Dados Brutos</p>
+          <p class="font-semibold">
+            Dados Brutos
+          </p>
         </template>
-        <pre class="text-sm whitespace-pre-wrap overflow-x-auto max-h-[600px] overflow-y-auto">{{ JSON.stringify(result.data, null, 2) }}</pre>
+        <pre class="text-sm whitespace-pre-wrap overflow-x-auto max-h-150 overflow-y-auto">{{ JSON.stringify(result.data, null, 2) }}</pre>
       </UCard>
     </template>
   </div>

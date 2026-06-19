@@ -67,7 +67,7 @@ const DIFF_DIAS = Math.round((Date.now() - DATA_REF.getTime()) / (1000 * 60 * 60
 function shiftISO(iso: string): string {
   const d = new Date(iso + 'T12:00:00')
   d.setDate(d.getDate() + DIFF_DIAS)
-  return d.toISOString().split('T')[0]
+  return d.toISOString().split('T')[0]!
 }
 
 function shiftISOFull(iso: string): string {
@@ -361,9 +361,9 @@ export function getPacientes(search?: string) {
   if (search) {
     const term = search.toLowerCase()
     result = result.filter(p =>
-      p.nome.toLowerCase().includes(term) ||
-      p.cpf.includes(term) ||
-      p.telefone.includes(term)
+      p.nome.toLowerCase().includes(term)
+      || p.cpf.includes(term)
+      || p.telefone.includes(term)
     )
   }
   return result
@@ -394,7 +394,7 @@ export function deletarPaciente(id: number) {
   const idx = pacientes.findIndex(p => p.id === id)
   if (idx === -1) return false
   pacientes.splice(idx, 1)
-  agendamentos.forEach(a => {
+  agendamentos.forEach((a) => {
     if (a.pacienteId === id) a.status = 'cancelado'
   })
   return true

@@ -85,7 +85,7 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = response.user
         clinicas.value = response.clinicas
         if (response.clinicas.length === 1) {
-          activeClinicaId.value = response.clinicas[0].id
+          activeClinicaId.value = response.clinicas[0]!.id
         }
       } catch {
         logout()

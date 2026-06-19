@@ -133,6 +133,29 @@ const chartDados = computed(() => {
   return faltasPorMes.value.slice(inicio, fim)
 })
 
+const DIAS_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+const chartEspecialidade = computed(() => {
+  const map = new Map<string, number>()
+  dadosFiltrados.value.forEach(
+    (p) => {
+      map.set(p.especialidade, (map.get(p.especialidade) || 0) + 1)
+    })
+  return {
+    labels: [...map.keys()],
+    dados: [...map.values()]
+  }
+})
+
+const chartDiaSemana = computed(() => {
+  const dias = Array(7).fill(0)
+  dadosFiltrados.value.forEach((p) => {
+    const dia = new Date(p.dataFalta + 'T12:00:00').getDay()
+    dias[dia]++
+  })
+  return { labels: DIAS_LABELS, dados: dias }
+})
+
 const totalFiltrado = computed(() => dadosFiltrados.value.length)
 const totalEsquecimento = computed(() => dadosFiltrados.value.filter(p => p.motivo === 'esquecimento').length)
 const totalTransporte = computed(() => dadosFiltrados.value.filter(p => p.motivo === 'transporte').length)
@@ -332,9 +355,9 @@ function recusou(paciente: PacienteNoShow) {
             </p>
           </template>
 
-          <ChartTendencia
-            :labels="chartMeses"
-            :dados="chartDados"
+          <ChartDiaSemana
+            :labels="chartDiaSemana.labels"
+            :dados="chartDiaSemana.dados"
           />
         </UCard>
         <UCard class="col-span-1">
@@ -343,11 +366,9 @@ function recusou(paciente: PacienteNoShow) {
               Taxa de no show por especialidade
             </p>
           </template>
-          <ChartMotivosFaltas
-            :total="totalFiltrado"
-            :esquecimento="totalEsquecimento"
-            :transporte="totalTransporte"
-            :outros="totalOutros"
+          <ChartEspecialidade
+            :labels="chartEspecialidade.labels"
+            :dados="chartEspecialidade.dados"
           />
         </UCard>
       </div>
@@ -477,9 +498,6 @@ function recusou(paciente: PacienteNoShow) {
                   color="neutral"
                   variant="soft"
                 />
-                <template #content>
-                  <Placeholder class="size-48 m-4 inline-flex" />
-                </template>
               </UDropdownMenu>
             </div>
           </template>

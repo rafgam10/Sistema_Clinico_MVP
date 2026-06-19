@@ -1,50 +1,37 @@
 <script setup lang="ts">
-import { Chart } from 'vue-chartjs'
-import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend, LineElement, PointElement } from 'chart.js'
+import { Line } from 'vue-chartjs'
+import { Chart as ChartJS, CategoryScale, LinearScale, Tooltip, Legend, PointElement, LineElement } from 'chart.js'
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, LineElement, PointElement)
+ChartJS.register(CategoryScale, LinearScale, Tooltip, Legend, PointElement, LineElement)
 
 const props = defineProps<{
   labels: string[]
   dados: number[]
 }>()
 
-const barColor = ref<string>('#3271c4')
-const lineColor = ref<string>('#5f7198')
+const lineColor = ref('#0ea5e9')
 
 onMounted(() => {
   const el = document.documentElement
-  barColor.value = getComputedStyle(el).getPropertyValue('--color-primary-500').trim() || '#3271c4'
-  lineColor.value = getComputedStyle(el).getPropertyValue('--color-secondary-500').trim() || '#5f7198'
+  lineColor.value = getComputedStyle(el).getPropertyValue('--color-primary-500').trim() || '#0ea5e9'
 })
 
 const data = computed(() => ({
   labels: props.labels,
   datasets: [
     {
-      type: 'bar' as const,
       label: 'Faltas',
-      data: props.dados,
-      backgroundColor: barColor.value,
-      borderRadius: 4,
-      borderSkipped: false,
-      order: 2
-    },
-    {
-      type: 'line' as const,
-      label: 'Tendência',
       data: props.dados,
       borderColor: lineColor.value,
       backgroundColor: lineColor.value,
       pointBackgroundColor: lineColor.value,
       pointBorderColor: '#ffffff',
       pointBorderWidth: 2,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-      borderWidth: 2,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      borderWidth: 3,
       tension: 0.3,
-      fill: false,
-      order: 1
+      fill: false
     }
   ]
 }))
@@ -57,20 +44,14 @@ const options = {
     tooltip: {
       callbacks: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        label: (ctx: any) => {
-          const v = ctx.parsed?.y ?? 0
-          return ` ${ctx.dataset.label}: ${v} paciente${v !== 1 ? 's' : ''}`
-        }
+        label: (ctx: any) => ` ${ctx.parsed.y} paciente${ctx.parsed.y !== 1 ? 's' : ''}`
       }
     }
   },
   scales: {
     y: {
       beginAtZero: true,
-      ticks: {
-        stepSize: 1,
-        precision: 0
-      }
+      ticks: { stepSize: 1, precision: 0 }
     }
   }
 }
@@ -79,8 +60,7 @@ const options = {
 <template>
   <ClientOnly>
     <div class="relative h-64">
-      <Chart
-        type="bar"
+      <Line
         :data="data"
         :options="options"
         class="h-full w-full"
