@@ -66,5 +66,7 @@ class Medicamentos(db.Model):
             "nome_medicamento": self.nome_medicamento,
             "dosagem": self.dosagem,
             "detalhes": self.detalhes,
-            "id_modelo_solicitacao_receita": self.id_modelo_solicitacao_receita
+            "id_modelo_solicitacao_receita": self.id_modelo_solicitacao_receita,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at
         }

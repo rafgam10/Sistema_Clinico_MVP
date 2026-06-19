@@ -18,6 +18,11 @@ class ModeloReceita(db.Model):
         default=datetime.utcnow,
         nullable=False
     )
+    updated_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        nullable=False
+    )
 
     medicamentos = db.relationship(
         "Medicamentos",
@@ -35,5 +40,7 @@ class ModeloReceita(db.Model):
     def _to_dict(self):
         return {
             "id": self.id,
-            "nome_modelo": self.nome_modelo
+            "nome_modelo": self.nome_modelo,
+            "created_at": self.created_at,
+            "updated_at": self.created_at
         }
