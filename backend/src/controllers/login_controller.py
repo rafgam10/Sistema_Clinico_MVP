@@ -21,6 +21,7 @@ class LoginController:
             additional_claims={
                 "id": usuario.id,
                 "email": usuario.email,
+                "nome_completo": usuario.nome_completo,
                 "role": usuario.role
             }
         )
