@@ -38,15 +38,14 @@ def register_medic():
         
         
         sql_find_1 = """
-            SELECT * FROM TBPROFIS medico WHERE NOME = '?' and CNPJ_CPF = '?'; 
-        """
-        sql_find_2 = """
-        
+            SELECT *
+            FROM TBPROFIS medico
+            WHERE NOME = ? AND CNPJ_CPF = ?
         """
         
         with ConnectionDBFireBird() as con:
             cursor = con.cursor()
-            cursor.execute(sql_find_1, (nome_completo,))
+            cursor.execute(sql_find_1, (nome_completo, cpf_cnpj))
             
             medico_select = cursor.fetchone()
             
@@ -63,4 +62,5 @@ def register_medic():
         
         
     except Exception as e:
-        jsonify({"error": str(e)})
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500

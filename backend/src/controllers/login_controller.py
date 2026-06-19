@@ -19,6 +19,7 @@ class LoginController:
         token = create_access_token(
             identity=str(usuario.id),
             additional_claims={
+                "id": usuario.id,
                 "email": usuario.email
             }
         )
