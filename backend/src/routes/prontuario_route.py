@@ -3,6 +3,9 @@ import re
 
 from flask import Blueprint, request, jsonify
 
+from flask_jwt_extended import jwt_required
+from src.security.decorators import roles_required
+
 from src.models.db.handler_fb_db import ConnectionDBFireBird
 from src.models.db.handler_redis_db import ConnectionDBRedis
 
@@ -12,6 +15,8 @@ CID_CACHE_TTL = 3600
 CID_CODE_PATTERN = re.compile(r"^[A-Za-z][0-9.]*$")
 
 @prontuario_bp.route("/doenca-cid", methods=["GET"])
+@jwt_required("medico")
+@roles_required()
 def doenca_cid():
     try:
         q = (request.args.get("q") or "").strip()
@@ -101,6 +106,8 @@ def doenca_cid():
 
 
 @prontuario_bp.route("/historico-paciente/<int:id>")
+@jwt_required()
+@roles_required("medico")
 def historico_paciente(id:int):
     try:
         id_paciente = id

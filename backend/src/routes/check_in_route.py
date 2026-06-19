@@ -1,5 +1,7 @@
 from flask import Blueprint, jsonify
 import json
+from flask_jwt_extended import jwt_required
+from src.security.decorators import roles_required
 
 from src.models.db.handler_fb_db import ConnectionDBFireBird
 from src.models.db.handler_redis_db import ConnectionDBRedis
@@ -12,6 +14,8 @@ CACHE_TTL = 300
 
 
 @check_in_bp.route("/", methods=["GET"])
+@jwt_required()
+@roles_required("recepcao")
 def home_check_in():
     try:
         redis_connection = ConnectionDBRedis()

@@ -2,6 +2,9 @@ from flask import (
     Blueprint, request, jsonify
 )
 
+from flask_jwt_extended import jwt_required
+from src.security.decorators import roles_required
+
 import json
 
 from src.models.db.handler_fb_db import ConnectionDBFireBird
@@ -12,7 +15,10 @@ dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 CACHE_KEY_PACIENTES = "dashboard:pacientes"
 CACHE_TTL = 300
 
+
 @dashboard_bp.route("/pacientes", methods=["GET"])
+@jwt_required()
+@roles_required("medico")
 def dashboard_paciente_lista():
     try:
         # redis_connection = ConnectionDBRedis()
@@ -50,4 +56,4 @@ def dashboard_paciente_lista():
 
         
     except Exception as e:
-        return jsonify(str(e))
+        return jsonify({"error": str(e)}), 500

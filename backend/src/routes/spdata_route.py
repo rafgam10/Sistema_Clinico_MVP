@@ -4,4 +4,4 @@ spdata_bp = Blueprint("spdata", __name__, url_prefix="/spdata")
 
 @spdata_bp.route("/")
 def spdata_paciente():
-    ...
+    return jsonify({"error": "Rota SPDATA não implementada"}), 501

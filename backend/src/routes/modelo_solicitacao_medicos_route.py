@@ -1,4 +1,6 @@
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
+from src.security.decorators import roles_required
 
 from src.settings.extensions import db
 from src.models.model_padroes_solicitacoes.modelo_receita_model import ModeloReceita
@@ -22,6 +24,8 @@ def _padrao_medico_receita_to_dict(padrao):
 
 
 @padrao_medico_receita_bp.route("/criar", methods=["POST"])
+@jwt_required()
+@roles_required("medico")
 def create_padrao_medico_receita():
     try:
         data = request.get_json() or {}
@@ -42,6 +46,8 @@ def create_padrao_medico_receita():
 
 
 @padrao_medico_receita_bp.route("/add_medicamento/<int:id_padrao_medico_receita>", methods=["POST"])
+@jwt_required()
+@roles_required("medico")
 def add_medicamento_padrao_medico_receita(id_padrao_medico_receita: int):
     try:
         padrao = db.session.query(ModeloReceita).filter(ModeloReceita.id == id_padrao_medico_receita).first()
@@ -76,6 +82,8 @@ def add_medicamento_padrao_medico_receita(id_padrao_medico_receita: int):
 ### ROTAS DE GET
 
 @padrao_medico_receita_bp.route("/lista", methods=["GET"])
+@jwt_required()
+@roles_required("medico")
 def lista_padroes_medicos_receita():
     try:
         lista_padroes_receitas = db.session.query(ModeloReceita).all()
@@ -92,6 +100,8 @@ def lista_padroes_medicos_receita():
 
 
 @padrao_medico_receita_bp.route("/<int:id>", methods=["GET"])
+@jwt_required()
+@roles_required("medico")
 def detalhes_padrao_medico_receita(id: int):
     try:
         detalhe_padrao_receita_select = db.session.query(ModeloReceita).filter(ModeloReceita.id == id).first()
@@ -108,6 +118,8 @@ def detalhes_padrao_medico_receita(id: int):
 ### ROTAS DE UPDATE
 
 @padrao_medico_receita_bp.route("/editar/<int:id>", methods=["PUT", "PATCH"])
+@jwt_required()
+@roles_required("medico")
 def editar_padrao_medico_receita(id: int):
     try:
         padrao = db.session.query(ModeloReceita).filter(ModeloReceita.id == id).first()
@@ -133,6 +145,8 @@ def editar_padrao_medico_receita(id: int):
 
 
 @padrao_medico_receita_bp.route("/editar_medicamento/<int:id>", methods=["PUT", "PATCH"])
+@jwt_required()
+@roles_required("medico")
 def editar_medicamento_padrao_medico_receita(id: int):
     try:
         medicamento = db.session.query(Medicamentos).filter(Medicamentos.id == id).first()
@@ -180,6 +194,8 @@ def editar_medicamento_padrao_medico_receita(id: int):
 ### ROTAS DE DELETE
 
 @padrao_medico_receita_bp.route("/deletar/<int:id>", methods=["DELETE"])
+@jwt_required()
+@roles_required("medico")
 def deletar_padrao_medico_receita(id: int):
     try:
         padrao = db.session.query(ModeloReceita).filter(ModeloReceita.id == id).first()
@@ -198,6 +214,8 @@ def deletar_padrao_medico_receita(id: int):
 
 
 @padrao_medico_receita_bp.route("/deletar_medicamento/<int:id>", methods=["DELETE"])
+@jwt_required()
+@roles_required("medico")
 def deletar_medicamento_padrao_medico_receita(id: int):
     try:
         medicamento = db.session.query(Medicamentos).filter(Medicamentos.id == id).first()
