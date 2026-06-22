@@ -37,13 +37,39 @@ def dashboard_paciente_lista():
             
             # Query de SELECT:
             cursor.execute("""
-                SELECT *
-                    FROM ATCABECATEND A 
-                    JOIN TBCBOPRO TB ON A.ID_TBCBOPRO_ATENDIMENTO = TB.ID
-                    JOIN TBPROFIS TF ON TB.ID_TBPROFIS = TF.ID 
-                WHERE  a.id_tbcencus = '203' AND -- < id_tbcencus > Codigo da unidade
-                tb.cod = '11700' AND -- < TBCBOPRO --:  >
-                CAST(a.DATA_HORA_ENTRADA AS DATE) = CURRENT_DATE - 6;       
+                SELECT
+                a.ID AS ID_ATENDIMENTO,
+                    a.COD_ATENDIMENTO,
+                    a.ID_RICADPAC AS ID_PACIENTE,
+                    a.TP_ATENDIMENTO,
+                    a.DATA_HORA_ENTRADA,
+                    a.DATA_HORA_ALTA_MEDICA,
+                    a.OBS_ATENDIMENTO,
+                    a.ID_TBCONVEN AS ID_TBCONVEN,
+
+                    paciente.PRONT AS PRONTUARIO,
+                    paciente.NOME AS PACIENTE,
+                    paciente.NASC AS DATA_NASCIMENTO,
+                    paciente.SEXO AS SEXO,
+                    paciente.CELULAR AS CELULAR,
+                    paciente.EMAIL AS EMAIL,
+                    paciente.CPF AS CPF,
+                    paciente.ENDERECO AS ENDERECO,
+
+                    medico.ID AS ID_MEDICO,
+                    medico.NOME AS MEDICO,
+                    tb.cod AS CRM_MEDICO
+                FROM ATCABECATEND a
+                INNER JOIN RICADPAC paciente
+                    ON paciente.ID = a.ID_RICADPAC
+                INNER JOIN TBCBOPRO tb
+                    ON a.ID_TBCBOPRO_ATENDIMENTO = tb.ID
+                INNER JOIN TBPROFIS medico
+                    ON tb.ID_TBPROFIS = medico.ID
+                WHERE a.ID_TBCENCUS = 203
+                AND tb.COD = 10460
+                AND CAST(a.DATA_HORA_ENTRADA AS DATE) = CURRENT_DATE
+                ORDER BY a.DATA_HORA_ENTRADA DESC;
             """)
 
             columns = [desc[0] for desc in cursor.description]
