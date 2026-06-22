@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from src.security.decorators import roles_required
 
 from src.settings.extensions import db
@@ -23,18 +23,49 @@ def _padrao_medico_receita_to_dict(padrao):
     }
 
 
+def _get_medico_id():
+    return int(get_jwt_identity())
+
+
+def _get_padrao_do_medico(id_padrao, medico_id):
+    return (
+        db.session.query(ModeloReceita)
+        .filter(
+            ModeloReceita.id == id_padrao,
+            ModeloReceita.medico_id == medico_id
+        )
+        .first()
+    )
+
+
+def _get_medicamento_do_medico(id_medicamento, medico_id):
+    return (
+        db.session.query(Medicamentos)
+        .join(
+            ModeloReceita,
+            Medicamentos.id_modelo_solicitacao_receita == ModeloReceita.id
+        )
+        .filter(
+            Medicamentos.id == id_medicamento,
+            ModeloReceita.medico_id == medico_id
+        )
+        .first()
+    )
+
+
 @padrao_medico_receita_bp.route("/criar", methods=["POST"])
 @jwt_required()
 @roles_required("medico")
 def create_padrao_medico_receita():
     try:
+        medico_id = _get_medico_id()
         data = request.get_json() or {}
         nome_modelo = (data.get("nome_modelo") or "").strip()
 
         if not nome_modelo:
             return jsonify({"error": "Campo nome_modelo é obrigatório"}), 400
 
-        new_padrao_medico_receita = ModeloReceita(nome_modelo)
+        new_padrao_medico_receita = ModeloReceita(nome_modelo, medico_id)
         db.session.add(new_padrao_medico_receita)
         db.session.commit()
 
@@ -50,7 +81,8 @@ def create_padrao_medico_receita():
 @roles_required("medico")
 def add_medicamento_padrao_medico_receita(id_padrao_medico_receita: int):
     try:
-        padrao = db.session.query(ModeloReceita).filter(ModeloReceita.id == id_padrao_medico_receita).first()
+        medico_id = _get_medico_id()
+        padrao = _get_padrao_do_medico(id_padrao_medico_receita, medico_id)
 
         if not padrao:
             return jsonify({"error": "Padrão médico de receita não encontrado"}), 404
@@ -86,7 +118,12 @@ def add_medicamento_padrao_medico_receita(id_padrao_medico_receita: int):
 @roles_required("medico")
 def lista_padroes_medicos_receita():
     try:
-        lista_padroes_receitas = db.session.query(ModeloReceita).all()
+        medico_id = _get_medico_id()
+        lista_padroes_receitas = (
+            db.session.query(ModeloReceita)
+            .filter(ModeloReceita.medico_id == medico_id)
+            .all()
+        )
 
         return jsonify({
             "padroes_receitas": [
@@ -104,7 +141,8 @@ def lista_padroes_medicos_receita():
 @roles_required("medico")
 def detalhes_padrao_medico_receita(id: int):
     try:
-        detalhe_padrao_receita_select = db.session.query(ModeloReceita).filter(ModeloReceita.id == id).first()
+        medico_id = _get_medico_id()
+        detalhe_padrao_receita_select = _get_padrao_do_medico(id, medico_id)
 
         if not detalhe_padrao_receita_select:
             return jsonify({"error": "Padrão médico de receita não encontrado"}), 404
@@ -122,7 +160,8 @@ def detalhes_padrao_medico_receita(id: int):
 @roles_required("medico")
 def editar_padrao_medico_receita(id: int):
     try:
-        padrao = db.session.query(ModeloReceita).filter(ModeloReceita.id == id).first()
+        medico_id = _get_medico_id()
+        padrao = _get_padrao_do_medico(id, medico_id)
 
         if not padrao:
             return jsonify({"error": "Padrão médico de receita não encontrado"}), 404
@@ -149,7 +188,8 @@ def editar_padrao_medico_receita(id: int):
 @roles_required("medico")
 def editar_medicamento_padrao_medico_receita(id: int):
     try:
-        medicamento = db.session.query(Medicamentos).filter(Medicamentos.id == id).first()
+        medico_id = _get_medico_id()
+        medicamento = _get_medicamento_do_medico(id, medico_id)
 
         if not medicamento:
             return jsonify({"error": "Medicamento não encontrado"}), 404
@@ -198,7 +238,8 @@ def editar_medicamento_padrao_medico_receita(id: int):
 @roles_required("medico")
 def deletar_padrao_medico_receita(id: int):
     try:
-        padrao = db.session.query(ModeloReceita).filter(ModeloReceita.id == id).first()
+        medico_id = _get_medico_id()
+        padrao = _get_padrao_do_medico(id, medico_id)
 
         if not padrao:
             return jsonify({"error": "Padrão médico de receita não encontrado"}), 404
@@ -218,7 +259,8 @@ def deletar_padrao_medico_receita(id: int):
 @roles_required("medico")
 def deletar_medicamento_padrao_medico_receita(id: int):
     try:
-        medicamento = db.session.query(Medicamentos).filter(Medicamentos.id == id).first()
+        medico_id = _get_medico_id()
+        medicamento = _get_medicamento_do_medico(id, medico_id)
 
         if not medicamento:
             return jsonify({"error": "Medicamento não encontrado"}), 404

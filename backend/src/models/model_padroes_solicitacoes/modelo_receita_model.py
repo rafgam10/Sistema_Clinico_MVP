@@ -13,6 +13,13 @@ class ModeloReceita(db.Model):
         nullable=False
     )
 
+    medico_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True
+    )
+
     created_at = db.Column(
         db.DateTime,
         default=datetime.utcnow,
@@ -31,9 +38,10 @@ class ModeloReceita(db.Model):
         cascade="all, delete-orphan",
         order_by="Medicamentos.created_at.desc()"
     )
-    
-    def __init__(self, nome_modelo):
+
+    def __init__(self, nome_modelo, medico_id):
         self.nome_modelo = nome_modelo
+        self.medico_id = medico_id
 
     def __repr__(self):
         return f"<ModeloReceita id={self.id} nome_modelo={self.nome_modelo}>"
@@ -42,6 +50,7 @@ class ModeloReceita(db.Model):
         return {
             "id": self.id,
             "nome_modelo": self.nome_modelo,
+            "medico_id": self.medico_id,
             "created_at": self.created_at,
             "updated_at": self.updated_at
         }
