@@ -30,7 +30,7 @@ const userName = computed(() => auth.user?.nome || 'Usuário')
 
 const SLOTS_POR_MEDICO = 20
 
-const selectedEspecialidade = ref<string | undefined>('Todos')
+const selectedEspecialidade = ref<string | undefined>('Todas as especialidades')
 const selectedMedico = ref<number | null>(null)
 
 const selectedMedicoNome = computed(() => {
@@ -41,12 +41,12 @@ const selectedMedicoNome = computed(() => {
 const especialidades = computed(() => {
   const all = new Set<string>()
   medicos.value.forEach(m => m.especialidades?.forEach(e => all.add(e)))
-  return ['Todos', ...Array.from(all).sort()]
+  return ['Todas as especialidades', ...Array.from(all).sort()]
 })
 
 const medicosDoDia = computed(() => {
   let lista = medicos.value
-  if (selectedEspecialidade.value && selectedEspecialidade.value !== 'Todos') {
+  if (selectedEspecialidade.value && selectedEspecialidade.value !== 'Todas as especialidades') {
     lista = lista.filter(m => m.especialidades?.includes(selectedEspecialidade.value!))
   }
   return lista.map(m => ({

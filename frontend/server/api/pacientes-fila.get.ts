@@ -9,28 +9,28 @@ export default defineEventHandler(async (event) => {
 
       return {
         id: Number(item.COD_ATENDIMENTO) || 0,
-        pacienteId: Number(item.PACIENTE_ID) || 0,
-        medicoId: 0,
+        pacienteId: Number(item.ID_PACIENTE) || 0,
+        medicoId: Number(item.ID_MEDICO) || 0,
         clinicaId: 0,
         data: dataStr,
         horario: horarioStr,
         prioridade: 'Normal',
-        status: String(item.ATIVO) === 'T' ? 'em-espera' : 'agendado',
+        status: 'agendado' as const,
         descricao: '',
         criadoEm: dataStr,
         paciente: {
-          id: Number(item.ID_RICADPAC) || null,
-          nome: String(item.NOME || ''),
+          id: Number(item.ID_PACIENTE) || null,
+          nome: String(item.PACIENTE || ''),
           sexo: String(item.SEXO) === 'F' ? 'Feminino' : 'Masculino',
-          dataNascimento: String(item.NASC || ''),
+          dataNascimento: String(item.DATA_NASCIMENTO || ''),
           tipoSanguineo: '',
           alergias: [],
           medicamentosEmUso: [],
           convenio: String(item.ID_TBCONVEN),
-          telefone: String(item.CELULAR),
+          telefone: String(item.CELULAR || ''),
           email: String(item.EMAIL || 'Não Informado'),
-          cpf: String(item.CNPJ_CPF),
-          endereco: String(item.LOCAL),
+          cpf: String(item.CPF || ''),
+          endereco: String(item.ENDERECO || ''),
           historicoRecente: []
         }
       }
