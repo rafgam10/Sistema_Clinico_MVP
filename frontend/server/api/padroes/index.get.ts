@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
   try {
-    const raw = await $fetch<{ padroes_receitas: any[] }>('http://localhost:5000/padrao_medico_receita/lista')
+    const raw = await flaskFetch<{ padroes_receitas: any[] }>(event, '/padrao_medico_receita/lista')
     return raw.padroes_receitas.map(p => ({
       id: String(p.id),
-      medicoId: 0, // PRECISO DO ID
+      medicoId: Number(p.medico_id) || 0,
       nome: p.nome_modelo,
       tipo: 'receita' as const,
       medicamentos: (p.medicamentos || []).map((m: any) => ({
