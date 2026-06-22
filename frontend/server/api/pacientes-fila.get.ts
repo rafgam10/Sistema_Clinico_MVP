@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
         data: dataStr,
         horario: horarioStr,
         prioridade: 'Normal',
-        status: 'agendado' as const,
+        status: 'Em espera' as const,
         descricao: '',
         criadoEm: dataStr,
         paciente: {
