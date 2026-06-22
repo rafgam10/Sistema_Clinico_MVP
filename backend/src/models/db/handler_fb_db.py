@@ -4,20 +4,38 @@ import os
 
 load_dotenv()
 
+
+def _get_env(*names, default=None, required=False):
+    for name in names:
+        value = os.getenv(name)
+        if value:
+            return value
+
+    if required:
+        raise RuntimeError(
+            f"Variável de ambiente obrigatória ausente: {', '.join(names)}"
+        )
+
+    return default
+
+
 class ConnectionDBFireBird:
     
     def __init__(self):
-        self.host = os.getenv("FIREBIRD_HOST")
-        self.port = int(os.getenv("FIREBIRD_PORT", 3050))
-        self.database = os.getenv("FIREBIRD_DATABASE")
-        self.user = os.getenv("FIREBIRD_USER")
-        self.password = os.getenv("FIREBIRD_PASSWORD")
-        self.charset = os.getenv("FIREBIRD_CHARSET", "WIN1252")
+        self.host = _get_env("FIREBIRD_HOST_teste", "FIREBIRD_HOST", required=True)
+        self.port = _get_env("FIREBIRD_PORT_teste", "FIREBIRD_PORT")
+        self.database = _get_env("FIREBIRD_DATABASE_teste", "FIREBIRD_DATABASE", required=True)
+        self.user = _get_env("FIREBIRD_USER_teste", "FIREBIRD_USER", required=True)
+        self.password = _get_env("FIREBIRD_PASSWORD_teste", "FIREBIRD_PASSWORD", required=True)
+        self.charset = _get_env("FIREBIRD_CHARSET_teste", "FIREBIRD_CHARSET", default="WIN1252")
         self._connection = None
         self._connect()
 
     def _connect(self):
-        database_url = f"{self.host}/{self.port}:{self.database}"
+        if self.port:
+            database_url = f"{self.host}/{self.port}:{self.database}"
+        else:
+            database_url = f"{self.host}:{self.database}"
 
         # print("Conectando no Firebird:", database_url)
         # print("Charset:", self.charset)
@@ -43,3 +61,22 @@ class ConnectionDBFireBird:
         self.close()
         
 
+def test_connection():
+    try:
+        with ConnectionDBFireBird() as con:
+            cur = con.cursor()
+            cur.execute("SELECT 1 FROM RDB$DATABASE")
+            result = cur.fetchone()
+            cur.close()
+
+        print("Conexão Firebird OK:", result[0])
+        return True
+
+    except Exception as e:
+        print("Erro ao conectar no Firebird:", e)
+        return False
+
+
+if __name__ == "__main__":
+    ok = test_connection()
+    raise SystemExit(0 if ok else 1)
