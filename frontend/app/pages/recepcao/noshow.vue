@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui/'
+import { getPaginationRowModel } from '@tanstack/vue-table'
 
 const auth = useAuthStore()
 
@@ -236,6 +237,13 @@ const pacientesVisiveis = computed(() => {
   return lista
 })
 
+const table = useTemplateRef('table')
+
+const pagination = ref({
+  pageIndex: 0,
+  pageSize: 7
+})
+
 const colunas = [
   { accessorKey: 'paciente', header: 'Paciente' },
   { accessorKey: 'telefone', header: 'Telefone' },
@@ -371,6 +379,40 @@ function recusou(paciente: PacienteNoShow) {
           </div>
         </UCard>
       </div>
+
+      <div class="w-full grid grid-cols-5 items-center gap-4">
+        <CardNoShow
+          titulo="Taxa de Recuperação"
+          :valor="taxaRecuperacao"
+          medida="%"
+          cor="primary"
+          icone="i-lucide-trending-up"
+        />
+        <CardNoShow
+          titulo="Faltosos"
+          :valor="totalFaltasMes"
+          cor="error"
+          icone="lucide:user-round-x"
+        />
+        <CardNoShow
+          titulo="Recuperados"
+          :valor="agendamentosRecuperados"
+          cor="success"
+          icone="i-lucide-calendar-check"
+        />
+        <CardNoShow
+          titulo="Sem contato"
+          :valor="283"
+          cor="secondary"
+          icone="i-lucide-clock"
+        />
+        <CardNoShow
+          titulo="lista de espera"
+          valor="sei la"
+          cor="tertiary"
+          icone="lucide:user-round-search"
+        />
+      </div>
       <div class="w-full grid grid-cols-3 gap-4">
         <UCard class="col-span-1">
           <template #title>
@@ -422,40 +464,6 @@ function recusou(paciente: PacienteNoShow) {
             :dados="chartEspecialidade.dados"
           />
         </UCard>
-      </div>
-
-      <div class="w-full grid grid-cols-5 items-center gap-4">
-        <CardNoShow
-          titulo="Taxa de Recuperação"
-          :valor="taxaRecuperacao"
-          medida="%"
-          cor="primary"
-          icone="i-lucide-trending-up"
-        />
-        <CardNoShow
-          titulo="Faltosos"
-          :valor="totalFaltasMes"
-          cor="error"
-          icone="lucide:user-round-x"
-        />
-        <CardNoShow
-          titulo="Recuperados"
-          :valor="agendamentosRecuperados"
-          cor="success"
-          icone="i-lucide-calendar-check"
-        />
-        <CardNoShow
-          titulo="Sem contato"
-          :valor="283"
-          cor="secondary"
-          icone="i-lucide-clock"
-        />
-        <CardNoShow
-          titulo="lista de espera"
-          valor="sei la"
-          cor="tertiary"
-          icone="lucide:user-round-search"
-        />
       </div>
 
       <div class="grid grid-cols-5 gap-4 items-stretch">
@@ -540,8 +548,11 @@ function recusou(paciente: PacienteNoShow) {
         </template>
 
         <UTable
+          ref="table"
+          v-model:pagination="pagination"
           :columns="colunas"
           :data="pacientesVisiveis"
+          :pagination-options="{ getPaginationRowModel: getPaginationRowModel() }"
         >
           <template #paciente-cell="{ row }">
             <div class="flex items-center gap-3">
@@ -616,6 +627,15 @@ function recusou(paciente: PacienteNoShow) {
             </div>
           </template>
         </UTable>
+
+        <div class="flex justify-center pt-4">
+          <UPagination
+            :page="(table?.tableApi?.getState().pagination.pageIndex || 0) + 1"
+            :items-per-page="table?.tableApi?.getState().pagination.pageSize"
+            :total="table?.tableApi?.getFilteredRowModel().rows.length"
+            @update:page="(p) => table?.tableApi?.setPageIndex(p - 1)"
+          />
+        </div>
       </UCard>
     </div>
   </div>
