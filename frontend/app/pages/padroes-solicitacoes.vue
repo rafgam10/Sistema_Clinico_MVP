@@ -2,6 +2,7 @@
 import type { PadraoReceita, PadraoExame } from '~/types'
 
 const padroesStore = usePadroesStore()
+const toast = useToast()
 
 onMounted(() => padroesStore.fetchAll())
 
@@ -12,6 +13,8 @@ const showExameModal = ref(false)
 
 const editingReceita = ref<PadraoReceita | null>(null)
 const editingExame = ref<PadraoExame | null>(null)
+
+const confirmDeleteId = ref<string | null>(null)
 
 function abrirNovaReceita() {
   editingReceita.value = null
@@ -33,12 +36,25 @@ function editarExame(p: PadraoExame) {
   showExameModal.value = true
 }
 
-async function deletarReceita(p: PadraoReceita) {
-  await padroesStore.deletar(p.id)
+function confirmarDeletar(p: PadraoReceita | PadraoExame) {
+  confirmDeleteId.value = p.id
 }
 
-async function deletarExame(p: PadraoExame) {
-  await padroesStore.deletar(p.id)
+async function executarDeletar() {
+  if (confirmDeleteId.value !== null) {
+    try {
+      await padroesStore.deletar(confirmDeleteId.value)
+    } catch {
+      toast.add({
+        title: 'Erro ao Deletar',
+        description: 'Não foi possível deletar o padrão',
+        color: 'error',
+        icon: 'lucide:octagon-x'
+      })
+    } finally {
+      confirmDeleteId.value = null
+    }
+  }
 }
 
 function gerenciarReceita() {
@@ -172,14 +188,14 @@ function activeTabEmpty(): boolean {
                   color="neutral"
                   variant="ghost"
                   size="sm"
-                  @click="editarReceita(p as PadraoReceita)"
+                  @click="editarReceita(p)"
                 />
                 <UButton
                   icon="i-lucide-trash-2"
                   color="error"
                   variant="ghost"
                   size="sm"
-                  @click="deletarReceita(p as PadraoReceita)"
+                  @click="confirmarDeletar(p)"
                 />
               </div>
             </div>
@@ -206,14 +222,14 @@ function activeTabEmpty(): boolean {
                   color="neutral"
                   variant="ghost"
                   size="sm"
-                  @click="editarExame(p as PadraoExame)"
+                  @click="editarExame(p)"
                 />
                 <UButton
                   icon="i-lucide-trash-2"
                   color="error"
                   variant="ghost"
                   size="sm"
-                  @click="deletarExame(p as PadraoExame)"
+                  @click="confirmarDeletar(p)"
                 />
               </div>
             </div>
@@ -237,6 +253,15 @@ function activeTabEmpty(): boolean {
     <PadraoExameModal
       v-model:open="showExameModal"
       :padrao="editingExame"
+    />
+
+    <ModalConfirmacao
+      :abrir="confirmDeleteId !== null"
+      titulo="Deletar Padrão?"
+      descricao="Tem certeza que deseja deletar este padrão?"
+      texto-confirma="Deletar"
+      @fechar="confirmDeleteId = null"
+      @confirmar="executarDeletar"
     />
   </div>
 </template>
