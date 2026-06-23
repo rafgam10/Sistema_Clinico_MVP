@@ -1,3 +1,9 @@
+<script setup lang="ts">
+const props = defineProps<{
+  isrecepcao: boolean
+}>()
+</script>
+
 <template>
   <div class="flex items-center gap-3">
     <UBadge
@@ -11,7 +17,7 @@
         MedSystem
       </p>
       <p class="text-sm font-light text-muted">
-        Gestão médica
+        {{ props.isrecepcao? 'Gestão clínica' : 'Gestão médica' }}
       </p>
     </div>
   </div>

@@ -17,7 +17,7 @@ const navItems = [
     >
       <template #header>
         <NuxtLink to="/recepcao">
-          <logoMed />
+          <logoMed isrecepcao />
         </NuxtLink>
       </template>
 
