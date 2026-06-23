@@ -272,9 +272,18 @@ function limparFiltro() {
                 size="sm"
               />
               <div>
-                <p class="font-medium">
-                  {{ row.original.paciente.nome }}
-                </p>
+                <div class="flex items-center gap-2">
+                  <p class="font-medium">
+                    {{ row.original.paciente.nome }}
+                  </p>
+                  <UBadge
+                    v-if="row.original.paciente.encaixado"
+                    size="sm"
+                    color="tertiary"
+                  >
+                    Encaixado
+                  </UBadge>
+                </div>
                 <p class="text-xs text-muted">
                   {{ row.original.descricao }}
                 </p>

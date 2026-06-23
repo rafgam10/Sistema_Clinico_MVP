@@ -15,6 +15,7 @@ export interface HistoricoItem {
 export interface Paciente {
   id: number
   nome: string
+  encaixado: boolean
   sexo: 'masculino' | 'feminino'
   dataNascimento: string
   tipoSanguineo: string

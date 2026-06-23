@@ -8,6 +8,7 @@ interface ServerClinica {
 interface ServerPaciente {
   id: number
   nome: string
+  encaixado: boolean
   sexo: 'masculino' | 'feminino'
   dataNascimento: string
   tipoSanguineo: string
@@ -95,6 +96,7 @@ let nextPacienteId = 26
 const pacientes: ServerPaciente[] = [
   {
     id: 1, nome: 'Carlos Pereira', sexo: 'masculino', dataNascimento: '1981-03-12',
+    encaixado: true,
     tipoSanguineo: 'A+', alergias: ['Penicilina', 'Dipirona', 'Poeira'],
     medicamentosEmUso: [{ nome: 'Losartana', dosagem: '50mg', frequencia: '1x ao dia' }, { nome: 'Omeprazol', dosagem: '20mg', frequencia: '1x ao dia em jejum' }],
     convenio: 'Unimed', telefone: '(11) 99999-0001', email: 'carlos.pereira@email.com', cpf: '123.456.789-01',
@@ -108,6 +110,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 2, nome: 'Maria Santos', sexo: 'feminino', dataNascimento: '1994-07-25',
+    encaixado: true,
     tipoSanguineo: 'O-', alergias: [],
     medicamentosEmUso: [{ nome: 'Dipirona', dosagem: '1g', frequencia: 'se necessário' }],
     convenio: 'Bradesco Saúde', telefone: '(11) 99999-0003', email: 'maria.santos@email.com', cpf: '123.456.789-02',
@@ -121,6 +124,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 3, nome: 'João Lima', sexo: 'masculino', dataNascimento: '1998-11-03',
+    encaixado: true,
     tipoSanguineo: 'B+', alergias: ['Sulfa'],
     medicamentosEmUso: [],
     convenio: 'SulAmérica', telefone: '(11) 99999-0005', email: 'joao.lima@email.com', cpf: '123.456.789-03',
@@ -132,6 +136,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 4, nome: 'Ana Oliveira', sexo: 'feminino', dataNascimento: '1968-02-18',
+    encaixado: false,
     tipoSanguineo: 'AB+', alergias: [],
     medicamentosEmUso: [{ nome: 'Enalapril', dosagem: '10mg', frequencia: '1x ao dia' }, { nome: 'AAS', dosagem: '100mg', frequencia: '1x ao dia' }],
     convenio: 'Unimed', telefone: '(11) 99999-0006', email: 'ana.oliveira@email.com', cpf: '123.456.789-04',
@@ -145,6 +150,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 5, nome: 'Pedro Alves', sexo: 'masculino', dataNascimento: '1964-09-30',
+    encaixado: false,
     tipoSanguineo: 'A-', alergias: ['Dipirona'],
     medicamentosEmUso: [{ nome: 'Metformina', dosagem: '850mg', frequencia: '2x ao dia' }, { nome: 'Glibenclamida', dosagem: '5mg', frequencia: '1x ao dia' }],
     convenio: 'Bradesco Saúde', telefone: '(11) 99999-0008', email: 'pedro.alves@email.com', cpf: '123.456.789-05',
@@ -158,6 +164,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 6, nome: 'Lúcia Mendes', sexo: 'feminino', dataNascimento: '1988-05-14',
+    encaixado: false,
     tipoSanguineo: 'O+', alergias: ['Látex'],
     medicamentosEmUso: [],
     convenio: 'Amil', telefone: '(11) 99999-0010', email: 'lucia.mendes@email.com', cpf: '123.456.789-06',
@@ -170,6 +177,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 7, nome: 'Roberto Castro', sexo: 'masculino', dataNascimento: '1974-08-22',
+    encaixado: false,
     tipoSanguineo: 'B-', alergias: ['AAS'],
     medicamentosEmUso: [{ nome: 'Diclofenaco', dosagem: '50mg', frequencia: '2x ao dia se dor' }],
     convenio: 'Unimed', telefone: '(11) 99999-0012', email: 'roberto.castro@email.com', cpf: '123.456.789-07',
@@ -181,6 +189,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 8, nome: 'Fernanda Brito', sexo: 'feminino', dataNascimento: '1999-01-09',
+    encaixado: true,
     tipoSanguineo: 'A+', alergias: ['Pólen', 'Perfume'],
     medicamentosEmUso: [{ nome: 'Loratadina', dosagem: '10mg', frequencia: '1x ao dia' }],
     convenio: 'Bradesco Saúde', telefone: '(11) 99999-0013', email: 'fernanda.brito@email.com', cpf: '123.456.789-08',
@@ -193,6 +202,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 9, nome: 'Márcio Souza', sexo: 'masculino', dataNascimento: '1985-06-17',
+    encaixado: false,
     tipoSanguineo: 'A-', alergias: [],
     medicamentosEmUso: [],
     convenio: 'SulAmérica', telefone: '(11) 99999-0015', email: 'marcio.souza@email.com', cpf: '123.456.789-09',
@@ -204,6 +214,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 10, nome: 'Carla Dias', sexo: 'feminino', dataNascimento: '1971-12-05',
+    encaixado: true,
     tipoSanguineo: 'O-', alergias: ['Penicilina', 'Sulfa'],
     medicamentosEmUso: [{ nome: 'Levotiroxina', dosagem: '75mcg', frequencia: '1x ao dia em jejum' }, { nome: 'Atorvastatina', dosagem: '20mg', frequencia: '1x ao dia' }],
     convenio: 'Amil', telefone: '(11) 99999-0016', email: 'carla.dias@email.com', cpf: '123.456.789-10',
@@ -217,6 +228,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 11, nome: 'Tiago Nunes', sexo: 'masculino', dataNascimento: '1991-04-28',
+    encaixado: false,
     tipoSanguineo: 'AB-', alergias: [],
     medicamentosEmUso: [],
     convenio: 'Unimed', telefone: '(11) 99999-0018', email: 'tiago.nunes@email.com', cpf: '123.456.789-11',
@@ -228,6 +240,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 12, nome: 'Sandra Rocha', sexo: 'feminino', dataNascimento: '1997-10-11',
+    encaixado: false,
     tipoSanguineo: 'B+', alergias: ['Ibuprofeno'],
     medicamentosEmUso: [],
     convenio: 'Bradesco Saúde', telefone: '(11) 99999-0019', email: 'sandra.rocha@email.com', cpf: '123.456.789-12',
@@ -239,6 +252,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 13, nome: 'Gustavo Lima', sexo: 'masculino', dataNascimento: '1978-03-08',
+    encaixado: false,
     tipoSanguineo: 'O+', alergias: [],
     medicamentosEmUso: [{ nome: 'Omeprazol', dosagem: '20mg', frequencia: '1x ao dia' }],
     convenio: 'SulAmérica', telefone: '(11) 99999-0020', email: 'gustavo.lima@email.com', cpf: '123.456.789-13',
@@ -250,6 +264,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 14, nome: 'Juliana Costa', sexo: 'feminino', dataNascimento: '1985-08-20',
+    encaixado: false,
     tipoSanguineo: 'A+', alergias: ['Dipirona'],
     medicamentosEmUso: [{ nome: 'Sinvastatina', dosagem: '20mg', frequencia: '1x ao dia' }],
     convenio: 'Amil', telefone: '(11) 99999-0021', email: 'juliana.costa@email.com', cpf: '123.456.789-14',
@@ -261,6 +276,7 @@ const pacientes: ServerPaciente[] = [
   },
   {
     id: 15, nome: 'Rafael Santos', sexo: 'masculino', dataNascimento: '1959-05-15',
+    encaixado: false,
     tipoSanguineo: 'O-', alergias: ['Penicilina'],
     medicamentosEmUso: [{ nome: 'Losartana', dosagem: '50mg', frequencia: '1x ao dia' }, { nome: 'Hidroclorotiazida', dosagem: '25mg', frequencia: '1x ao dia' }, { nome: 'AAS', dosagem: '100mg', frequencia: '1x ao dia' }],
     convenio: 'Bradesco Saúde', telefone: '(11) 99999-0022', email: 'rafael.santos@email.com', cpf: '123.456.789-15',
