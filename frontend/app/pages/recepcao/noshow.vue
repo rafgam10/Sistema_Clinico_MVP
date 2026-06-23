@@ -424,40 +424,104 @@ function recusou(paciente: PacienteNoShow) {
         </UCard>
       </div>
 
-      <div class="flex flex-col lg:flex-row gap-6">
-        <div class="w-full flex justify-center items-center gap-4">
-          <CardNoShow
-            titulo="Taxa de Recuperação"
-            :valor="taxaRecuperacao"
-            medida="%"
-            cor="primary"
-            icone="i-lucide-trending-up"
-          />
-          <CardNoShow
-            titulo="Faltosos"
-            :valor="totalFaltasMes"
-            cor="error"
-            icone="lucide:user-round-x"
-          />
-          <CardNoShow
-            titulo="Recuperados"
-            :valor="agendamentosRecuperados"
-            cor="success"
-            icone="i-lucide-calendar-check"
-          />
-          <CardNoShow
-            titulo="Sem contato"
-            :valor="283"
-            cor="secondary"
-            icone="i-lucide-clock"
-          />
-          <CardNoShow
-            titulo="lista de espera preenchida"
-            valor="sei la"
-            cor="tertiary"
-            icone="lucide:user-round-search"
-          />
-        </div>
+      <div class="w-full grid grid-cols-5 items-center gap-4">
+        <CardNoShow
+          titulo="Taxa de Recuperação"
+          :valor="taxaRecuperacao"
+          medida="%"
+          cor="primary"
+          icone="i-lucide-trending-up"
+        />
+        <CardNoShow
+          titulo="Faltosos"
+          :valor="totalFaltasMes"
+          cor="error"
+          icone="lucide:user-round-x"
+        />
+        <CardNoShow
+          titulo="Recuperados"
+          :valor="agendamentosRecuperados"
+          cor="success"
+          icone="i-lucide-calendar-check"
+        />
+        <CardNoShow
+          titulo="Sem contato"
+          :valor="283"
+          cor="secondary"
+          icone="i-lucide-clock"
+        />
+        <CardNoShow
+          titulo="lista de espera"
+          valor="sei la"
+          cor="tertiary"
+          icone="lucide:user-round-search"
+        />
+      </div>
+
+      <div class="grid grid-cols-5 gap-4 items-stretch">
+        <UCard
+          :ui="{
+            body: 'p-4 sm:p-4 sm:py-5 min-w-55 flex items-center h-full'
+          }"
+          class="col-span-2"
+        >
+          <div class="flex items-center gap-3 w-full">
+            <UBadge
+              class="aspect-square"
+              variant="soft"
+              color="error"
+            >
+              <UIcon
+                name="lucide:coins"
+                :class="`size-8 text-primary bg-error`"
+              />
+            </UBadge>
+            <div class="flex flex-col">
+              <p class="text-sm font-bold text-nowrap">
+                Impacto Financeiro (estimado)
+              </p>
+              <p :class="`text-2xl font-black text-error`">
+                R$42.800,00
+              </p>
+            </div>
+            <UBadge
+              color="neutral"
+              variant="soft"
+            >
+              Prejuizo estimado com faltas no período selecionado
+            </UBadge>
+          </div>
+        </UCard>
+        <UCard
+          :ui="{
+            body: 'p-5 flex items-center h-full'
+          }"
+          class="col-span-3"
+        >
+          <div class="flex items-center justify-between w-full">
+            <div class="flex items-center gap-2">
+              <UIcon
+                name="i-lucide-download"
+                class="text-primary size-5"
+              />
+              <span class="font-semibold">Exportar Dados</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <UButton
+                icon="i-lucide-file-text"
+                label="Exportar PDF"
+                color="error"
+                size="sm"
+              />
+              <UButton
+                icon="i-lucide-file-spreadsheet"
+                label="Exportar CSV"
+                color="primary"
+                size="sm"
+              />
+            </div>
+          </div>
+        </UCard>
       </div>
 
       <UCard class="w-full">
@@ -520,7 +584,7 @@ function recusou(paciente: PacienteNoShow) {
                 label="Ligar"
                 size="sm"
                 color="primary"
-                variant="soft"
+
                 @click="ligar(row.original)"
               />
               <UButton
@@ -528,7 +592,7 @@ function recusou(paciente: PacienteNoShow) {
                 label="Reagendar"
                 size="sm"
                 color="warning"
-                variant="soft"
+
                 @click="reagendar(row.original)"
               />
               <UButton
@@ -536,7 +600,7 @@ function recusou(paciente: PacienteNoShow) {
                 label="Recusou"
                 size="sm"
                 color="error"
-                variant="soft"
+
                 @click="recusou(row.original)"
               />
               <UDropdownMenu
@@ -546,8 +610,7 @@ function recusou(paciente: PacienteNoShow) {
                   icon="lucide:menu"
                   label="mais"
                   size="sm"
-                  color="neutral"
-                  variant="soft"
+                  color="secondary"
                 />
               </UDropdownMenu>
             </div>

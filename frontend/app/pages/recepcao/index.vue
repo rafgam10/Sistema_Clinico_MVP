@@ -318,7 +318,6 @@ function limparFiltro() {
               label="Cancelar"
               size="sm"
               color="error"
-              variant="soft"
               @click="cancelarAgendamento(row.original.id)"
             />
           </template>

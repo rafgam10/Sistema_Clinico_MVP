@@ -11,7 +11,6 @@ const props = defineProps<{
 <template>
   <UCard
     :ui="{
-      root: 'w-fit',
       body: 'p-4 sm:p-4 sm:py-5 min-w-55'
     }"
   >
