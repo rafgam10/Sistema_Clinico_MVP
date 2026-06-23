@@ -3,6 +3,37 @@ import type { PadraoReceita, PadraoExame, ItemMedicamento } from '~/types'
 import { usePdfMake } from '~/utils/pdf'
 import { buildSolicitacaoExames, buildReceita } from '~/utils/pdf-documents'
 
+const inputKey = ref(0)
+
+const examesComuns = [
+  'Hemograma completo',
+  'Glicemia em jejum',
+  'Colesterol total e frações',
+  'Triglicerídeos',
+  'Creatinina',
+  'Uréia',
+  'TGO/TGP (Transaminases)',
+  'TSH e T4 livre',
+  'PSA total',
+  'Eletrocardiograma (ECG)',
+  'Raio-X de tórax',
+  'Ecocardiograma transtorácico',
+  'Ultrassonografia de abdome total',
+  'Densitometria óssea',
+  'Teste ergométrico',
+  'Urocultura com antibiograma',
+  'PCR e VHS',
+  'Hemoglobina glicada',
+  'Dosagem de vitamina D',
+  'Dosagem de vitamina B12',
+  'Ferritina',
+  'Ácido úrico',
+  'EAS (Urina tipo I)',
+  'Parcela de fezes',
+  'Endoscopia digestiva alta',
+  'Colonoscopia'
+]
+
 const agendamentosStore = useAgendamentosStore()
 const padroesStore = usePadroesStore()
 const cronometro = useCronometroStore()
@@ -147,13 +178,18 @@ function adicionarPadraoReceita() {
 
 const examesTexto = ref('')
 const exameInput = ref('')
+const inputMenuRef = ref()
 const exameTemplateSelected = ref<{ label: string, value: PadraoExame }>()
 
-function adicionarExame() {
-  if (!exameInput.value) return
-  examesTexto.value += `• ${exameInput.value}\n`
+function adicionarExame(texto: string) {
+  examesTexto.value += `• ${texto}\n`
   exameInput.value = ''
+  inputKey.value++
+  nextTick(() => inputMenuRef.value?.inputRef?.focus())
 }
+watch(exameInput, (val) => {
+  if (val?.trim()) adicionarExame(val.trim())
+})
 
 function adicionarPadraoExame() {
   if (!exameTemplateSelected.value) return
@@ -566,26 +602,22 @@ function finalizarConsulta() {
             </template>
 
             <div class="flex flex-col gap-4 grow p-4">
-              <div class="shrink-0 flex items-end gap-3 p-4 rounded-lg border border-muted bg-neutral-50 dark:bg-neutral-900">
-                <UFormField
-                  label="Nome do exame"
-                  class="flex-1"
-                >
-                  <UInput
-                    v-model="exameInput"
-                    placeholder="Ex: Hemograma completo"
-                    class="w-full"
-                    @keydown.enter="adicionarExame"
-                  />
-                </UFormField>
-                <UButton
-                  icon="i-lucide-plus"
-                  label="Adicionar"
-                  color="primary"
-                  :disabled="!exameInput"
-                  @click="adicionarExame"
+              <UFormField
+                label="Nome do exame"
+                class="w-full"
+              >
+                <UInputMenu
+                  ref="inputMenuRef"
+                  :key="inputKey"
+                  v-model="exameInput"
+                  :items="examesComuns"
+                  searchable
+                  placeholder="Digite um exame..."
+                  class="flex-1 w-full"
+                  create-item
+                  @create="adicionarExame($event)"
                 />
-              </div>
+              </UFormField>
 
               <div class="shrink-0 flex gap-2">
                 <UInputMenu
@@ -593,7 +625,7 @@ function finalizarConsulta() {
                   :items="padroesStore.exames.map(p => ({ label: p.nome, value: p }))"
                   searchable
                   placeholder="Selecionar padrão de exames..."
-                  class="flex-1"
+                  class="flex-1 w-full"
                 />
                 <UButton
                   icon="i-lucide-copy-plus"
