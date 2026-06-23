@@ -68,19 +68,11 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       >
         <template #leading>
           <NuxtImg
-            src="img/logo-temporaria.png"
+            src="img/logo.png"
             alt="MedSystem"
-            width="100"
-            height="100"
-          />
-        </template>
 
-        <template #password-hint>
-          <ULink
-            to="#"
-            class="text-primary font-medium hover:underline"
-            tabindex="-1"
-          >Esqueci minha senha</ULink>
+            height="50"
+          />
         </template>
 
         <template #validation>
@@ -96,31 +88,15 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
         </template>
 
         <template #footer>
-          <div class="flex flex-col items-center gap-3 w-full">
-            <USeparator
-              label="AINDA NÃO TEM ACESSO?"
-              :ui="{ label: 'text-muted' }"
-            />
-            <UButton
-              label="Solicite Acesso à sua conta"
-              trailing-icon="i-lucide-arrow-right"
-              color="neutral"
-              variant="subtle"
-              block
-              to="#"
-              :ui="{ trailingIcon: 'ms-0' }"
-            />
-
-            <div class="flex justify-center gap-4 w-full">
-              <span class="text-sm text-muted flex items-center gap-1">
-                <UIcon name="i-lucide-shield-check" />
-                LGPD Compliant
-              </span>
-              <span class="text-sm text-muted flex items-center gap-1">
-                <UIcon name="i-lucide-shield" />
-                SSL Secure
-              </span>
-            </div>
+          <div class="flex justify-center gap-4 w-full">
+            <span class="text-sm text-muted flex items-center gap-1">
+              <UIcon name="i-lucide-shield-check" />
+              LGPD Compliant
+            </span>
+            <span class="text-sm text-muted flex items-center gap-1">
+              <UIcon name="i-lucide-shield" />
+              SSL Secure
+            </span>
           </div>
         </template>
       </UAuthForm>
