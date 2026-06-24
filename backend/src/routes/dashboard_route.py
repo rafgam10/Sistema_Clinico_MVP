@@ -68,7 +68,7 @@ def dashboard_paciente_lista():
                     ON tb.ID_TBPROFIS = medico.ID
                 WHERE a.ID_TBCENCUS = 203
                 AND tb.COD = 10460
-                AND CAST(a.DATA_HORA_ENTRADA AS DATE) = CURRENT_DATE
+                AND CAST(a.DATA_HORA_ENTRADA AS DATE) = CURRENT_DATE - 2
                 ORDER BY a.DATA_HORA_ENTRADA DESC;
             """)
 

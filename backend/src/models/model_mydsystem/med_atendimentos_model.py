@@ -19,7 +19,10 @@ class MedAtendimentos(db.Model):
 
     spdata_agenda_id = db.Column(
         db.Integer,
-        db.ForeignKey("MED_SPDATA_AGENDA.spdata_agenda_id"),
+        db.ForeignKey(
+            "MED_SPDATA_AGENDA.spdata_agenda_id",
+            name="fk_med_atendimentos_spdata_agenda_id"
+        ),
         nullable=False,
         index=True
     )

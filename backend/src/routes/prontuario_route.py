@@ -15,8 +15,8 @@ CID_CACHE_TTL = 3600
 CID_CODE_PATTERN = re.compile(r"^[A-Za-z][0-9.]*$")
 
 @prontuario_bp.route("/doenca-cid", methods=["GET"])
-@jwt_required("medico")
-@roles_required()
+@jwt_required()
+@roles_required("medico")
 def doenca_cid():
     try:
         q = (request.args.get("q") or "").strip()
