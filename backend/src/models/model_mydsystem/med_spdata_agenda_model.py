@@ -37,12 +37,6 @@ class MedSpdataAgenda(db.Model):
         nullable=False
     )
 
-    atendimentos = db.relationship(
-        "MedAtendimentos",
-        back_populates="agenda",
-        cascade="all, delete-orphan"
-    )
-
     def __init__(
         self,
         spdata_agenda_id,

@@ -18,6 +18,7 @@ class Medico(db.Model):
     spdata_id = db.Column(db.Integer, nullable=True, unique=True, index=True)
 
     crm = db.Column(db.String(20), nullable=True)
+    crm_atendimento_spdata = db.Column(db.String(50), nullable=True, index=True)
     crm_uf = db.Column(db.String(2), nullable=True)
     rqe = db.Column(db.String(30), nullable=True)
     especialidade = db.Column(db.String(120), nullable=True)
@@ -37,10 +38,11 @@ class Medico(db.Model):
         back_populates="medico"
     )
     
-    def __init__(self, usuario_id, spdata_id, crm=None, crm_uf=None, rqe=None, especialidade=None, ativo=True):
+    def __init__(self, usuario_id, spdata_id, crm=None, crm_atendimento_spdata=None, crm_uf=None, rqe=None, especialidade=None, ativo=True):
         self.usuario_id = usuario_id
         self.spdata_id = spdata_id
         self.crm = crm
+        self.crm_atendimento_spdata = crm_atendimento_spdata
         self.crm_uf = crm_uf
         self.rqe = rqe
         self.especialidade = especialidade
@@ -52,6 +54,7 @@ class Medico(db.Model):
             "usuario_id": self.usuario_id,
             "spdata_id": self.spdata_id,
             "crm": self.crm,
+            "crm_atendimento_spdata": self.crm_atendimento_spdata,
             "crm_uf": self.crm_uf,
             "especialidade": self.especialidade,
             "ativo": self.ativo,

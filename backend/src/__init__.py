@@ -34,6 +34,7 @@ def create_app():
 
     # Cruzamento:
     from src.models.model_mydsystem.med_spdata_agenda_model import MedSpdataAgenda
+    from src.models.model_mydsystem.med_spdata_atendimentos_model import MedSpdataAtendimento
     from src.models.model_mydsystem.med_atendimentos_model import MedAtendimentos
 
     # Modelos Médicos:
@@ -51,11 +52,13 @@ def create_app():
     from src.routes.check_in_route import check_in_bp
     from src.routes.prontuario_route import prontuario_bp
     from src.routes.modelo_solicitacao_medicos_route import padrao_medico_receita_bp
+    from src.routes.agenda_medica_route import agenda_medica_bp
 
     app.register_blueprint(login_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(check_in_bp)
     app.register_blueprint(prontuario_bp)
     app.register_blueprint(padrao_medico_receita_bp)
+    app.register_blueprint(agenda_medica_bp)
 
     return app

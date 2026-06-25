@@ -4,13 +4,14 @@ from flask import (
     jsonify
 )
 
-from flask_jwt_extended import jwt_required, get_jwt_identity
-
 from src.controllers.login_controller import LoginController
 
 from src.settings.extensions import db
-from src.models.usuario_model import Usuario
-from src.models.db.handler_fb_db import ConnectionDBFireBird
+from src.services.medicos_spdata_service import (
+    buscar_medicos_spdata,
+    normalizar_texto,
+    upsert_usuario_medico_spdata,
+)
 
 login_bp = Blueprint('login', __name__, url_prefix="/login")
 controller = LoginController()
@@ -35,30 +36,54 @@ def register_medic():
         senha = data["senha_medico"]
         nome_completo = data["nome_completo_medico"]
         cpf_cnpj = data["CNPJ_CPF"]
-        
-        
-        sql_find_1 = """
-            SELECT *
-            FROM TBPROFIS medico
-            WHERE NOME = ? AND CNPJ_CPF = ?
-        """
-        
-        with ConnectionDBFireBird() as con:
-            cursor = con.cursor()
-            cursor.execute(sql_find_1, (nome_completo, cpf_cnpj))
-            
-            medico_select = cursor.fetchone()
-            
-            if(medico_select is None):
-                return jsonify({"error": "Médico não foi encontado!"}), 404
-            
-            usuario_medico = Usuario(nome_completo, cpf_cnpj, email, senha)
-            db.session.add(usuario_medico)
-            db.session.commit()
-            
-            
-            
-        return jsonify({"msg": "usuários criando com sucesso!"}), 200
+        crm_atendimento_spdata = data.get("crm_atendimento_spdata")
+
+        medicos_spdata = buscar_medicos_spdata(cpf=cpf_cnpj)
+        if not medicos_spdata:
+            medicos_spdata = buscar_medicos_spdata(nome=nome_completo)
+
+        if not medicos_spdata:
+            return jsonify({"error": "Médico não foi encontrado no SPDATA"}), 404
+
+        if len(medicos_spdata) > 1:
+            nome_normalizado = normalizar_texto(nome_completo)
+            medicos_mesmo_nome = [
+                medico
+                for medico in medicos_spdata
+                if normalizar_texto(medico.get("NOME")) == nome_normalizado
+            ]
+            if medicos_mesmo_nome:
+                medicos_spdata = medicos_mesmo_nome
+
+        if len(medicos_spdata) > 1:
+            return jsonify({
+                "error": "Mais de um médico encontrado no SPDATA",
+                "medicos": [
+                    {
+                        "id": medico.get("ID"),
+                        "nome": medico.get("NOME"),
+                        "cpf": medico.get("CPF") or medico.get("CNPJ_CPF"),
+                        "crm": medico.get("OLD_CRM"),
+                        "crm_atendimento_spdata": medico.get("CRM_ATENDIMENTO_SPDATA"),
+                    }
+                    for medico in medicos_spdata
+                ]
+            }), 409
+
+        resultado = upsert_usuario_medico_spdata(
+            medicos_spdata[0],
+            email=email,
+            senha=senha,
+            crm_atendimento_spdata=crm_atendimento_spdata,
+        )
+
+        return jsonify({
+            "msg": "Médico cadastrado com sucesso!",
+            "usuario": resultado["usuario"]._to_dict(),
+            "medico": resultado["medico"]._to_dict(),
+            "usuario_criado": resultado["usuario_criado"],
+            "medico_criado": resultado["medico_criado"],
+        }), 200
         
         
     except Exception as e:

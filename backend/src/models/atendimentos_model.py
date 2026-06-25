@@ -11,7 +11,7 @@ from src.settings.extensions import db
 
 class StatusAtendimento(ModelEnum):
     AGENDADO = "agendado"
-    EM_ATENDIMENTO = "em_atendimento"
+    EM_ATENDIMENTO = "em-atendimento"
     FINALIZADO = "finalizado"
     CANCELADO = "cancelado"
 
@@ -29,6 +29,7 @@ class Atendimento(db.Model):
     id = Column(Integer, primary_key=True)
     
     # As FKs
+    spdata_atendimento_id = Column(Integer, nullable=True)
     spdata_paciente_id = Column(Integer, nullable=True)
     spdata_agenda_id = Column(Integer, nullable=True)
     spdata_medico_id = Column(Integer, nullable=True)
@@ -39,7 +40,7 @@ class Atendimento(db.Model):
     
     data_atendimento = Column(DateTime, nullable=False) # <- recebe uma data
     hora_inicio = Column(Time, nullable=False)
-    hora_fim = Column(Time, nullable=False)
+    hora_fim = Column(Time, nullable=True)
     
     status = Column(String(50), default=StatusAtendimento.AGENDADO.value)
     sync_status = Column(String(50), default=SyncStatusAtendimento.PENDENTE_SINCRONIZACAO.value)
@@ -99,8 +100,10 @@ class Atendimento(db.Model):
         paciente_cpf,
         data_atendimento,
         hora_inicio,
-        hora_fim        
+        hora_fim,
+        spdata_atendimento_id=None,
     ):
+        self.spdata_atendimento_id = spdata_atendimento_id
         self.spdata_paciente_id = spdata_paciente_id
         self.spdata_agenda_id = spdata_agenda_id
         self.spdata_medico_id = spdata_medico_id
@@ -116,6 +119,7 @@ class Atendimento(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
+            "spdata_atendimento_id": self.spdata_atendimento_id,
             "spdata_paciente_id": self.spdata_paciente_id,
             "spdata_agenda_id": self.spdata_agenda_id,
             "spdata_medico_id": self.spdata_medico_id,
