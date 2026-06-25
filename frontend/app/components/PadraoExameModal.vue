@@ -138,8 +138,7 @@ async function salvar() {
               searchable
               placeholder="Digite um exame..."
               class="flex-1"
-              create-item
-              @create="adicionarExame($event)"
+              clear
             />
           </div>
 

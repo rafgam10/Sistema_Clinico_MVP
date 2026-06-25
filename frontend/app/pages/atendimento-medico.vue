@@ -3,8 +3,6 @@ import type { PadraoReceita, PadraoExame, ItemMedicamento } from '~/types'
 import { usePdfMake } from '~/utils/pdf'
 import { buildSolicitacaoExames, buildReceita } from '~/utils/pdf-documents'
 
-const inputKey = ref(0)
-
 const examesComuns = [
   'Hemograma completo',
   'Glicemia em jejum',
@@ -176,25 +174,32 @@ function adicionarPadraoReceita() {
   padraoReceitaSelected.value = undefined
 }
 
-const examesTexto = ref('')
-const exameInput = ref('')
-const inputMenuRef = ref()
+const examesSelecionados = ref<string[]>([])
+const exameSelecionado = ref('')
+const exameInputMenuRef = ref()
+const exameInputKey = ref(0)
 const exameTemplateSelected = ref<{ label: string, value: PadraoExame }>()
 
-function adicionarExame(texto: string) {
-  examesTexto.value += `• ${texto}\n`
-  exameInput.value = ''
-  inputKey.value++
-  nextTick(() => inputMenuRef.value?.inputRef?.focus())
-}
-watch(exameInput, (val) => {
-  if (val?.trim()) adicionarExame(val.trim())
+watch(exameSelecionado, (val) => {
+  if (val) adicionarExame(val)
 })
+
+function adicionarExame(texto: string) {
+  if (!texto?.trim()) return
+  examesSelecionados.value.push(texto.trim())
+  exameSelecionado.value = ''
+  exameInputKey.value++
+  nextTick(() => exameInputMenuRef.value?.inputRef?.focus())
+}
+
+function removerExameDaLista(i: number) {
+  examesSelecionados.value.splice(i, 1)
+}
 
 function adicionarPadraoExame() {
   if (!exameTemplateSelected.value) return
   for (const e of exameTemplateSelected.value.value.exames) {
-    examesTexto.value += `• ${e}\n`
+    examesSelecionados.value.push(e)
   }
   exameTemplateSelected.value = undefined
 }
@@ -222,13 +227,12 @@ async function gerarReceitaPdf() {
 }
 
 async function gerarSolicitacaoExames() {
-  if (!examesTexto.value.trim()) return
+  if (!examesSelecionados.value.length) return
   const pdfMake = await usePdfMake()
-  const exames = examesTexto.value.trim().split('\n').filter(l => l.trim()).map(l => l.replace(/^[•\-\s]*/, '').trim())
   const doc = buildSolicitacaoExames({
     paciente: agendamento.value?.paciente.nome ?? 'Paciente',
     data: new Date().toLocaleDateString('pt-BR'),
-    exames
+    exames: examesSelecionados.value
   })
   pdfMake.createPdf(doc).download('solicitacao-exames.pdf')
 }
@@ -240,7 +244,7 @@ function finalizarConsulta() {
     anamnese: anamneseTexto.value,
     diagnostico: diagnosticoSelected.value?.value,
     medicamentos: receitaTexto.value,
-    exames: examesTexto.value,
+    exames: examesSelecionados.value.join('\n'),
     duracao
   })
   navigateTo('/dashboard')
@@ -601,63 +605,97 @@ function finalizarConsulta() {
               </div>
             </template>
 
-            <div class="flex flex-col gap-4 grow p-4">
-              <UFormField
-                label="Nome do exame"
-                class="w-full"
-              >
-                <UInputMenu
-                  ref="inputMenuRef"
-                  :key="inputKey"
-                  v-model="exameInput"
-                  :items="examesComuns"
-                  searchable
-                  placeholder="Digite um exame..."
-                  class="flex-1 w-full"
-                  create-item
-                  @create="adicionarExame($event)"
-                />
-              </UFormField>
+              <div class="flex flex-col gap-4 grow p-4">
+                <UFormField
+                  label="Nome do exame"
+                  class="w-full"
+                >
+                  <UInputMenu
+                    ref="exameInputMenuRef"
+                    :key="exameInputKey"
+                    v-model="exameSelecionado"
+                    :items="examesComuns"
+                    searchable
+                    placeholder="Buscar exame..."
+                    class="flex-1 w-full"
+                    clear
+                  />
+                </UFormField>
 
-              <div class="shrink-0 flex gap-2">
-                <UInputMenu
-                  v-model="exameTemplateSelected"
-                  :items="padroesStore.exames.map(p => ({ label: p.nome, value: p }))"
-                  searchable
-                  placeholder="Selecionar padrão de exames..."
-                  class="flex-1 w-full"
-                />
+                <div class="shrink-0 flex gap-2">
+                  <UInputMenu
+                    v-model="exameTemplateSelected"
+                    :items="padroesStore.exames.map(p => ({ label: p.nome, value: p }))"
+                    searchable
+                    placeholder="Selecionar padrão de exames..."
+                    class="flex-1 w-full"
+                  />
+                  <UButton
+                    icon="i-lucide-copy-plus"
+                    label="Adicionar Padrão"
+                    color="secondary"
+                    :disabled="!exameTemplateSelected"
+                    @click="adicionarPadraoExame"
+                  />
+                </div>
+
+                <p
+                  v-if="!padroesStore.exames.length"
+                  class="shrink-0 text-sm text-muted italic"
+                >
+                  Nenhum padrão de exames cadastrado. Crie padrões em "Padrões de Solicitações".
+                </p>
+
+                <UCard
+                  class="grow flex flex-col min-h-0"
+                  :ui="{
+                    body: 'overflow-y-auto p-3 grow',
+                    header: 'shrink-0'
+                  }"
+                >
+                  <template #title>
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm font-medium">Exames selecionados</span>
+                      <span class="text-xs text-muted">{{ examesSelecionados.length }} exame(s)</span>
+                    </div>
+                  </template>
+
+                  <div
+                    v-if="examesSelecionados.length"
+                    class="space-y-2"
+                  >
+                    <div
+                      v-for="(exame, i) in examesSelecionados"
+                      :key="i"
+                      class="flex items-center justify-between p-3 rounded-lg border border-muted"
+                    >
+                      <span class="text-sm">{{ exame }}</span>
+                      <UButton
+                        icon="i-lucide-x"
+                        color="error"
+                        variant="ghost"
+                        size="sm"
+                        @click="removerExameDaLista(i)"
+                      />
+                    </div>
+                  </div>
+                  <p
+                    v-else
+                    class="text-sm text-muted italic py-4 text-center"
+                  >
+                    Nenhum exame adicionado.
+                  </p>
+                </UCard>
+
                 <UButton
-                  icon="i-lucide-copy-plus"
-                  label="Adicionar Padrão"
-                  color="secondary"
-                  :disabled="!exameTemplateSelected"
-                  @click="adicionarPadraoExame"
+                  icon="i-lucide-file-text"
+                  label="Gerar Solicitação (PDF)"
+                  color="primary"
+                  class="w-full shrink-0"
+                  :disabled="!examesSelecionados.length"
+                  @click="gerarSolicitacaoExames"
                 />
               </div>
-
-              <p
-                v-if="!padroesStore.exames.length"
-                class="shrink-0 text-sm text-muted italic"
-              >
-                Nenhum padrão de exames cadastrado. Crie padrões em "Padrões de Solicitações".
-              </p>
-
-              <UTextarea
-                v-model="examesTexto"
-                class="w-full grow min-h-0"
-                :ui="{ base: 'h-full min-h-0' }"
-              />
-
-              <UButton
-                icon="i-lucide-file-text"
-                label="Gerar Solicitação (PDF)"
-                color="primary"
-                class="w-full shrink-0"
-                :disabled="!examesTexto.trim()"
-                @click="gerarSolicitacaoExames"
-              />
-            </div>
           </UCard>
         </div>
 
@@ -716,7 +754,7 @@ function finalizarConsulta() {
                 label="Gerar Exames (PDF)"
                 color="warning"
                 class="w-full p-3 text-lg font-bold"
-                :disabled="!examesTexto.trim()"
+                :disabled="!examesSelecionados.length"
                 @click="tabAtiva = '2'"
               />
             </div>
