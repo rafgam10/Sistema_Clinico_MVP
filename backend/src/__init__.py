@@ -56,6 +56,7 @@ def create_app():
     from src.routes.modelo_solicitacao_medicos_route import padrao_medico_receita_bp
     from src.routes.modelo_solicitacao_exames_route import padrao_medico_exame_bp
     from src.routes.agenda_medica_route import agenda_medica_bp
+    from src.routes.exames_route import exames_bp
 
     app.register_blueprint(login_bp)
     app.register_blueprint(dashboard_bp)
@@ -64,5 +65,6 @@ def create_app():
     app.register_blueprint(padrao_medico_receita_bp)
     app.register_blueprint(padrao_medico_exame_bp)
     app.register_blueprint(agenda_medica_bp)
+    app.register_blueprint(exames_bp)
 
     return app
