@@ -12,57 +12,78 @@ const padroesStore = usePadroesStore()
 const nome = ref('')
 const exames = ref<string[]>([])
 const saving = ref(false)
+
 const selectedExame = ref('')
-const inputKey = ref(0)
-const inputMenuRef = ref()
+const buscaTermo = ref('')
+const sugestoesExames = ref<{ nome: string, codigo_alfanumerico: string | null, codigo_amb: string | null }[]>([])
+const carregandoExames = ref(false)
+
+let buscaTimeout: ReturnType<typeof setTimeout> | null = null
+let examesController: AbortController | null = null
+let examesRequestId = 0
 
 function adicionarExame(texto: string) {
-  exames.value.push(texto)
+  if (!texto?.trim()) return
+  if (exames.value.includes(texto.trim())) return
+  exames.value.push(texto.trim())
   selectedExame.value = ''
-  inputKey.value++
-  nextTick(() => inputMenuRef.value?.inputRef?.focus())
+  buscaTermo.value = ''
 }
 
 watch(selectedExame, (val) => {
   if (val?.trim()) adicionarExame(val.trim())
 })
 
+watch(buscaTermo, (val) => {
+  if (buscaTimeout) clearTimeout(buscaTimeout)
+
+  if (!val || val.length < 2) {
+    sugestoesExames.value = []
+    return
+  }
+
+  buscaTimeout = setTimeout(() => {
+    buscarExames(val)
+  }, 300)
+})
+
+async function buscarExames(q: string) {
+  const termo = q.trim()
+  if (termo.length < 2) return
+
+  const requestId = ++examesRequestId
+  examesController?.abort()
+  examesController = new AbortController()
+
+  carregandoExames.value = true
+  try {
+    const data = await $fetch<{ exames: { nome: string, codigo_alfanumerico: string | null, codigo_amb: string | null }[] }>('/api/exames/buscar', {
+      query: { q: termo },
+      signal: examesController.signal,
+    })
+
+    if (requestId !== examesRequestId) return
+    if (buscaTermo.value.trim() !== termo) return
+
+    sugestoesExames.value = data.exames || []
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') return
+    if (requestId !== examesRequestId) return
+    sugestoesExames.value = []
+  } finally {
+    carregandoExames.value = false
+  }
+}
+
 watch(open, (isOpen) => {
   if (isOpen) {
     nome.value = props.padrao?.nome ?? ''
     exames.value = props.padrao?.exames?.length ? [...props.padrao.exames] : []
     selectedExame.value = ''
+    buscaTermo.value = ''
+    sugestoesExames.value = []
   }
-}, { immediate: true })
-
-const examesComuns = [
-  'Hemograma completo',
-  'Glicemia em jejum',
-  'Colesterol total e frações',
-  'Triglicerídeos',
-  'Creatinina',
-  'Uréia',
-  'TGO/TGP (Transaminases)',
-  'TSH e T4 livre',
-  'PSA total',
-  'Eletrocardiograma (ECG)',
-  'Raio-X de tórax',
-  'Ecocardiograma transtorácico',
-  'Ultrassonografia de abdome total',
-  'Densitometria óssea',
-  'Teste ergométrico',
-  'Urocultura com antibiograma',
-  'PCR e VHS',
-  'Hemoglobina glicada',
-  'Dosagem de vitamina D',
-  'Dosagem de vitamina B12',
-  'Ferritina',
-  'Ácido úrico',
-  'EAS (Urina tipo I)',
-  'Parcela de fezes',
-  'Endoscopia digestiva alta',
-  'Colonoscopia'
-]
+})
 
 function removerExame(i: number) {
   exames.value.splice(i, 1)
@@ -131,15 +152,24 @@ async function salvar() {
 
           <div class="flex items-center gap-3 mb-3">
             <UInputMenu
-              ref="inputMenuRef"
-              :key="inputKey"
               v-model="selectedExame"
-              :items="examesComuns"
-              searchable
-              placeholder="Digite um exame..."
+              v-model:search-term="buscaTermo"
+              :items="sugestoesExames"
+              :loading="carregandoExames"
+              value-key="nome"
+              placeholder="Digite o nome do exame..."
               class="flex-1"
               clear
-            />
+              create-item
+              ignore-filter
+              @create="adicionarExame($event)"
+            >
+              <template #item-label="{ item }">
+                <span class="text-sm">
+                  {{ item.codigo_alfanumerico ? `${item.codigo_alfanumerico} — ` : '' }}{{ item.nome }}{{ item.codigo_amb ? ` (${item.codigo_amb})` : '' }}
+                </span>
+              </template>
+            </UInputMenu>
           </div>
 
           <div class="space-y-2">

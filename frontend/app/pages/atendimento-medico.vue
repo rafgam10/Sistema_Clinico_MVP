@@ -3,35 +3,6 @@ import type { PadraoReceita, PadraoExame, ItemMedicamento } from '~/types'
 import { usePdfMake } from '~/utils/pdf'
 import { buildSolicitacaoExames, buildReceita } from '~/utils/pdf-documents'
 
-const examesComuns = [
-  'Hemograma completo',
-  'Glicemia em jejum',
-  'Colesterol total e frações',
-  'Triglicerídeos',
-  'Creatinina',
-  'Uréia',
-  'TGO/TGP (Transaminases)',
-  'TSH e T4 livre',
-  'PSA total',
-  'Eletrocardiograma (ECG)',
-  'Raio-X de tórax',
-  'Ecocardiograma transtorácico',
-  'Ultrassonografia de abdome total',
-  'Densitometria óssea',
-  'Teste ergométrico',
-  'Urocultura com antibiograma',
-  'PCR e VHS',
-  'Hemoglobina glicada',
-  'Dosagem de vitamina D',
-  'Dosagem de vitamina B12',
-  'Ferritina',
-  'Ácido úrico',
-  'EAS (Urina tipo I)',
-  'Parcela de fezes',
-  'Endoscopia digestiva alta',
-  'Colonoscopia'
-]
-
 const agendamentosStore = useAgendamentosStore()
 const padroesStore = usePadroesStore()
 const cronometro = useCronometroStore()
@@ -176,20 +147,66 @@ function adicionarPadraoReceita() {
 
 const examesSelecionados = ref<string[]>([])
 const exameSelecionado = ref('')
-const exameInputMenuRef = ref()
-const exameInputKey = ref(0)
+const buscaTermoExame = ref('')
+const sugestoesExames = ref<{ nome: string, codigo_alfanumerico: string | null, codigo_amb: string | null }[]>([])
+const carregandoExames = ref(false)
 const exameTemplateSelected = ref<{ label: string, value: PadraoExame }>()
 
+let buscaExameTimeout: ReturnType<typeof setTimeout> | null = null
+let examesController: AbortController | null = null
+let examesRequestId = 0
+
 watch(exameSelecionado, (val) => {
-  if (val) adicionarExame(val)
+  if (val?.trim()) adicionarExame(val.trim())
 })
+
+watch(buscaTermoExame, (val) => {
+  if (buscaExameTimeout) clearTimeout(buscaExameTimeout)
+
+  if (!val || val.length < 2) {
+    sugestoesExames.value = []
+    return
+  }
+
+  buscaExameTimeout = setTimeout(() => {
+    buscarExames(val)
+  }, 300)
+})
+
+async function buscarExames(q: string) {
+  const termo = q.trim()
+  if (termo.length < 2) return
+
+  const requestId = ++examesRequestId
+  examesController?.abort()
+  examesController = new AbortController()
+
+  carregandoExames.value = true
+  try {
+    const data = await $fetch<{ exames: { nome: string, codigo_alfanumerico: string | null, codigo_amb: string | null }[] }>('/api/exames/buscar', {
+      query: { q: termo },
+      signal: examesController.signal,
+    })
+
+    if (requestId !== examesRequestId) return
+    if (buscaTermoExame.value.trim() !== termo) return
+
+    sugestoesExames.value = data.exames || []
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') return
+    if (requestId !== examesRequestId) return
+    sugestoesExames.value = []
+  } finally {
+    carregandoExames.value = false
+  }
+}
 
 function adicionarExame(texto: string) {
   if (!texto?.trim()) return
+  if (examesSelecionados.value.includes(texto.trim())) return
   examesSelecionados.value.push(texto.trim())
   exameSelecionado.value = ''
-  exameInputKey.value++
-  nextTick(() => exameInputMenuRef.value?.inputRef?.focus())
+  buscaTermoExame.value = ''
 }
 
 function removerExameDaLista(i: number) {
@@ -611,15 +628,24 @@ function finalizarConsulta() {
                   class="w-full"
                 >
                   <UInputMenu
-                    ref="exameInputMenuRef"
-                    :key="exameInputKey"
                     v-model="exameSelecionado"
-                    :items="examesComuns"
-                    searchable
+                    v-model:search-term="buscaTermoExame"
+                    :items="sugestoesExames"
+                    :loading="carregandoExames"
+                    value-key="nome"
                     placeholder="Buscar exame..."
                     class="flex-1 w-full"
                     clear
-                  />
+                    create-item
+                    ignore-filter
+                    @create="adicionarExame($event)"
+                  >
+                    <template #item-label="{ item }">
+                      <span class="text-sm">
+                        {{ item.codigo_alfanumerico ? `${item.codigo_alfanumerico} — ` : '' }}{{ item.nome }}{{ item.codigo_amb ? ` (${item.codigo_amb})` : '' }}
+                      </span>
+                    </template>
+                  </UInputMenu>
                 </UFormField>
 
                 <div class="shrink-0 flex gap-2">
