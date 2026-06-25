@@ -40,6 +40,8 @@ def create_app():
     # Modelos Médicos:
     from src.models.model_padroes_solicitacoes.modelo_receita_model import ModeloReceita
     from src.models.model_padroes_solicitacoes.medicamentos_para_modelo_receita_model import Medicamentos
+    from src.models.model_padroes_solicitacoes.modelo_exame_model import ModeloExame
+    from src.models.model_padroes_solicitacoes.exames_para_modelo_exame_model import ExamesDoModelo
 
     from src.models.model_mydsystem.med_exames_model import Exame
 
@@ -52,6 +54,7 @@ def create_app():
     from src.routes.check_in_route import check_in_bp
     from src.routes.prontuario_route import prontuario_bp
     from src.routes.modelo_solicitacao_medicos_route import padrao_medico_receita_bp
+    from src.routes.modelo_solicitacao_exames_route import padrao_medico_exame_bp
     from src.routes.agenda_medica_route import agenda_medica_bp
 
     app.register_blueprint(login_bp)
@@ -59,6 +62,7 @@ def create_app():
     app.register_blueprint(check_in_bp)
     app.register_blueprint(prontuario_bp)
     app.register_blueprint(padrao_medico_receita_bp)
+    app.register_blueprint(padrao_medico_exame_bp)
     app.register_blueprint(agenda_medica_bp)
 
     return app
