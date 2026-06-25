@@ -33,7 +33,7 @@ interface ServerAgendamento {
   data: string
   horario: string
   prioridade: 'normal' | 'preferencial'
-  status: 'agendado' | 'em-espera' | 'em_atendimento' | 'atendido' | 'faltou' | 'cancelado'
+  status: 'agendado' | 'em-espera' | 'em-atendimento' | 'atendido' | 'faltou' | 'cancelado'
   descricao: string
   criadoEm: string
   duracao?: number

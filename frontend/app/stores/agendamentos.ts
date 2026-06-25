@@ -7,7 +7,7 @@ export const useAgendamentosStore = defineStore('agendamentos', () => {
   let sse: ReturnType<typeof useSse> | null = null
 
   const emAtendimento = computed(() =>
-    agendamentos.value.find(a => a.status === 'em_atendimento') ?? null
+    agendamentos.value.find(a => a.status === 'em-atendimento') ?? null
   )
 
   const fila = computed(() =>
@@ -21,7 +21,7 @@ export const useAgendamentosStore = defineStore('agendamentos', () => {
   const ordemStatus: Record<string, number> = {
     'agendado': 0,
     'em-espera': 1,
-    'em_atendimento': 2,
+    'em-atendimento': 2,
     'atendido': 3,
     'faltou': 4
   }
@@ -42,12 +42,17 @@ export const useAgendamentosStore = defineStore('agendamentos', () => {
       if (medicoId) params.set('medicoId', String(medicoId))
       const qs = params.toString()
 
-      const raw = await $fetch<Agendamento[]>(`/api/agendamentos${qs ? `?${qs}` : ''}`)
+      const raw = await $fetch<(Agendamento | AgendamentoComPaciente)[]>(`/api/agendamentos${qs ? `?${qs}` : ''}`)
+
+      if (raw.every(a => 'paciente' in a)) {
+        agendamentos.value = raw as AgendamentoComPaciente[]
+        return
+      }
 
       const allPacientes = await $fetch<Paciente[]>('/api/pacientes')
       const pacienteMap = new Map(allPacientes.map(p => [p.id, p]))
 
-      agendamentos.value = raw
+      agendamentos.value = (raw as Agendamento[])
         .filter(a => pacienteMap.has(a.pacienteId))
         .map(a => ({
           ...a,

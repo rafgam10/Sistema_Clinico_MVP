@@ -39,7 +39,7 @@ export interface Clinica {
   telefone: string
 }
 
-export type AgendamentoStatus = 'agendado' | 'em-espera' | 'em_atendimento' | 'atendido' | 'faltou' | 'cancelado'
+export type AgendamentoStatus = 'agendado' | 'em-espera' | 'em-atendimento' | 'atendido' | 'faltou' | 'cancelado'
 
 export interface Agendamento {
   id: number

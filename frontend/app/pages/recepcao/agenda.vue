@@ -81,7 +81,7 @@ onMounted(async () => {
 
 function mapStatus(s: string): AgendaStatus {
   switch (s) {
-    case 'em_atendimento': case 'atendido': return 'atendido'
+    case 'em-atendimento': case 'atendido': return 'atendido'
     case 'faltou': return 'falta'
     case 'em-espera': return 'em-espera'
     default: return 'aguardando'
@@ -125,8 +125,8 @@ function statusColor(s: AgendaStatus) {
 }
 
 function abrirFormulario() {
-  successMsg.value = ''
-  showNovoAgendamento.value = true
+  successMsg.value = 'Agendamentos serão importados do SPDATA nesta fase.'
+  showNovoAgendamento.value = false
 }
 
 async function criarAgendamento() {
@@ -192,10 +192,10 @@ async function criarAgendamento() {
       </div>
       <template #right>
         <UButton
-          label="Novo Agendamento"
-          icon="i-lucide-plus"
-          color="primary"
-          :disabled="!auth.activeClinicaId"
+          label="Agendamento via SPDATA"
+          icon="i-lucide-lock"
+          color="neutral"
+          disabled
           @click="abrirFormulario"
         />
         <UColorModeButton />

@@ -75,8 +75,7 @@ const atendimentosColunas = [
   { accessorKey: 'nome', header: 'Paciente' },
   { accessorKey: 'medico', header: 'Médico' },
   { accessorKey: 'prioridade', header: 'Prioridade' },
-  { accessorKey: 'status', header: 'Status' },
-  { id: 'acoes', header: 'Ações' }
+  { accessorKey: 'status', header: 'Status' }
 ]
 
 const atendimentos = computed(() =>
@@ -99,7 +98,7 @@ function corStatus(s: string) {
   switch (s) {
     case 'agendado': return 'warning'
     case 'em-espera': return 'primary'
-    case 'em_atendimento': return 'info'
+    case 'em-atendimento': return 'info'
     case 'atendido': return 'success'
     case 'faltou': return 'error'
     case 'cancelado': return 'neutral'
@@ -111,16 +110,12 @@ function rotuloStatus(s: string) {
   switch (s) {
     case 'agendado': return 'Agendado'
     case 'em-espera': return 'Em espera'
-    case 'em_atendimento': return 'Em Atendimento'
+    case 'em-atendimento': return 'Em Atendimento'
     case 'atendido': return 'Atendido'
     case 'faltou': return 'Faltou'
     case 'cancelado': return 'Cancelado'
     default: return s
   }
-}
-
-async function cancelarAgendamento(id: number) {
-  await agendamentosStore.atualizarStatus(id, 'cancelado')
 }
 
 function selecionarMedico(id: number) {
@@ -159,10 +154,10 @@ function limparFiltro() {
         </div>
         <div class="flex gap-2">
           <UButton
-            label="Agendar Consulta"
-            icon="i-lucide-plus"
-            color="primary"
-            to="/recepcao/agenda"
+            label="Agendamento via SPDATA"
+            icon="i-lucide-lock"
+            color="neutral"
+            disabled
           />
           <UButton
             label="Novo Paciente"
@@ -308,17 +303,6 @@ function limparFiltro() {
               :label="rotuloStatus(row.original.status)"
               :color="corStatus(row.original.status)"
               variant="subtle"
-            />
-          </template>
-
-          <template #acoes-cell="{ row }">
-            <UButton
-              v-if="row.original.status === 'em-espera'"
-              icon="i-lucide-x"
-              label="Cancelar"
-              size="sm"
-              color="error"
-              @click="cancelarAgendamento(row.original.id)"
             />
           </template>
         </UTable>

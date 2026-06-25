@@ -61,7 +61,7 @@ onMounted(() => {
 
 function mapStatus(agStatus: string): AgendaStatus {
   switch (agStatus) {
-    case 'em_atendimento':
+    case 'em-atendimento':
     case 'atendido':
       return 'presente'
     case 'faltou':

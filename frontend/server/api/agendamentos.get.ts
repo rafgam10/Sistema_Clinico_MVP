@@ -1,7 +1,17 @@
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const clinicaId = query.clinicaId ? Number(query.clinicaId) : undefined
   const data = query.data ? String(query.data) : undefined
-  const medicoId = query.medicoId ? Number(query.medicoId) : undefined
-  return getAgendamentos(clinicaId, data, medicoId)
+
+  const params = new URLSearchParams()
+  if (data) params.set('data', data)
+
+  try {
+    return await flaskFetch(event, `/agenda-medica/${params.toString() ? `?${params.toString()}` : ''}`)
+  } catch (error) {
+    throw createError({
+      statusCode: 502,
+      statusMessage: 'Falha ao carregar agenda médica no backend Flask',
+      data: String(error)
+    })
+  }
 })

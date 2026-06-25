@@ -1,37 +1,15 @@
 <script setup lang="ts">
 import type { AgendamentoComPaciente, AgendamentoStatus } from '~/types'
 
-interface FirebirdPaciente {
-  id: number
-  pacienteId: number
-  paciente?: { id: number, nome: string }
-  status: string
-}
-
 const auth = useAuthStore()
 const agendamentosStore = useAgendamentosStore()
 const chamadosStore = useChamadosStore()
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const pacientesFila = ref<any[]>([])
-const loadingFila = ref(true)
 
 onMounted(() => {
   const hoje = formatarDataISO(new Date())
   agendamentosStore.init(auth.activeClinicaId ?? undefined, hoje, auth.user?.id)
   chamadosStore.init()
-  carregarPacientesFila()
 })
-
-async function carregarPacientesFila() {
-  try {
-    pacientesFila.value = await $fetch<Record<string, unknown>[]>('/api/pacientes-fila')
-  } catch {
-    pacientesFila.value = []
-  } finally {
-    loadingFila.value = false
-  }
-}
 
 const userName = computed(() => auth.user?.nome || 'Usuário')
 
@@ -56,7 +34,7 @@ function corStatus(status: string) {
   switch (status) {
     case 'agendado': return 'tertiary'
     case 'em-espera': return 'secondary'
-    case 'em_atendimento': return 'info'
+    case 'em-atendimento': return 'info'
     case 'atendido': return 'success'
     case 'faltou': return 'error'
     default: return 'neutral'
@@ -67,7 +45,7 @@ function rotuloStatus(status: string) {
   switch (status) {
     case 'agendado': return 'Agendado'
     case 'em-espera': return 'Em espera'
-    case 'em_atendimento': return 'Em Atendimento'
+    case 'em-atendimento': return 'Em Atendimento'
     case 'atendido': return 'Atendido'
     case 'faltou': return 'Faltou'
     default: return status
@@ -120,55 +98,16 @@ async function faltouAgendamento(ag: AgendamentoComPaciente) {
 
 async function atenderAgendamento(ag: AgendamentoComPaciente) {
   try {
-    await agendamentosStore.atualizarStatus(ag.id, 'em_atendimento')
+    await agendamentosStore.atualizarStatus(ag.id, 'em-atendimento')
     await navigateTo('/atendimento-medico')
   } catch {
     console.error('Erro ao iniciar atendimento')
   }
 }
 
-// --- Firebird action handlers (local-only, no DB write) ---
-
-function chamarPacienteFirebird(pac: FirebirdPaciente) {
-  const pacienteId = pac.paciente?.id ?? pac.pacienteId ?? 0
-  const nome = pac.paciente?.nome ?? ''
-  const salas = ['Consultório 1', 'Consultório 2', 'Consultório 3', 'Sala de Triagem', 'Sala de Curativos']
-  const sala = salas[Math.floor(Math.random() * salas.length)]!
-  chamadosStore.chamarPaciente(pacienteId, nome, sala, auth.user?.nome ?? 'Dr.')
-  if (callingInterval) clearInterval(callingInterval)
-  callingState.value = { pacienteId, secondsLeft: 5 }
-  callingInterval = setInterval(() => {
-    if (callingState.value && callingState.value.secondsLeft > 1) {
-      callingState.value = { ...callingState.value, secondsLeft: callingState.value.secondsLeft - 1 }
-    } else {
-      callingState.value = null
-      if (callingInterval) {
-        clearInterval(callingInterval)
-        callingInterval = null
-      }
-    }
-  }, 500)
-}
-
-function faltouFirebird(pac: FirebirdPaciente) {
-  const item = pacientesFila.value.find((p: FirebirdPaciente) => p.id === pac.id)
-  if (item) item.status = 'faltou'
-}
-
-async function atenderFirebird(pac: FirebirdPaciente) {
-  const item = pacientesFila.value.find((p: FirebirdPaciente) => p.id === pac.id)
-  console.log('>>> atenderFirebird item:', item)
-  console.log('>>> atenderFirebird paciente.id:', item?.paciente?.id)
-  if (item) {
-    item.status = 'em_atendimento'
-    agendamentosStore.agendamentos.push(item)
-  }
-  await navigateTo('/atendimento-medico')
-}
-
 const pacientesNaFila = computed(() =>
   agendamentosStore.ordenados.filter(
-    a => a.status === 'em-espera' || a.status === 'em_atendimento'
+    a => a.status === 'em-espera' || a.status === 'em-atendimento'
   )
 )
 
@@ -180,7 +119,7 @@ const pacientesFinalizados = computed(() =>
 
 function statusLabel(status: AgendamentoStatus) {
   switch (status) {
-    case 'em_atendimento': return 'Em Atendimento'
+    case 'em-atendimento': return 'Em Atendimento'
     case 'atendido': return 'Finalizado'
     default: return 'Atender'
   }
@@ -188,7 +127,7 @@ function statusLabel(status: AgendamentoStatus) {
 
 function statusColor(status: AgendamentoStatus) {
   switch (status) {
-    case 'em_atendimento': return 'info'
+    case 'em-atendimento': return 'info'
     case 'atendido': return 'success'
     default: return 'success'
   }
@@ -196,7 +135,6 @@ function statusColor(status: AgendamentoStatus) {
 
 function atendimentoVariant(status: AgendamentoStatus) {
   switch (status) {
-    case 'agendado':
     case 'em-espera':
       return 'solid'
     default: return 'soft'
@@ -204,7 +142,7 @@ function atendimentoVariant(status: AgendamentoStatus) {
 }
 
 function atendimentoDisabled(status: AgendamentoStatus) {
-  return status !== 'agendado' && status !== 'em-espera'
+  return status !== 'em-espera'
 }
 
 const tempoMedioEspera = computed(() => {
@@ -438,105 +376,6 @@ const tempoMedioEspera = computed(() => {
               :color="corStatus(row.original.status)"
               variant="subtle"
             />
-          </template>
-        </UTable>
-      </UCard>
-
-      <UCard class="w-full">
-        <template #title>
-          <div class="flex items-center gap-2">
-            <span class="size-2 rounded-full bg-primary" />
-            <p class="text-lg font-medium">
-              Fila de Espera — Firebird
-            </p>
-          </div>
-        </template>
-
-        <p
-          v-if="loadingFila"
-          class="text-sm text-muted py-4"
-        >
-          Carregando dados do Firebird...
-        </p>
-
-        <p
-          v-else-if="!pacientesFila.length"
-          class="text-sm text-muted py-4"
-        >
-          Nenhum paciente encontrado no Firebird.
-        </p>
-
-        <UTable
-          v-else
-          :columns="colunas"
-          :data="pacientesFila"
-        >
-          <template #nome-cell="{ row }">
-            <div class="flex items-center gap-3">
-              <UAvatar
-                :alt="String(row.original.paciente?.nome ?? '')"
-                color="primary"
-                size="sm"
-              />
-              <div>
-                <p class="font-medium">
-                  {{ row.original.paciente?.nome ?? '' }}
-                </p>
-                <p class="text-xs text-muted">
-                  {{ row.original.horario ?? '' }}
-                </p>
-              </div>
-            </div>
-          </template>
-
-          <template #prioridade-cell="{ row }">
-            <UBadge
-              :label="String(row.original.prioridade ?? '')"
-              :color="corPrioridade(String(row.original.prioridade ?? ''))"
-              variant="subtle"
-            />
-          </template>
-
-          <template #status-cell="{ row }">
-            <UBadge
-              :label="rotuloStatus(String(row.original.status ?? ''))"
-              :color="corStatus(String(row.original.status ?? ''))"
-              variant="subtle"
-            />
-          </template>
-
-          <template #acoes-cell="{ row }">
-            <div class="flex items-center gap-1">
-              <UButton
-                icon="i-lucide-phone"
-                :label="isCalling(row.original.paciente?.id ?? row.original.pacienteId) ? String(callingState!.secondsLeft) : 'Chamar'"
-                size="sm"
-                class="min-w-20"
-                :color="isTerminal(row.original.status) ? 'neutral' : 'primary'"
-                :variant="isTerminal(row.original.status) ? 'soft' : 'solid'"
-                :loading="isCalling(row.original.paciente?.id ?? row.original.pacienteId)"
-                :disabled="temPacienteEmAtendimento || isTerminal(row.original.status) || isCalling(row.original.paciente?.id ?? row.original.pacienteId)"
-                @click="chamarPacienteFirebird(row.original)"
-              />
-              <UButton
-                icon="i-lucide-user-x"
-                label="Faltou"
-                size="sm"
-                :color="row.original.status === 'faltou' ? 'error' : (isTerminal(row.original.status) ? 'neutral' : 'error')"
-                :variant="isTerminal(row.original.status) ? 'soft' : 'solid'"
-                :disabled="temPacienteEmAtendimento || isTerminal(row.original.status) || isCalling(row.original.paciente?.id ?? row.original.pacienteId)"
-                @click="faltouFirebird(row.original)"
-              />
-              <UButton
-                icon="i-lucide-user-check"
-                :label="row.original.status === 'em_atendimento' ? 'Em Atendimento' : (row.original.status === 'atendido' ? 'Finalizado' : 'Atender')"
-                size="sm"
-                :color="row.original.status === 'em_atendimento' ? 'info' : (row.original.status === 'atendido' ? 'success' : 'success')"
-                :variant="row.original.status === 'agendado' || row.original.status === 'em-espera' ? 'solid' : 'soft'"
-                :disabled="temPacienteEmAtendimento || isTerminal(row.original.status) || isCalling(row.original.paciente?.id ?? row.original.pacienteId)"
-                @click="atenderFirebird(row.original)"
-              />
-            </div>
           </template>
         </UTable>
       </UCard>
