@@ -29,9 +29,10 @@ export const usePadroesStore = defineStore('padroes', () => {
   }
 
   async function atualizar(id: string, data: { nome?: string, [key: string]: unknown }) {
+    const padrao = padroes.value.find(p => p.id === id)
     const atualizado = await $fetch(`/api/padroes/${id}`, {
       method: 'PATCH',
-      body: data
+      body: { ...data, tipo: data.tipo || padrao?.tipo }
     })
     const idx = padroes.value.findIndex(p => p.id === id)
     if (idx !== -1) padroes.value[idx] = atualizado as Padrao
@@ -39,7 +40,11 @@ export const usePadroesStore = defineStore('padroes', () => {
   }
 
   async function deletar(id: string) {
-    await $fetch(`/api/padroes/${id}`, { method: 'DELETE' })
+    const padrao = padroes.value.find(p => p.id === id)
+    await $fetch(`/api/padroes/${id}`, {
+      method: 'DELETE',
+      params: { tipo: padrao?.tipo }
+    })
     padroes.value = padroes.value.filter(p => p.id !== id)
   }
 
