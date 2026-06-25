@@ -160,9 +160,7 @@ async function salvar() {
               placeholder="Digite o nome do exame..."
               class="flex-1"
               clear
-              create-item
               ignore-filter
-              @create="adicionarExame($event)"
             >
               <template #item-label="{ item }">
                 <span class="text-sm">

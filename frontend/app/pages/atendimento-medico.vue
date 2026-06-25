@@ -636,9 +636,7 @@ function finalizarConsulta() {
                     placeholder="Buscar exame..."
                     class="flex-1 w-full"
                     clear
-                    create-item
                     ignore-filter
-                    @create="adicionarExame($event)"
                   >
                     <template #item-label="{ item }">
                       <span class="text-sm">
