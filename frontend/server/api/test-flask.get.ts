@@ -1,6 +1,8 @@
 export default defineEventHandler(async () => {
+  const config = useRuntimeConfig()
+
   try {
-    const data = await $fetch('http://localhost:5000/dashboard/pacientes')
+    const data = await $fetch(`${config.flaskBaseUrl}/dashboard/pacientes`)
     return { success: true, data }
   } catch (error) {
     return {

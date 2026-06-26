@@ -4,14 +4,23 @@ import { jwtDecode } from 'jwt-decode'
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const { email, password } = body
+  const config = useRuntimeConfig()
 
   let res: any
   try {
-    res = await $fetch('http://localhost:5000/login/auth', {
+    res = await $fetch(`${config.flaskBaseUrl}/login/auth`, {
       method: 'POST',
       body: { email, senha: password }
     })
-  } catch {
+  } catch (error) {
+    if (String(config.enableMockAuth) !== 'true') {
+      throw createError({
+        statusCode: 502,
+        statusMessage: 'Falha ao conectar com o backend Flask',
+        data: String(error)
+      })
+    }
+
     // Fallback: mock credentials (Flask offline)
     const validCredentials: Record<string, string> = {
       'admin@adm.com': '123123123',

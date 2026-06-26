@@ -28,7 +28,7 @@ const esperaMedia = computed(() => {
   <div class="flex flex-col h-screen p-6 gap-4 overflow-hidden">
     <header class="flex items-center justify-between shrink-0">
       <div class="flex items-center gap-3">
-        <LogoMed />
+        <LogoMed :isrecepcao="false" />
       </div>
       <div class="text-right">
         <p class="text-2xl font-light text-muted">
