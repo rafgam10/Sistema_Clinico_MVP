@@ -1,0 +1,6 @@
+Agendado - Para o paciente que agendou a consulta.
+confirmado/em_espera - Para o paciente que agendou e fez o cadastro na recepção e está em espera
+em_atendimento - Para o paciente que está em atendimento no consultório.
+atendido - Para o paciente que já foi atendido pelo médico no consultório.
+faltou - Para o paciente que fez o cadastro no check_in, mas não foi atendido pelo médico.
+

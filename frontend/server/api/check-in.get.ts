@@ -1,15 +1,17 @@
 export default defineEventHandler(async (event) => {
-  try {
-    const raw = await flaskFetch<Record<string, unknown>[]>(event, '/check_in/')
+  const query = getQuery(event)
+  const params = new URLSearchParams()
 
-    return raw.map((item: Record<string, unknown>) => ({
-      id: Number(item.ID) || 0,
-      medico: String(item.MEDICO || ''),
-      data: String(item.DATA || ''),
-      horario: String(item.HORA || ''),
-      paciente: String(item.PACIENTE || ''),
-      status: String(item.STATUS || '').trim()
-    }))
+  for (const key of ['page', 'pageSize', 'status', 'medico', 'q', 'data']) {
+    const value = query[key]
+    if (value !== undefined && value !== null && String(value).trim()) {
+      params.set(key, String(value))
+    }
+  }
+
+  try {
+    const qs = params.toString()
+    return await flaskFetch(event, `/check_in/${qs ? `?${qs}` : ''}`)
   } catch (error) {
     throw createError({
       statusCode: 502,

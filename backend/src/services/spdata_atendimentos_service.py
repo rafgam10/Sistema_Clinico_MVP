@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -15,6 +15,7 @@ from src.models.model_mydsystem.med_atendimentos_model import (
 from src.models.model_mydsystem.med_spdata_atendimentos_model import (
     MedSpdataAtendimento,
 )
+from src.models.model_mydsystem.med_spdata_convenios_model import MedSpdataConvenio
 from src.models.prescricao_model import Prescricao
 from src.models.solicitacao_exame_model import SolicitacaoExame
 from src.models.db.handler_fb_db import ConnectionDBFireBird
@@ -22,7 +23,6 @@ from src.settings.extensions import db
 
 
 UNIDADE_PADRAO_SPDATA = 203
-DATA_OFFSET_HOMOLOGACAO_DIAS = 3
 
 STATUS_VALIDOS = {
     "em-atendimento",
@@ -178,6 +178,7 @@ def buscar_atendimentos_spdata(data_ini, data_fim, crm_medico):
             a.DATA_HORA_ALTA_MEDICA,
             a.OBS_ATENDIMENTO,
             a.ID_TBCONVEN AS ID_CONVENIO_SPDATA,
+            convenio.NOME AS CONVENIO_NOME,
             a.ID_TBCENCUS AS ID_CENTRO_CUSTO_SPDATA,
 
             paciente.PRONT AS PRONTUARIO,
@@ -199,9 +200,11 @@ def buscar_atendimentos_spdata(data_ini, data_fim, crm_medico):
             ON a.ID_TBCBOPRO_ATENDIMENTO = tb.ID
         INNER JOIN TBPROFIS medico
             ON tb.ID_TBPROFIS = medico.ID
+        LEFT JOIN TBCONVEN convenio
+            ON convenio.COD = a.ID_TBCONVEN
         WHERE a.ID_TBCENCUS = ?
           AND tb.COD = ?
-          AND CAST(a.DATA_HORA_ENTRADA AS DATE) = CURRENT_DATE - 3
+          AND CAST(a.DATA_HORA_ENTRADA AS DATE) BETWEEN ? AND ?
         ORDER BY a.DATA_HORA_ENTRADA, paciente.NOME;
     """
 
@@ -212,6 +215,8 @@ def buscar_atendimentos_spdata(data_ini, data_fim, crm_medico):
             (
                 UNIDADE_PADRAO_SPDATA,
                 crm_medico,
+                data_ini,
+                data_fim,
             ),
         )
         nomes_colunas = [descricao[0].strip().upper() for descricao in cursor.description]
@@ -303,7 +308,44 @@ def hora_hhmm(valor):
     return valor.strftime("%H:%M") if valor else ""
 
 
-def agenda_para_frontend(spdata, atendimento=None):
+def buscar_convenios_locais(codigos_spdata):
+    codigos = [
+        codigo
+        for codigo in {normalizar_int(codigo) for codigo in codigos_spdata}
+        if codigo is not None
+    ]
+    if not codigos:
+        return {}
+
+    registros = db.session.execute(
+        select(MedSpdataConvenio).where(
+            MedSpdataConvenio.codigo_spdata.in_(codigos)
+        )
+    ).scalars().all()
+
+    return {
+        registro.codigo_spdata: registro.nome
+        for registro in registros
+        if registro.nome
+    }
+
+
+def convenio_para_frontend(spdata, convenios_por_codigo=None):
+    codigo = normalizar_int(spdata.id_convenio_spdata)
+    if codigo is not None and convenios_por_codigo:
+        nome = convenios_por_codigo.get(codigo)
+        if nome:
+            return nome
+
+    dados_spdata = spdata.dados_spdata if isinstance(spdata.dados_spdata, dict) else {}
+    nome_spdata = normalizar_texto(dados_spdata.get("CONVENIO_NOME"), 255)
+    if nome_spdata:
+        return nome_spdata
+
+    return str(spdata.id_convenio_spdata or "")
+
+
+def agenda_para_frontend(spdata, atendimento=None, convenios_por_codigo=None):
     status = normalizar_status(atendimento.status) if atendimento else "em-espera"
     data_atendimento = data_iso(spdata.data_atendimento)
     horario = hora_hhmm(spdata.hora_entrada)
@@ -332,7 +374,7 @@ def agenda_para_frontend(spdata, atendimento=None):
             "tipoSanguineo": "",
             "alergias": [],
             "medicamentosEmUso": [],
-            "convenio": str(spdata.id_convenio_spdata or ""),
+            "convenio": convenio_para_frontend(spdata, convenios_por_codigo),
             "telefone": spdata.celular or "",
             "email": spdata.email or "Não Informado",
             "cpf": spdata.cpf or "",
@@ -344,8 +386,10 @@ def agenda_para_frontend(spdata, atendimento=None):
 
 def listar_agenda_medica(usuario_id, data_ini, data_fim):
     crm_medico = get_crm_medico_usuario(usuario_id)
-    data_homologacao = date.today() - timedelta(days=DATA_OFFSET_HOMOLOGACAO_DIAS)
-    sincronizar_atendimentos_spdata(data_homologacao, data_homologacao, crm_medico)
+    if data_fim < data_ini:
+        raise ValueError("dataFim não pode ser menor que dataIni.")
+
+    sincronizar_atendimentos_spdata(data_ini, data_fim, crm_medico)
 
     registros = (
         db.session.query(MedSpdataAtendimento, MedAtendimentos)
@@ -354,7 +398,8 @@ def listar_agenda_medica(usuario_id, data_ini, data_fim):
             MedAtendimentos.med_spdata_atendimento_id == MedSpdataAtendimento.id,
         )
         .filter(
-            MedSpdataAtendimento.data_atendimento == data_homologacao,
+            MedSpdataAtendimento.data_atendimento >= data_ini,
+            MedSpdataAtendimento.data_atendimento <= data_fim,
             MedSpdataAtendimento.crm_medico == crm_medico,
             MedSpdataAtendimento.id_centro_custo_spdata == UNIDADE_PADRAO_SPDATA,
         )
@@ -362,7 +407,15 @@ def listar_agenda_medica(usuario_id, data_ini, data_fim):
         .all()
     )
 
-    return [agenda_para_frontend(spdata, atendimento) for spdata, atendimento in registros]
+    convenios_por_codigo = buscar_convenios_locais(
+        spdata.id_convenio_spdata
+        for spdata, _ in registros
+    )
+
+    return [
+        agenda_para_frontend(spdata, atendimento, convenios_por_codigo)
+        for spdata, atendimento in registros
+    ]
 
 
 def linhas_texto(valor):
@@ -522,4 +575,5 @@ def atualizar_status_agenda(med_spdata_atendimento_id, status, usuario_id=None, 
         atendimento.marcar_faltou()
 
     db.session.commit()
-    return agenda_para_frontend(spdata, atendimento)
+    convenios_por_codigo = buscar_convenios_locais([spdata.id_convenio_spdata])
+    return agenda_para_frontend(spdata, atendimento, convenios_por_codigo)

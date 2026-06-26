@@ -6,34 +6,55 @@ ChartJS.register(ArcElement, Tooltip, Legend)
 
 const props = defineProps<{
   total: number
+  agendados?: number
   fila: number
   emAtendimento: number
   atendidos: number
   faltas: number
 }>()
 
-const colors = ref<string[]>(['#737373', '#0ea5e9', '#22c55e', '#ef4444'])
+const colors = ref({
+  warning: '#f59e0b',
+  primary: '#737373',
+  info: '#0ea5e9',
+  success: '#22c55e',
+  error: '#ef4444'
+})
 
 onMounted(() => {
   const el = document.documentElement
-  colors.value = [
-    getComputedStyle(el).getPropertyValue('--color-primary-500').trim() || '#737373',
-    getComputedStyle(el).getPropertyValue('--color-info-500').trim() || '#0ea5e9',
-    getComputedStyle(el).getPropertyValue('--color-success-500').trim() || '#22c55e',
-    getComputedStyle(el).getPropertyValue('--color-error-500').trim() || '#ef4444'
-  ]
+  colors.value = {
+    warning: getComputedStyle(el).getPropertyValue('--color-warning-500').trim() || '#f59e0b',
+    primary: getComputedStyle(el).getPropertyValue('--color-primary-500').trim() || '#737373',
+    info: getComputedStyle(el).getPropertyValue('--color-info-500').trim() || '#0ea5e9',
+    success: getComputedStyle(el).getPropertyValue('--color-success-500').trim() || '#22c55e',
+    error: getComputedStyle(el).getPropertyValue('--color-error-500').trim() || '#ef4444'
+  }
 })
 
-const data = computed(() => ({
-  labels: ['Em espera', 'Em Atendimento', 'Atendidos', 'Faltas'],
-  datasets: [
-    {
-      data: [props.fila, props.emAtendimento, props.atendidos, props.faltas],
-      backgroundColor: colors.value,
-      borderWidth: 0
-    }
-  ]
-}))
+const data = computed(() => {
+  const hasAgendados = typeof props.agendados === 'number'
+  const labels = ['Em espera', 'Em Atendimento', 'Atendidos', 'Faltas']
+  const values = [props.fila, props.emAtendimento, props.atendidos, props.faltas]
+  const backgroundColor = [colors.value.primary, colors.value.info, colors.value.success, colors.value.error]
+
+  if (hasAgendados) {
+    labels.unshift('Agendados')
+    values.unshift(props.agendados ?? 0)
+    backgroundColor.unshift(colors.value.warning)
+  }
+
+  return {
+    labels,
+    datasets: [
+      {
+        data: values,
+        backgroundColor,
+        borderWidth: 0
+      }
+    ]
+  }
+})
 
 const options = {
   responsive: true,

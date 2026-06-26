@@ -88,6 +88,9 @@ Preencha as variaveis:
 ```env
 FRONTEND_PORT=80
 NUXT_ENABLE_MOCK_AUTH=false
+TZ=America/Sao_Paulo
+GUNICORN_WORKERS=3
+GUNICORN_TIMEOUT=120
 
 MYSQL_DATABASE=sistema_clinico_mvp
 MYSQL_USER=clinico
@@ -110,6 +113,8 @@ Observacoes:
 - `MYSQL_DATABASE`, `MYSQL_USER` e `MYSQL_PASSWORD` sao usados pelo Flask via `SQLALCHEMY_DATABASE_URI`.
 - `NUXT_FLASK_BASE_URL` ja e definido no `docker-compose.yml` como `http://backend:5000`.
 - `NUXT_ENABLE_MOCK_AUTH=false` impede login mockado em producao.
+- `TZ=America/Sao_Paulo` mantem backend, frontend e MySQL no fuso esperado.
+- `GUNICORN_WORKERS` e `GUNICORN_TIMEOUT` controlam o Gunicorn do backend sem rebuild da imagem.
 - `FIREBIRD_HOST` nao pode ser `localhost`, porque dentro do container `localhost` aponta para o proprio container.
 
 ## Subir a aplicacao
@@ -125,6 +130,8 @@ Confira se os containers subiram:
 ```bash
 docker compose ps
 ```
+
+Os servicos `mysql`, `redis`, `backend` e `frontend` devem aparecer como `healthy` apos alguns segundos.
 
 Rode as migrations do Flask no MySQL:
 

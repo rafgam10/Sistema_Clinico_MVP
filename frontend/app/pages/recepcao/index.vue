@@ -1,97 +1,147 @@
 <script setup lang="ts">
-const auth = useAuthStore()
-const agendamentosStore = useAgendamentosStore()
+type AtendimentoStatus = 'agendado' | 'em-espera' | 'em-atendimento' | 'atendido' | 'faltou' | 'desconhecido'
 
-const hoje = formatarDataISO(new Date())
-const medicos = ref<{ id: number, nome: string, especialidades?: string[] }[]>([])
-const checkInData = ref<{ id: number, medico: string, data: string, horario: string, paciente: string, status: string }[]>([])
-const loadingCheckIn = ref(true)
-
-onMounted(async () => {
-  agendamentosStore.fetchAgendamentos(auth.activeClinicaId ?? undefined, hoje)
-  const params = auth.activeClinicaId ? `?clinicaId=${auth.activeClinicaId}` : ''
-  medicos.value = await $fetch<{ id: number, nome: string, especialidades?: string[] }[]>(`/api/medicos${params}`)
-  try {
-    checkInData.value = await $fetch('/api/check-in')
-  } catch {
-    checkInData.value = []
-  } finally {
-    loadingCheckIn.value = false
-  }
-})
-
-function nomeMedico(medicoId: number) {
-  return medicos.value.find(m => m.id === medicoId)?.nome ?? `Dr(a). #${medicoId}`
+interface AtendimentoRecepcao {
+  id: number | string
+  registro: string
+  horario: string
+  paciente: string
+  cpf: string
+  prontuario: string
+  convenio: string
+  telefone: string
+  celular: string
+  email: string
+  medico: string
+  especialidade: string
+  dataNascimento: string | null
+  status: AtendimentoStatus
 }
 
-const { agora, dataFormatada } = useRelogio(60000)
+interface MedicoDia {
+  id: string
+  nome: string
+  especialidade: string
+  pacientesCount: number
+}
 
+interface ResumoRecepcao {
+  agendados: number
+  emEspera: number
+  emAtendimento: number
+  atendidos: number
+  faltas: number
+  desconhecidos: number
+}
+
+interface CheckInResponse {
+  items: AtendimentoRecepcao[]
+  page: number
+  pageSize: number
+  total: number
+  medicos: MedicoDia[]
+  resumo: ResumoRecepcao
+  data: string
+}
+
+const auth = useAuthStore()
+
+const { agora, dataFormatada } = useRelogio(60000)
 const userName = computed(() => auth.user?.nome || 'Usuário')
 
-const SLOTS_POR_MEDICO = 20
-
+const page = ref(1)
+const pageSize = ref(20)
+const loading = ref(true)
+const errorMsg = ref('')
+const busca = ref('')
+const selectedStatus = ref<AtendimentoStatus | ''>('')
+const selectedMedico = ref<string | null>(null)
 const selectedEspecialidade = ref<string | undefined>('Todas as especialidades')
-const selectedMedico = ref<number | null>(null)
 
-const selectedMedicoNome = computed(() => {
-  if (!selectedMedico.value) return null
-  return medicos.value.find(m => m.id === selectedMedico.value)?.nome ?? ''
-})
+let buscaTimer: ReturnType<typeof setTimeout> | null = null
+let requestId = 0
 
-const especialidades = computed(() => {
-  const all = new Set<string>()
-  medicos.value.forEach(m => m.especialidades?.forEach(e => all.add(e)))
-  return ['Todas as especialidades', ...Array.from(all).sort()]
-})
-
-const medicosDoDia = computed(() => {
-  let lista = medicos.value
-  if (selectedEspecialidade.value && selectedEspecialidade.value !== 'Todas as especialidades') {
-    lista = lista.filter(m => m.especialidades?.includes(selectedEspecialidade.value!))
+function respostaVazia(): CheckInResponse {
+  return {
+    items: [],
+    page: 1,
+    pageSize: pageSize.value,
+    total: 0,
+    medicos: [],
+    resumo: {
+      agendados: 0,
+      emEspera: 0,
+      emAtendimento: 0,
+      atendidos: 0,
+      faltas: 0,
+      desconhecidos: 0
+    },
+    data: ''
   }
-  return lista.map(m => ({
-    id: m.id,
-    nome: m.nome,
-    especialidade: m.especialidades?.[0] || '',
-    pacientesCount: agendamentosStore.agendamentos.filter(a => a.medicoId === m.id).length
-  }))
-})
+}
+
+const dados = ref<CheckInResponse>(respostaVazia())
+
+const filtrosStatus: { label: string, value: AtendimentoStatus | '' }[] = [
+  { label: 'Todos', value: '' },
+  { label: 'Agendados', value: 'agendado' },
+  { label: 'Em espera', value: 'em-espera' },
+  { label: 'Em atendimento', value: 'em-atendimento' },
+  { label: 'Atendidos', value: 'atendido' },
+  { label: 'Faltosos', value: 'faltou' }
+]
 
 const medicosColunas = [
   { accessorKey: 'nome', header: 'Médico' },
-  { accessorKey: 'especialidade', header: 'Especialidade' },
-  { accessorKey: 'pacientes', header: 'Pacientes Agendados' }
-]
-
-const checkInColunas = [
-  { accessorKey: 'horario', header: 'Horário' },
-  { accessorKey: 'paciente', header: 'Paciente' },
-  { accessorKey: 'medico', header: 'Médico' },
-  { accessorKey: 'status', header: 'Status' }
+  { accessorKey: 'pacientesCount', header: 'Pacientes' }
 ]
 
 const atendimentosColunas = [
   { accessorKey: 'horario', header: 'Horário' },
-  { accessorKey: 'nome', header: 'Paciente' },
+  { accessorKey: 'paciente', header: 'Paciente' },
+  { accessorKey: 'contato', header: 'Contato' },
   { accessorKey: 'medico', header: 'Médico' },
-  { accessorKey: 'prioridade', header: 'Prioridade' },
   { accessorKey: 'status', header: 'Status' }
 ]
 
-const atendimentos = computed(() =>
-  agendamentosStore.ordenados.filter((a) => {
-    if (a.status === 'agendado' || a.status === 'cancelado') return false
-    if (selectedMedico.value !== null && a.medicoId !== selectedMedico.value) return false
-    return true
+const especialidades = computed(() => {
+  const all = new Set<string>()
+  dados.value.medicos.forEach((m) => {
+    if (m.especialidade) all.add(m.especialidade)
   })
-)
+  return ['Todas as especialidades', ...Array.from(all).sort()]
+})
 
-function corStatusCheckIn(status: string) {
-  return status === 'ATENDIDO' ? 'success' : 'warning'
-}
+const medicosDoDia = computed(() => {
+  let lista = dados.value.medicos
+  if (selectedEspecialidade.value && selectedEspecialidade.value !== 'Todas as especialidades') {
+    lista = lista.filter(m => m.especialidade === selectedEspecialidade.value)
+  }
+  return lista
+})
 
-function corPrioridade(p: string) {
-  return p === 'preferencial' ? 'warning' : 'neutral'
+const selectedMedicoNome = computed(() => {
+  if (!selectedMedico.value) return null
+  return dados.value.medicos.find(m => m.id === selectedMedico.value)?.nome ?? ''
+})
+
+const resumoTotal = computed(() => {
+  const resumo = dados.value.resumo
+  return resumo.agendados + resumo.emEspera + resumo.emAtendimento + resumo.atendidos + resumo.faltas
+})
+
+const tituloTabela = computed(() => {
+  const partes = ['Atendimentos do Dia']
+  if (selectedMedicoNome.value) partes.push(selectedMedicoNome.value)
+  const status = filtrosStatus.find(s => s.value === selectedStatus.value)
+  if (status?.value) partes.push(status.label)
+  return partes.join(' - ')
+})
+
+function formatarData(iso: string) {
+  if (!iso) return dataFormatada.value
+  const [ano, mes, dia] = iso.split('-')
+  return `${dia}/${mes}/${ano}`
 }
 
 function corStatus(s: string) {
@@ -101,7 +151,6 @@ function corStatus(s: string) {
     case 'em-atendimento': return 'info'
     case 'atendido': return 'success'
     case 'faltou': return 'error'
-    case 'cancelado': return 'neutral'
     default: return 'neutral'
   }
 }
@@ -110,21 +159,108 @@ function rotuloStatus(s: string) {
   switch (s) {
     case 'agendado': return 'Agendado'
     case 'em-espera': return 'Em espera'
-    case 'em-atendimento': return 'Em Atendimento'
+    case 'em-atendimento': return 'Em atendimento'
     case 'atendido': return 'Atendido'
     case 'faltou': return 'Faltou'
-    case 'cancelado': return 'Cancelado'
-    default: return s
+    default: return 'Desconhecido'
   }
 }
 
-function selecionarMedico(id: number) {
-  selectedMedico.value = selectedMedico.value === id ? null : id
+function textoInformado(valor: string | number | null | undefined) {
+  const texto = String(valor ?? '').trim()
+  return texto && texto !== '0' ? texto : ''
 }
 
-function limparFiltro() {
-  selectedMedico.value = null
+function textoNaoInformado(valor: string | number | null | undefined, fallback = 'Não informado') {
+  return textoInformado(valor) || fallback
 }
+
+function contatoPrincipal(atendimento: AtendimentoRecepcao) {
+  return textoInformado(atendimento.celular) || textoInformado(atendimento.telefone) || 'Não informado'
+}
+
+function idadePaciente(dataNascimento: string | null | undefined) {
+  if (!dataNascimento) return 'Idade não informada'
+
+  const data = new Date(dataNascimento)
+  if (Number.isNaN(data.getTime())) return 'Idade não informada'
+
+  const hoje = new Date()
+  let idade = hoje.getFullYear() - data.getFullYear()
+  const aniversario = new Date(hoje.getFullYear(), data.getMonth(), data.getDate())
+  if (aniversario > hoje) idade -= 1
+
+  if (idade < 0) return 'Idade não informada'
+  return idade === 1 ? '1 ano' : `${idade} anos`
+}
+
+function resetPageAndFetch() {
+  if (page.value === 1) {
+    carregarAtendimentos()
+  } else {
+    page.value = 1
+  }
+}
+
+async function carregarAtendimentos() {
+  const currentRequest = ++requestId
+  loading.value = true
+  errorMsg.value = ''
+
+  const params = new URLSearchParams()
+  params.set('page', String(page.value))
+  params.set('pageSize', String(pageSize.value))
+  params.set('data', formatarDataISO(new Date()))
+  if (selectedStatus.value) params.set('status', selectedStatus.value)
+  if (selectedMedico.value) params.set('medico', selectedMedico.value)
+  if (busca.value.trim()) params.set('q', busca.value.trim())
+
+  try {
+    const response = await $fetch<CheckInResponse>(`/api/check-in?${params.toString()}`)
+    if (currentRequest === requestId) dados.value = response
+  } catch {
+    if (currentRequest === requestId) {
+      dados.value = respostaVazia()
+      errorMsg.value = 'Erro ao carregar atendimentos'
+    }
+  } finally {
+    if (currentRequest === requestId) loading.value = false
+  }
+}
+
+function selecionarMedico(id: string) {
+  selectedMedico.value = selectedMedico.value === id ? null : id
+  resetPageAndFetch()
+}
+
+function limparMedico() {
+  selectedMedico.value = null
+  resetPageAndFetch()
+}
+
+function selecionarStatus(status: AtendimentoStatus | '') {
+  selectedStatus.value = status
+  resetPageAndFetch()
+}
+
+watch(page, () => {
+  carregarAtendimentos()
+})
+
+watch(busca, () => {
+  if (buscaTimer) clearTimeout(buscaTimer)
+  buscaTimer = setTimeout(() => {
+    resetPageAndFetch()
+  }, 350)
+})
+
+onMounted(() => {
+  carregarAtendimentos()
+})
+
+onUnmounted(() => {
+  if (buscaTimer) clearTimeout(buscaTimer)
+})
 </script>
 
 <template>
@@ -142,50 +278,43 @@ function limparFiltro() {
       </template>
     </UHeader>
 
-    <div class="p-6 space-y-6 bg-neutral-100 dark:bg-neutral-950 min-h-screen">
-      <div class="flex items-center justify-between">
+    <div class="min-h-screen space-y-4 bg-muted p-4 sm:space-y-6 sm:p-6">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p class="text-3xl font-semibold">
+          <p class="text-2xl font-semibold sm:text-3xl">
             {{ getSaudacao(agora) }}, {{ userName }}
           </p>
           <p class="text-base text-muted mt-1">
-            {{ dataFormatada }}
+            {{ formatarData(dados.data) }}. Veja o resumo dos agendamentos da recepção.
           </p>
         </div>
-        <div class="flex gap-2">
-          <UButton
-            label="Agendamento via SPDATA"
-            icon="i-lucide-lock"
-            color="neutral"
-            disabled
-          />
-          <UButton
-            label="Novo Paciente"
-            icon="i-lucide-user-plus"
-            color="secondary"
-            to="/recepcao/cadastro"
-          />
-          <UButton
-            label="No-show"
-            icon="i-lucide-user-x"
-            color="tertiary"
-            to="/recepcao/noshow"
-          />
-        </div>
+        <div
+          class="hidden w-72 lg:block"
+          aria-hidden="true"
+        />
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <UAlert
+        v-if="errorMsg"
+        :title="errorMsg"
+        color="error"
+        variant="subtle"
+        icon="i-lucide-circle-alert"
+      />
+
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
         <ChartResumo
-          :total="agendamentosStore.totalAgendamentos"
-          :fila="agendamentosStore.fila.length"
-          :em-atendimento="agendamentosStore.emAtendimento ? 1 : 0"
-          :atendidos="agendamentosStore.totalAtendidos"
-          :faltas="agendamentosStore.totalFaltas"
+          :total="resumoTotal"
+          :agendados="dados.resumo.agendados"
+          :fila="dados.resumo.emEspera"
+          :em-atendimento="dados.resumo.emAtendimento"
+          :atendidos="dados.resumo.atendidos"
+          :faltas="dados.resumo.faltas"
         />
 
         <UCard>
           <template #title>
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p class="text-lg font-medium">
                 Médicos do Dia
               </p>
@@ -195,173 +324,210 @@ function limparFiltro() {
                 placeholder="Filtrar por especialidade"
                 clearable
                 size="sm"
-                class="w-48"
+                class="w-full sm:w-56"
               />
             </div>
           </template>
 
-          <UTable
-            :columns="medicosColunas"
-            :data="medicosDoDia"
-          >
-            <template #nome-cell="{ row }">
-              <div
-                class="flex items-center gap-3 cursor-pointer"
-                @click="selecionarMedico(row.original.id)"
-              >
-                <UAvatar
-                  :alt="row.original.nome"
-                  color="primary"
-                  size="sm"
-                />
-                <p
-                  class="font-medium"
-                  :class="selectedMedico === row.original.id ? 'text-primary' : ''"
+          <div class="overflow-x-auto">
+            <UTable
+              :columns="medicosColunas"
+              :data="medicosDoDia"
+              class="min-w-[360px]"
+            >
+              <template #nome-cell="{ row }">
+                <div
+                  class="flex min-w-0 cursor-pointer items-center gap-3"
+                  @click="selecionarMedico(row.original.id)"
                 >
-                  {{ row.original.nome }}
-                </p>
-              </div>
-            </template>
+                  <UAvatar
+                    :alt="row.original.nome"
+                    color="primary"
+                    size="sm"
+                    class="shrink-0"
+                  />
+                  <div class="min-w-0">
+                    <p
+                      class="max-w-48 font-medium text-sm sm:max-w-56"
+                      :class="selectedMedico === row.original.id ? 'text-primary' : ''"
+                    >
+                      {{ row.original.nome }}
+                    </p>
+                    <p class="max-w-48 truncate text-xs text-muted sm:max-w-56">
+                      {{ row.original.especialidade || 'Especialidade não informada' }}
+                    </p>
+                  </div>
+                </div>
+              </template>
 
-            <template #especialidade-cell="{ row }">
-              <span class="text-sm">{{ row.original.especialidade }}</span>
-            </template>
-
-            <template #pacientes-cell="{ row }">
-              <UBadge
-                :label="`${row.original.pacientesCount}/${SLOTS_POR_MEDICO}`"
-                :color="row.original.pacientesCount >= SLOTS_POR_MEDICO ? 'error' : 'neutral'"
-                variant="soft"
-              />
-            </template>
-          </UTable>
+              <template #pacientesCount-cell="{ row }">
+                <UBadge
+                  :label="String(row.original.pacientesCount)"
+                  color="neutral"
+                  variant="soft"
+                />
+              </template>
+            </UTable>
+          </div>
         </UCard>
       </div>
 
-      <UCard>
-        <template #title>
-          <div class="flex items-center justify-between">
-            <p class="text-lg font-medium">
-              {{ selectedMedico ? `Atendimentos de ${selectedMedicoNome}` : 'Atendimentos do Dia' }}
-            </p>
-            <UButton
-              v-if="selectedMedico"
-              icon="i-lucide-x"
-              size="sm"
-              color="neutral"
-              variant="ghost"
-              @click="limparFiltro"
-            />
-          </div>
-        </template>
-
-        <UTable
-          :columns="atendimentosColunas"
-          :data="atendimentos"
-        >
-          <template #nome-cell="{ row }">
-            <div class="flex items-center gap-3">
-              <UAvatar
-                :alt="row.original.paciente.nome"
-                color="primary"
-                size="sm"
-              />
-              <div>
-                <div class="flex items-center gap-2">
-                  <p class="font-medium">
-                    {{ row.original.paciente.nome }}
-                  </p>
-                  <UBadge
-                    v-if="row.original.paciente.encaixado"
-                    size="sm"
-                    color="tertiary"
-                  >
-                    Encaixado
-                  </UBadge>
-                </div>
-                <p class="text-xs text-muted">
-                  {{ row.original.descricao }}
-                </p>
-              </div>
-            </div>
-          </template>
-
-          <template #medico-cell="{ row }">
-            <span class="text-sm">{{ nomeMedico(row.original.medicoId) }}</span>
-          </template>
-
-          <template #prioridade-cell="{ row }">
-            <UBadge
-              :label="row.original.prioridade"
-              :color="corPrioridade(row.original.prioridade)"
-              variant="subtle"
-            />
-          </template>
-
-          <template #status-cell="{ row }">
-            <UBadge
-              :label="rotuloStatus(row.original.status)"
-              :color="corStatus(row.original.status)"
-              variant="subtle"
-            />
-          </template>
-        </UTable>
-      </UCard>
-
       <UCard class="w-full">
         <template #title>
-          <div class="flex items-center gap-2">
-            <span class="size-2 rounded-full bg-primary" />
-            <p class="text-lg font-medium">
-              Atendimentos — Firebird
-            </p>
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p class="text-lg font-medium">
+                  {{ tituloTabela }}
+                </p>
+                <p class="text-sm text-muted">
+                  {{ dados.total }} registro{{ dados.total !== 1 ? 's' : '' }} encontrado{{ dados.total !== 1 ? 's' : '' }}
+                </p>
+              </div>
+              <div class="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
+                <UButton
+                  v-if="selectedMedico"
+                  icon="i-lucide-x"
+                  label="Limpar médico"
+                  size="sm"
+                  color="neutral"
+                  variant="soft"
+                  class="w-full sm:w-auto"
+                  @click="limparMedico"
+                />
+                <UInput
+                  v-model="busca"
+                  icon="i-lucide-search"
+                  placeholder="Paciente, CPF, prontuário ou registro"
+                  size="sm"
+                  class="w-full sm:w-80"
+                />
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <UButton
+                v-for="status in filtrosStatus"
+                :key="status.value || 'todos'"
+                :label="status.label"
+                :color="status.value ? corStatus(status.value) : 'neutral'"
+                :variant="selectedStatus === status.value ? 'solid' : 'soft'"
+                size="sm"
+                class="flex-1 sm:flex-none"
+                @click="selecionarStatus(status.value)"
+              />
+            </div>
           </div>
         </template>
 
-        <p
-          v-if="loadingCheckIn"
-          class="text-sm text-muted py-4"
+        <div
+          v-if="loading"
+          class="space-y-3 py-4"
         >
-          Carregando dados do Firebird...
-        </p>
-
-        <p
-          v-else-if="!checkInData.length"
-          class="text-sm text-muted py-4"
-        >
-          Nenhum atendimento encontrado no Firebird.
-        </p>
-
-        <UTable
-          v-else
-          :columns="checkInColunas"
-          :data="checkInData"
-        >
-          <template #paciente-cell="{ row }">
-            <div class="flex items-center gap-3">
-              <UAvatar
-                :alt="row.original.paciente"
-                color="primary"
-                size="sm"
-              />
-              <p class="font-medium">
-                {{ row.original.paciente }}
-              </p>
+          <div
+            v-for="linha in 6"
+            :key="linha"
+            class="grid grid-cols-1 gap-3 rounded-lg border border-muted p-3 md:grid-cols-[80px_1.5fr_1fr_1fr_120px]"
+          >
+            <USkeleton class="h-5 w-16" />
+            <div class="space-y-2">
+              <USkeleton class="h-5 w-48 max-w-full" />
+              <USkeleton class="h-4 w-32 max-w-full" />
             </div>
-          </template>
+            <div class="space-y-2">
+              <USkeleton class="h-5 w-36 max-w-full" />
+              <USkeleton class="h-4 w-44 max-w-full" />
+            </div>
+            <div class="space-y-2">
+              <USkeleton class="h-5 w-40 max-w-full" />
+              <USkeleton class="h-4 w-28 max-w-full" />
+            </div>
+            <USkeleton class="h-6 w-24 rounded-full" />
+          </div>
+        </div>
 
-          <template #medico-cell="{ row }">
-            <span class="text-sm">{{ row.original.medico }}</span>
-          </template>
+        <p
+          v-else-if="!dados.items.length"
+          class="text-sm text-muted py-4"
+        >
+          Nenhum atendimento encontrado.
+        </p>
 
-          <template #status-cell="{ row }">
-            <UBadge
-              :label="row.original.status"
-              :color="corStatusCheckIn(row.original.status)"
-              variant="subtle"
-            />
-          </template>
-        </UTable>
+        <div
+          v-else
+          class="overflow-x-auto"
+        >
+          <UTable
+            :columns="atendimentosColunas"
+            :data="dados.items"
+            class="min-w-[760px]"
+          >
+            <template #horario-cell="{ row }">
+              <span class="font-mono text-sm">{{ row.original.horario || '-' }}</span>
+            </template>
+
+            <template #paciente-cell="{ row }">
+              <div class="flex min-w-56 items-center gap-3">
+                <UAvatar
+                  :alt="row.original.paciente"
+                  color="primary"
+                  size="sm"
+                />
+                <div>
+                  <p class="font-medium">
+                    {{ row.original.paciente || 'Paciente não informado' }}
+                  </p>
+                  <p class="text-xs text-muted">
+                    {{ idadePaciente(row.original.dataNascimento) }}
+                  </p>
+                  <p class="text-xs text-muted">
+                    {{ textoNaoInformado(row.original.convenio, 'Convênio não informado') }}
+                  </p>
+                </div>
+              </div>
+            </template>
+
+            <template #contato-cell="{ row }">
+              <div class="min-w-44 text-sm">
+                <p>{{ contatoPrincipal(row.original) }}</p>
+                <p class="text-xs text-muted">
+                  {{ textoNaoInformado(row.original.email, 'Email não informado') }}
+                </p>
+              </div>
+            </template>
+
+            <template #medico-cell="{ row }">
+              <div class="min-w-44 text-sm">
+                <p class="font-medium">
+                  {{ row.original.medico || '-' }}
+                </p>
+                <p class="text-xs text-muted">
+                  {{ row.original.especialidade || 'Especialidade não informada' }}
+                </p>
+              </div>
+            </template>
+
+            <template #status-cell="{ row }">
+              <UBadge
+                :label="rotuloStatus(row.original.status)"
+                :color="corStatus(row.original.status)"
+                variant="subtle"
+              />
+            </template>
+          </UTable>
+        </div>
+
+        <div class="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p class="text-sm text-muted">
+            Página {{ page }} · {{ pageSize }} por página
+          </p>
+          <UPagination
+            :page="page"
+            :items-per-page="pageSize"
+            :total="dados.total"
+            @update:page="page = $event"
+          />
+        </div>
       </UCard>
     </div>
   </div>
