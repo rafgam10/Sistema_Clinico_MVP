@@ -27,7 +27,7 @@ async function gerarPdf() {
     paciente: paciente.value?.nome ?? 'Paciente',
     conteudoHtml: `<p>${textoCompleto.value}</p>`
   })
-  pdfMake.createPdf(doc).download('atestado-medico.pdf')
+  pdfMake.createPdf(doc).open()
   open.value = false
 }
 </script>
@@ -114,8 +114,8 @@ async function gerarPdf() {
           @click="open = false"
         />
         <UButton
-          icon="i-lucide-file-text"
-          label="Gerar PDF"
+          icon="i-lucide-printer"
+          label="Visualizar / Imprimir"
           :disabled="!dias"
           @click="gerarPdf"
         />
