@@ -6,6 +6,7 @@ import { buildSolicitacaoExames, buildReceita } from '~/utils/pdf-documents'
 const agendamentosStore = useAgendamentosStore()
 const padroesStore = usePadroesStore()
 const cronometro = useCronometroStore()
+const toast = useToast()
 onMounted(() => {
   padroesStore.fetchAll()
   cronometro.start()
@@ -222,6 +223,7 @@ function adicionarPadraoExame() {
 }
 
 const showAtestadoModal = ref(false)
+const finalizandoConsulta = ref(false)
 
 async function gerarReceitaPdf() {
   if (!receitaTexto.value.trim()) return
@@ -254,17 +256,34 @@ async function gerarSolicitacaoExames() {
   pdfMake.createPdf(doc).download('solicitacao-exames.pdf')
 }
 
-function finalizarConsulta() {
-  if (!agendamento.value) return
-  const duracao = cronometro.stop()
-  agendamentosStore.atualizarStatus(agendamento.value.id, 'atendido', {
-    anamnese: anamneseTexto.value,
-    diagnostico: diagnosticoSelected.value?.value,
-    medicamentos: receitaTexto.value,
-    exames: examesSelecionados.value.join('\n'),
-    duracao
-  })
-  navigateTo('/dashboard')
+async function finalizarConsulta() {
+  if (!agendamento.value || finalizandoConsulta.value) return
+
+  finalizandoConsulta.value = true
+  const agendamentoAtual = agendamento.value
+  const duracao = cronometro.elapsed
+
+  try {
+    await agendamentosStore.atualizarStatus(agendamentoAtual.id, 'atendido', {
+      anamnese: anamneseTexto.value,
+      diagnostico: diagnosticoSelected.value?.value,
+      medicamentos: receitaTexto.value,
+      exames: examesSelecionados.value.join('\n'),
+      duracao
+    })
+    cronometro.stop()
+    await navigateTo('/dashboard')
+  } catch (error) {
+    console.error('Erro ao finalizar consulta', error)
+    toast.add({
+      title: 'Erro ao finalizar consulta',
+      description: 'Não foi possível salvar os dados do atendimento. Tente novamente.',
+      color: 'error',
+      icon: 'i-lucide-alert-circle'
+    })
+  } finally {
+    finalizandoConsulta.value = false
+  }
 }
 </script>
 
@@ -792,6 +811,8 @@ function finalizarConsulta() {
               color="success"
               size="xl"
               class="p-3 text-lg font-bold min-w-110"
+              :loading="finalizandoConsulta"
+              :disabled="finalizandoConsulta"
               @click="finalizarConsulta"
             />
           </UCard>

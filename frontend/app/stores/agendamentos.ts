@@ -84,8 +84,9 @@ export const useAgendamentosStore = defineStore('agendamentos', () => {
       })
       const ag = agendamentos.value.find(a => a.id === id)
       if (ag) ag.status = status
-    } catch {
+    } catch (error) {
       console.error('Erro ao atualizar status do agendamento')
+      throw error
     }
   }
 
