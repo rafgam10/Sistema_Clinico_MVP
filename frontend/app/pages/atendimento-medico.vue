@@ -539,6 +539,24 @@ async function finalizarConsulta() {
             </template>
 
             <div class="flex flex-col gap-4 grow p-4">
+              
+              <div class="shrink-0 flex gap-2">
+                <UInputMenu
+                  v-model="padraoReceitaSelected"
+                  :items="padroesStore.receitas.map(p => ({ label: p.nome, value: p }))"
+                  searchable
+                  placeholder="Selecionar padrão de receita..."
+                  class="flex-1"
+                />
+                <UButton
+                  icon="i-lucide-copy-plus"
+                  label="Adicionar Padrão"
+                  color="secondary"
+                  :disabled="!padraoReceitaSelected"
+                  @click="adicionarPadraoReceita"
+                />
+              </div>
+
               <div class="shrink-0 flex items-end gap-3 p-4 rounded-lg border border-muted bg-neutral-50 dark:bg-neutral-900">
                 <UFormField
                   label="Nome do medicamento"
@@ -575,23 +593,6 @@ async function finalizarConsulta() {
                   color="primary"
                   :disabled="!remedioNome && !remedioDosagem"
                   @click="adicionarRemedio"
-                />
-              </div>
-
-              <div class="shrink-0 flex gap-2">
-                <UInputMenu
-                  v-model="padraoReceitaSelected"
-                  :items="padroesStore.receitas.map(p => ({ label: p.nome, value: p }))"
-                  searchable
-                  placeholder="Selecionar padrão de receita..."
-                  class="flex-1"
-                />
-                <UButton
-                  icon="i-lucide-copy-plus"
-                  label="Adicionar Padrão"
-                  color="secondary"
-                  :disabled="!padraoReceitaSelected"
-                  @click="adicionarPadraoReceita"
                 />
               </div>
 
@@ -642,7 +643,26 @@ async function finalizarConsulta() {
             </template>
 
               <div class="flex flex-col gap-4 grow p-4">
-                <UFormField
+
+
+                <div class="shrink-0 flex gap-2">
+                  <UInputMenu
+                    v-model="exameTemplateSelected"
+                    :items="padroesStore.exames.map(p => ({ label: p.nome, value: p }))"
+                    searchable
+                    placeholder="Selecionar padrão de exames..."
+                    class="flex-1 w-full"
+                  />
+                  <UButton
+                    icon="i-lucide-copy-plus"
+                    label="Adicionar Padrão"
+                    color="secondary"
+                    :disabled="!exameTemplateSelected"
+                    @click="adicionarPadraoExame"
+                  />
+                </div>
+
+                                <UFormField
                   label="Nome do exame"
                   class="w-full"
                 >
@@ -664,23 +684,6 @@ async function finalizarConsulta() {
                     </template>
                   </UInputMenu>
                 </UFormField>
-
-                <div class="shrink-0 flex gap-2">
-                  <UInputMenu
-                    v-model="exameTemplateSelected"
-                    :items="padroesStore.exames.map(p => ({ label: p.nome, value: p }))"
-                    searchable
-                    placeholder="Selecionar padrão de exames..."
-                    class="flex-1 w-full"
-                  />
-                  <UButton
-                    icon="i-lucide-copy-plus"
-                    label="Adicionar Padrão"
-                    color="secondary"
-                    :disabled="!exameTemplateSelected"
-                    @click="adicionarPadraoExame"
-                  />
-                </div>
 
                 <p
                   v-if="!padroesStore.exames.length"
