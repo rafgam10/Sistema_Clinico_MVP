@@ -540,9 +540,16 @@ def atualizar_status_agenda(med_spdata_atendimento_id, status, usuario_id=None, 
     if status not in STATUS_VALIDOS:
         raise ValueError("Status inválido")
 
+    if usuario_id is None:
+        raise PermissionError("Usuário autenticado obrigatório")
+
     spdata = db.session.get(MedSpdataAtendimento, med_spdata_atendimento_id)
     if not spdata:
         raise LookupError("Atendimento do SPDATA não encontrado no MedSystem")
+
+    crm_medico_usuario = get_crm_medico_usuario(usuario_id)
+    if normalizar_texto(spdata.crm_medico, 50) != crm_medico_usuario:
+        raise PermissionError("Atendimento não pertence ao médico autenticado")
 
     atendimento = db.session.execute(
         select(MedAtendimentos).where(

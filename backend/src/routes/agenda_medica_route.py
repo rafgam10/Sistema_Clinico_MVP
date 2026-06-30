@@ -62,6 +62,8 @@ def atualizar_status(med_spdata_atendimento_id):
 
     except LookupError as e:
         return jsonify({"error": str(e)}), 404
+    except PermissionError as e:
+        return jsonify({"error": str(e)}), 403
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:

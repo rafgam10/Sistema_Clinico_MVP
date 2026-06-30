@@ -198,3 +198,65 @@ def upsert_usuario_medico_spdata(medico_spdata, email=None, senha=None, crm_aten
         "medico_criado": medico_criado,
         "dados": dados,
     }
+
+
+def criar_usuario_medico_spdata(medico_spdata, email=None, senha=None, crm_atendimento_spdata=None):
+    dados = dados_medico_normalizados(
+        medico_spdata,
+        email=email,
+        crm_atendimento_spdata=crm_atendimento_spdata
+    )
+
+    usuario_existente = db.session.execute(
+        select(Usuario).where(
+            or_(
+                Usuario.email == dados["email"],
+                Usuario.cnpj_cpf == dados["documento"],
+            )
+        )
+    ).scalars().first()
+
+    if usuario_existente:
+        raise ValueError("Usuário já cadastrado")
+
+
+    medico_existente = db.session.execute(
+        select(Medico).where(
+            Medico.spdata_id == dados["spdata_id"]
+        )
+    ).scalars().first()
+
+    if medico_existente:
+        raise ValueError("Médico já cadastrado")
+
+
+    usuario = Usuario(
+        nome_completo=dados["nome_completo"],
+        cnpj_cpf=dados["documento"],
+        email=dados["email"],
+        senha=senha,
+        role="medico"
+    )
+
+    db.session.add(usuario)
+    db.session.flush()
+
+
+    medico = Medico(
+        usuario_id=usuario.id,
+        spdata_id=dados["spdata_id"],
+        crm=dados["crm"],
+        crm_atendimento_spdata=dados["crm_atendimento_spdata"],
+        crm_uf=dados["crm_uf"],
+        especialidade=dados["especialidade"],
+        ativo=True
+    )
+
+    db.session.add(medico)
+    db.session.commit()
+
+
+    return {
+        "usuario": usuario,
+        "medico": medico
+    }

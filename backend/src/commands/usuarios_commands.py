@@ -6,26 +6,7 @@ from src.models.usuario_model import Usuario
 from src.settings.extensions import db
 
 
-@click.command("registrar-recepcao")
-@click.option("--nome-completo", prompt=True, help="Nome completo do usuário da recepção.")
-@click.option("--documento", prompt=True, help="CPF/CNPJ do usuário da recepção.")
-@click.option("--email", prompt=True, help="E-mail usado no login.")
-@click.option(
-    "--senha",
-    prompt=True,
-    hide_input=True,
-    confirmation_prompt=True,
-    help="Senha inicial do usuário da recepção.",
-)
-@click.option(
-    "--atualizar",
-    is_flag=True,
-    help="Atualiza o usuário existente pelo e-mail, se ele já existir.",
-)
-@with_appcontext
-def registrar_recepcao_command(nome_completo, documento, email, senha, atualizar):
-    """Cria um usuário local com role recepcao."""
-
+def _registrar_usuario_local(nome_completo, documento, email, senha, role, atualizar):
     nome_completo = (nome_completo or "").strip()
     documento = (documento or "").strip()
     email = (email or "").strip().lower()
@@ -53,7 +34,7 @@ def registrar_recepcao_command(nome_completo, documento, email, senha, atualizar
                 cnpj_cpf=documento,
                 email=email,
                 senha=senha,
-                role="recepcao",
+                role=role,
             )
             db.session.add(usuario)
             acao = "criado"
@@ -61,16 +42,83 @@ def registrar_recepcao_command(nome_completo, documento, email, senha, atualizar
             usuario.nome_completo = nome_completo
             usuario.cnpj_cpf = documento
             usuario.senha = senha
-            usuario.role = "recepcao"
+            usuario.role = role
             acao = "atualizado"
 
         db.session.commit()
+        return usuario, acao
 
     except Exception as exc:
         db.session.rollback()
-        raise click.ClickException(f"Falha ao registrar recepção: {exc}") from exc
+        raise click.ClickException(f"Falha ao registrar usuário: {exc}") from exc
+
+
+@click.command("registrar-recepcao")
+@click.option("--nome-completo", prompt=True, help="Nome completo do usuário da recepção.")
+@click.option("--documento", prompt=True, help="CPF/CNPJ do usuário da recepção.")
+@click.option("--email", prompt=True, help="E-mail usado no login.")
+@click.option(
+    "--senha",
+    prompt=True,
+    hide_input=True,
+    confirmation_prompt=True,
+    help="Senha inicial do usuário da recepção.",
+)
+@click.option(
+    "--atualizar",
+    is_flag=True,
+    help="Atualiza o usuário existente pelo e-mail, se ele já existir.",
+)
+@with_appcontext
+def registrar_recepcao_command(nome_completo, documento, email, senha, atualizar):
+    """Cria um usuário local com role recepcao."""
+
+    usuario, acao = _registrar_usuario_local(
+        nome_completo,
+        documento,
+        email,
+        senha,
+        "recepcao",
+        atualizar,
+    )
 
     click.secho("Usuário de recepção registrado com sucesso.", fg="green")
+    click.echo(f"  usuario_id: {usuario.id} ({acao})")
+    click.echo(f"  nome: {usuario.nome_completo}")
+    click.echo(f"  email: {usuario.email}")
+    click.echo(f"  role: {usuario.role}")
+
+
+@click.command("registrar-admin")
+@click.option("--nome-completo", prompt=True, help="Nome completo do usuário admin.")
+@click.option("--documento", prompt=True, help="CPF/CNPJ do usuário admin.")
+@click.option("--email", prompt=True, help="E-mail usado no login.")
+@click.option(
+    "--senha",
+    prompt=True,
+    hide_input=True,
+    confirmation_prompt=True,
+    help="Senha inicial do usuário admin.",
+)
+@click.option(
+    "--atualizar",
+    is_flag=True,
+    help="Atualiza o usuário existente pelo e-mail, se ele já existir.",
+)
+@with_appcontext
+def registrar_admin_command(nome_completo, documento, email, senha, atualizar):
+    """Cria um usuário local com role admin."""
+
+    usuario, acao = _registrar_usuario_local(
+        nome_completo,
+        documento,
+        email,
+        senha,
+        "admin",
+        atualizar,
+    )
+
+    click.secho("Usuário admin registrado com sucesso.", fg="green")
     click.echo(f"  usuario_id: {usuario.id} ({acao})")
     click.echo(f"  nome: {usuario.nome_completo}")
     click.echo(f"  email: {usuario.email}")

@@ -4,13 +4,16 @@ from flask import (
     jsonify
 )
 
+from flask_jwt_extended import jwt_required
+from src.security.decorators import roles_required
+
 from src.controllers.login_controller import LoginController
 
 from src.settings.extensions import db
 from src.services.medicos_spdata_service import (
     buscar_medicos_spdata,
     normalizar_texto,
-    upsert_usuario_medico_spdata,
+    criar_usuario_medico_spdata
 )
 
 login_bp = Blueprint('login', __name__, url_prefix="/login")
@@ -18,19 +21,48 @@ controller = LoginController()
 
 @login_bp.route("/auth", methods=["POST"])
 def login():
-    
-    data = request.get_json()
-    email = data.get("email")
-    senha = data.get("senha")
-    
-    token = controller.generate_JWT_usuario(email, senha)
-    return jsonify(access_token=token)
+    try:
+        data = request.get_json(silent=True) or {}
+        email = data.get("email")
+        senha = data.get("senha")
+
+        if not email or not senha:
+            return jsonify({"error": "Campos obrigatórios: email, senha"}), 400
+
+        token = controller.generate_JWT_usuario(email, senha)
+
+        if not token:
+            return jsonify({"error": "Credenciais inválidas"}), 401
+
+        return jsonify(access_token=token), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @login_bp.route("/register", methods=["POST"])
+@jwt_required()
+@roles_required("admin")
 def register_medic():
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
+
+        campos_obrigatorios = [
+            "email_medico",
+            "senha_medico",
+            "nome_completo_medico",
+            "CNPJ_CPF",
+        ]
+        campos_faltando = [
+            campo for campo in campos_obrigatorios
+            if not data.get(campo)
+        ]
+
+        if campos_faltando:
+            return jsonify({
+                "error": "Campos obrigatórios ausentes",
+                "fields": campos_faltando,
+            }), 400
         
         email = data["email_medico"]
         senha = data["senha_medico"]
@@ -70,7 +102,7 @@ def register_medic():
                 ]
             }), 409
 
-        resultado = upsert_usuario_medico_spdata(
+        resultado = criar_usuario_medico_spdata(
             medicos_spdata[0],
             email=email,
             senha=senha,
@@ -81,11 +113,13 @@ def register_medic():
             "msg": "Médico cadastrado com sucesso!",
             "usuario": resultado["usuario"]._to_dict(),
             "medico": resultado["medico"]._to_dict(),
-            "usuario_criado": resultado["usuario_criado"],
-            "medico_criado": resultado["medico_criado"],
-        }), 200
+        }), 201
         
         
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 409
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500

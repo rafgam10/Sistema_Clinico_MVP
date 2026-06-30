@@ -5,7 +5,7 @@ from .settings.extensions import db, migrate, jwt, cors
 from src.commands.exames_commands import importar_exames_spdata_command
 from src.commands.convenios_commands import importar_convenios_spdata_command
 from src.commands.medicos_commands import registrar_medico_spdata_command
-from src.commands.usuarios_commands import registrar_recepcao_command
+from src.commands.usuarios_commands import registrar_admin_command, registrar_recepcao_command
 
 def create_app():
     app = Flask(__name__)
@@ -19,6 +19,7 @@ def create_app():
     app.cli.add_command(importar_exames_spdata_command)
     app.cli.add_command(importar_convenios_spdata_command)
     app.cli.add_command(registrar_medico_spdata_command)
+    app.cli.add_command(registrar_admin_command)
     app.cli.add_command(registrar_recepcao_command)
 
     # Importações de Models:
