@@ -4,11 +4,29 @@ import type { AgendamentoComPaciente, AgendamentoStatus } from '~/types'
 const auth = useAuthStore()
 const agendamentosStore = useAgendamentosStore()
 const chamadosStore = useChamadosStore()
+const { sala, precisaSelecionar, definirSala } = useSalaAtendimento()
+
+const showSalaModal = ref(false)
+const inputSala = ref('')
+
+watch(showSalaModal, (val) => {
+  if (val) inputSala.value = sala.value ?? ''
+})
+
+function confirmarSala() {
+  if (inputSala.value) {
+    definirSala(inputSala.value)
+    showSalaModal.value = false
+  }
+}
 
 onMounted(() => {
   const hoje = formatarDataISO(new Date())
   agendamentosStore.init(auth.activeClinicaId ?? undefined, hoje, auth.user?.id)
   chamadosStore.init()
+  if (precisaSelecionar.value) {
+    showSalaModal.value = true
+  }
 })
 
 const userName = computed(() => auth.user?.nome || 'Usuário')
@@ -70,9 +88,11 @@ function isCalling(pacienteId: number) {
 const temPacienteEmAtendimento = computed(() => !!agendamentosStore.emAtendimento)
 
 function chamarPaciente(ag: AgendamentoComPaciente) {
-  const salas = ['Consultório 1', 'Consultório 2', 'Consultório 3', 'Sala de Triagem', 'Sala de Curativos']
-  const sala = salas[Math.floor(Math.random() * salas.length)]!
-  chamadosStore.chamarPaciente(ag.paciente.id, ag.paciente.nome, sala, auth.user?.nome ?? 'Dr.')
+  if (!sala.value) {
+    showSalaModal.value = true
+    return
+  }
+  chamadosStore.chamarPaciente(ag.paciente.id, ag.paciente.nome, sala.value, auth.user?.nome ?? 'Dr.')
   if (callingInterval) clearInterval(callingInterval)
   callingState.value = { pacienteId: ag.paciente.id, secondsLeft: 5 }
   callingInterval = setInterval(() => {
@@ -161,6 +181,19 @@ const tempoMedioEspera = computed(() => {
             :label="userName"
             color="neutral"
             variant="soft"
+          />
+          <UBadge
+            :label="sala ? `Sala: ${sala}` : 'Sala: —'"
+            color="primary"
+            variant="soft"
+          />
+          <UButton
+            icon="i-lucide-pencil"
+            color="neutral"
+            variant="ghost"
+            size="lg"
+            aria-label="Definir sala"
+            @click="showSalaModal = true"
           />
           <UButton
             icon="i-lucide-bell"
@@ -381,4 +414,35 @@ const tempoMedioEspera = computed(() => {
       </UCard>
     </div>
   </div>
+
+  <UModal v-model:open="showSalaModal" :close="false">
+    <template #header>
+      <h2 class="text-lg font-semibold">
+        Sala de Atendimento
+      </h2>
+    </template>
+
+    <template #body>
+      <div class="space-y-4">
+        <p class="text-sm text-muted">
+          Informe a sala onde está atendendo hoje:
+        </p>
+        <UInput
+          v-model="inputSala"
+          placeholder="Ex: Consultório 2"
+          size="lg"
+        />
+      </div>
+    </template>
+
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <UButton
+          label="Salvar"
+          :disabled="!inputSala"
+          @click="confirmarSala"
+        />
+      </div>
+    </template>
+  </UModal>
 </template>

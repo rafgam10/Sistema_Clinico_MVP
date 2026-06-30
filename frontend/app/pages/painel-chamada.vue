@@ -54,7 +54,7 @@ const esperaMedia = computed(() => {
               {{ ultimoChamado.pacienteNome }}
             </p>
 
-            <div class="flex gap-4 w-full max-w-2xl mb-6">
+            <div class="flex gap-4 w-full max-w-2xl mb-6 justify-center items-center">
               <UPageCard
                 class="flex-1 bg-white/20 text-center p-2!"
                 variant="subtle"
