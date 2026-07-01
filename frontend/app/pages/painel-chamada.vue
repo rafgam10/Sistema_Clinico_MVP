@@ -46,15 +46,17 @@ const esperaMedia = computed(() => {
           <UCard
             class="flex-1 flex flex-col items-center justify-center p-10 bg-primary-600 dark:bg-primary-700/80"
           >
-            <p class="text-xl font-medium text-white text-center tracking-widest uppercase mb-4">
+            <div class="w-full">
+              <p class="text-xl font-medium text-white text-center tracking-widest uppercase mb-4">
               Chamando Agora
             </p>
 
             <p class="text-5xl md:text-7xl font-bold text-center text-white leading-tight mb-6">
               {{ ultimoChamado.pacienteNome }}
             </p>
+            </div>
 
-            <div class="flex gap-4 w-full max-w-2xl mb-6 justify-center items-center">
+            <div class="flex gap-4 w-full mb-6 justify-center items-center">
               <UPageCard
                 class="flex-1 bg-white/20 text-center p-2!"
                 variant="subtle"
