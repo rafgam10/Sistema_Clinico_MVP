@@ -85,3 +85,4 @@ def registrar_medico_spdata_command(spdata_id, cpf, nome, email, crm_atendimento
     click.echo(f"  email: {dados['email']}")
     click.echo(f"  crm: {dados['crm'] or '-'}")
     click.echo(f"  crm_atendimento_spdata: {dados['crm_atendimento_spdata'] or '-'}")
+    click.echo(f"  especialidade: {dados['especialidade'] or '-'}")

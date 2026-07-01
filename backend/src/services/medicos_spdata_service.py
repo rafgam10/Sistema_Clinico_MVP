@@ -16,6 +16,7 @@ COLUNAS_MEDICO_SPDATA = [
     "p.OLD_CRM",
     "p.OLD_UFCRM",
     "p.ESP_PRINC",
+    "esp_princ.NOME AS ESPECIALIDADE_PRINCIPAL",
     "p.SITUACAO",
     "p.UF",
     "(SELECT FIRST 1 cb.COD FROM TBCBOPRO cb WHERE cb.ID_TBPROFIS = p.ID ORDER BY cb.COD) AS CRM_ATENDIMENTO_SPDATA",
@@ -40,6 +41,73 @@ def row_para_dict(row, nomes_colunas):
     }
 
 
+def normalizar_int(valor):
+    if valor is None or valor == "":
+        return None
+
+    try:
+        return int(valor)
+    except (TypeError, ValueError):
+        try:
+            return int(float(str(valor).replace(",", ".")))
+        except (TypeError, ValueError):
+            return None
+
+
+def adicionar_especialidade(especialidades, codigos_adicionados, codigo, nome):
+    codigo = normalizar_int(codigo)
+    nome = normalizar_texto(nome, 255)
+
+    if codigo in (None, 0) or not nome or nome.casefold() == "não informado":
+        return
+    if codigo in codigos_adicionados:
+        return
+
+    codigos_adicionados.add(codigo)
+    especialidades.append(nome)
+
+
+def buscar_especialidades_medico_spdata(spdata_id, esp_princ=None, nome_esp_princ=None):
+    esp_princ = normalizar_int(esp_princ)
+    sql = """
+        SELECT DISTINCT
+            me.ESP AS CODIGO_ESPECIALIDADE,
+            esp.NOME AS ESPECIALIDADE
+        FROM TBCBOPRO cb
+        INNER JOIN TBMEDESP me
+            ON me.ID_TBCBOPRO = cb.ID
+        INNER JOIN TBESPEC esp
+            ON esp.COD = me.ESP
+        WHERE cb.ID_TBPROFIS = ?
+          AND cb.ATIVO = ?
+          AND me.ATIVO = ?
+        ORDER BY esp.NOME
+    """
+
+    with ConnectionDBFireBird() as connection:
+        cursor = connection.cursor()
+        cursor.execute(sql, (spdata_id, "T", "T"))
+        rows = cursor.fetchall()
+
+    especialidades = []
+    codigos_adicionados = set()
+    rows = sorted(
+        rows,
+        key=lambda row: (
+            normalizar_int(row[0]) != esp_princ,
+            normalizar_texto(row[1], 255) or "",
+        ),
+    )
+
+    for codigo, nome in rows:
+        adicionar_especialidade(especialidades, codigos_adicionados, codigo, nome)
+
+    if not especialidades:
+        adicionar_especialidade(especialidades, codigos_adicionados, esp_princ, nome_esp_princ)
+
+    return ", ".join(especialidades) or None
+
+
 def buscar_medicos_spdata(spdata_id=None, cpf=None, nome=None):
     colunas = ", ".join(COLUNAS_MEDICO_SPDATA)
     params = []
@@ -59,6 +127,8 @@ def buscar_medicos_spdata(spdata_id=None, cpf=None, nome=None):
     sql = f"""
         SELECT {colunas}
         FROM TBPROFIS p
+        LEFT JOIN TBESPEC esp_princ
+            ON esp_princ.COD = p.ESP_PRINC
         WHERE {where}
         ORDER BY p.NOME
     """
@@ -101,7 +171,14 @@ def dados_medico_normalizados(medico_spdata, email=None, crm_atendimento_spdata=
         medico_spdata.get("OLD_UFCRM") or medico_spdata.get("UF"),
         2,
     )
-    especialidade = normalizar_texto(medico_spdata.get("ESP_PRINC"), 120)
+    especialidade = normalizar_texto(
+        buscar_especialidades_medico_spdata(
+            spdata_id,
+            esp_princ=medico_spdata.get("ESP_PRINC"),
+            nome_esp_princ=medico_spdata.get("ESPECIALIDADE_PRINCIPAL"),
+        ),
+        255,
+    )
 
     if not nome_completo:
         raise ValueError("Registro do SPDATA não possui NOME.")

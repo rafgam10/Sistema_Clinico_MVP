@@ -21,7 +21,7 @@ class Medico(db.Model):
     crm_atendimento_spdata = db.Column(db.String(50), nullable=True, index=True)
     crm_uf = db.Column(db.String(2), nullable=True)
     rqe = db.Column(db.String(30), nullable=True)
-    especialidade = db.Column(db.String(120), nullable=True)
+    especialidade = db.Column(db.String(255), nullable=True)
 
     ativo = db.Column(db.Boolean, nullable=False, default=True)
 

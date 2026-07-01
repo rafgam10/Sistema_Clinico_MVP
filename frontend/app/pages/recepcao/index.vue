@@ -107,7 +107,8 @@ const atendimentosColunas = [
 const especialidades = computed(() => {
   const all = new Set<string>()
   dados.value.medicos.forEach((m) => {
-    if (m.especialidade) all.add(m.especialidade)
+    const especialidade = textoInformado(m.especialidade)
+    if (especialidade) all.add(especialidade)
   })
   return ['Todas as especialidades', ...Array.from(all).sort()]
 })
@@ -115,7 +116,7 @@ const especialidades = computed(() => {
 const medicosDoDia = computed(() => {
   let lista = dados.value.medicos
   if (selectedEspecialidade.value && selectedEspecialidade.value !== 'Todas as especialidades') {
-    lista = lista.filter(m => m.especialidade === selectedEspecialidade.value)
+    lista = lista.filter(m => textoInformado(m.especialidade) === selectedEspecialidade.value)
   }
   return lista
 })
@@ -354,7 +355,7 @@ onUnmounted(() => {
                       {{ row.original.nome }}
                     </p>
                     <p class="max-w-48 truncate text-xs text-muted sm:max-w-56">
-                      {{ row.original.especialidade || 'Especialidade não informada' }}
+                      {{ textoNaoInformado(row.original.especialidade, 'Especialidade não informada') }}
                     </p>
                   </div>
                 </div>
@@ -502,7 +503,7 @@ onUnmounted(() => {
                   {{ row.original.medico || '-' }}
                 </p>
                 <p class="text-xs text-muted">
-                  {{ row.original.especialidade || 'Especialidade não informada' }}
+                  {{ textoNaoInformado(row.original.especialidade, 'Especialidade não informada') }}
                 </p>
               </div>
             </template>

@@ -3,9 +3,10 @@ from decimal import Decimal
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from src.models.db.handler_fb_db import ConnectionDBFireBird
+from src.models.medico_model import Medico
 from src.models.model_mydsystem.med_atendimentos_model import MedAtendimentos
 from src.models.model_mydsystem.med_spdata_convenios_model import MedSpdataConvenio
 from src.security.decorators import roles_required
@@ -91,6 +92,13 @@ def normalizar_identificador_medico(valor):
     return valor
 
 
+def normalizar_especialidade(valor):
+    texto = normalizar_texto(valor)
+    if not texto or texto == "0" or texto.casefold() == "não informado":
+        return ""
+    return texto
+
+
 def normalizar_status_local(status):
     return STATUS_LOCAL_ALIASES.get(normalizar_texto(status))
 
@@ -138,16 +146,16 @@ def row_para_dict(row, nomes_colunas):
 
 
 def buscar_agendamentos_firebird(data_ref, medico=None, q=None):
-    where = ["CAST(DATA AS DATE) = ?"]
+    where = ["CAST(r.DATA AS DATE) = ?"]
     params = [data_ref]
 
     medico = normalizar_texto(medico)
     if medico:
         where.append(
             "("
-            "CAST(CRM_ATEND AS VARCHAR(50)) = ? "
-            "OR CAST(CRM AS VARCHAR(50)) = ? "
-            "OR NOME = ?"
+            "CAST(r.CRM_ATEND AS VARCHAR(50)) = ? "
+            "OR CAST(r.CRM AS VARCHAR(50)) = ? "
+            "OR r.NOME = ?"
             ")"
         )
         params.extend([medico, medico, medico])
@@ -155,46 +163,61 @@ def buscar_agendamentos_firebird(data_ref, medico=None, q=None):
     q = normalizar_texto(q)
     if q:
         where.append(
-            "(PACIENTE CONTAINING ? "
-            "OR CPF CONTAINING ? "
-            "OR PRONT CONTAINING ? "
-            "OR CAST(REGISTRO AS VARCHAR(50)) CONTAINING ?)"
+            "(r.PACIENTE CONTAINING ? "
+            "OR r.CPF CONTAINING ? "
+            "OR r.PRONT CONTAINING ? "
+            "OR CAST(r.REGISTRO AS VARCHAR(50)) CONTAINING ?)"
         )
         params.extend([q, q, q, q])
 
     sql = f"""
         SELECT
-            ID AS ID_AGENDAMENTO,
-            REGISTRO AS REGISTRO,
-            GRV_ATE AS GRV_ATE,
-            NOME AS MEDICO,
-            CRM AS CRM,
-            CRM_ATEND AS CRM_ATEND,
-            DATA AS DATA,
-            HORA AS HORA,
-            HR_AGE AS HR_AGE,
-            PACIENTE AS PACIENTE,
-            CPF AS CPF,
-            PRONT AS PRONTUARIO,
-            CONV AS ID_CONVENIO_SPDATA,
-            CONV AS CONVENIO,
-            FONE AS FONE,
-            CELULAR AS CELULAR,
-            EMAIL AS EMAIL,
-            ESPEC AS ESPECIALIDADE,
-            UNIDADE AS UNIDADE,
-            RETORNO AS RETORNO,
-            TP_AGE AS TIPO_AGENDA,
-            PROC_SOL AS PROCEDIMENTO_SOLICITADO,
-            PROCED AS PROCEDIMENTO,
-            OBS AS OBS,
-            DATA_NASCIMENTO AS DATA_NASCIMENTO,
-            ATENDIDO AS ATENDIDO,
-            ID_RICADPAC AS ID_PACIENTE_SPDATA,
-            DATA_HORA_AGENDAMENTO AS DATA_HORA_AGENDAMENTO
-        FROM REPACAGD
+            r.ID AS ID_AGENDAMENTO,
+            r.REGISTRO AS REGISTRO,
+            r.GRV_ATE AS GRV_ATE,
+            r.NOME AS MEDICO,
+            r.CRM AS CRM,
+            r.CRM_ATEND AS CRM_ATEND,
+            r.DATA AS DATA,
+            r.HORA AS HORA,
+            r.HR_AGE AS HR_AGE,
+            r.PACIENTE AS PACIENTE,
+            r.CPF AS CPF,
+            r.PRONT AS PRONTUARIO,
+            r.CONV AS ID_CONVENIO_SPDATA,
+            r.CONV AS CONVENIO,
+            r.FONE AS FONE,
+            r.CELULAR AS CELULAR,
+            r.EMAIL AS EMAIL,
+            CASE
+                WHEN r.ESPEC IS NOT NULL AND r.ESPEC <> 0 THEN esp_agenda.NOME
+                WHEN prof.ESP_PRINC IS NOT NULL AND prof.ESP_PRINC <> 0 THEN esp_princ.NOME
+                ELSE NULL
+            END AS ESPECIALIDADE,
+            r.UNIDADE AS UNIDADE,
+            r.RETORNO AS RETORNO,
+            r.TP_AGE AS TIPO_AGENDA,
+            r.PROC_SOL AS PROCEDIMENTO_SOLICITADO,
+            r.PROCED AS PROCEDIMENTO,
+            r.OBS AS OBS,
+            r.DATA_NASCIMENTO AS DATA_NASCIMENTO,
+            r.ATENDIDO AS ATENDIDO,
+            r.ID_RICADPAC AS ID_PACIENTE_SPDATA,
+            r.DATA_HORA_AGENDAMENTO AS DATA_HORA_AGENDAMENTO
+        FROM REPACAGD r
+        LEFT JOIN TBESPEC esp_agenda
+            ON esp_agenda.COD = r.ESPEC
+        LEFT JOIN TBPROFIS prof
+            ON prof.ID = (
+                SELECT FIRST 1 cb.ID_TBPROFIS
+                FROM TBCBOPRO cb
+                WHERE CAST(cb.COD AS VARCHAR(50)) = CAST(r.CRM AS VARCHAR(50))
+                ORDER BY cb.ATIVO DESC, cb.ID
+            )
+        LEFT JOIN TBESPEC esp_princ
+            ON esp_princ.COD = prof.ESP_PRINC
         WHERE {' AND '.join(where)}
-        ORDER BY DATA, HORA, PACIENTE
+        ORDER BY r.DATA, r.HORA, r.PACIENTE
     """
 
     with ConnectionDBFireBird() as con:
@@ -235,7 +258,7 @@ def buscar_atendimentos_firebird(data_ref):
             CAST(NULL AS INTEGER) AS ID_AGENDAMENTO,
             CAST(NULL AS INTEGER) AS GRV_ATE,
             CAST(NULL AS VARCHAR(30)) AS FONE,
-            CAST(NULL AS VARCHAR(120)) AS ESPECIALIDADE,
+            COALESCE(esp_atendimento.NOME, esp_princ.NOME) AS ESPECIALIDADE,
             CAST(NULL AS VARCHAR(50)) AS RETORNO,
             CAST(NULL AS VARCHAR(50)) AS TIPO_AGENDA,
             CAST(NULL AS VARCHAR(255)) AS PROCEDIMENTO_SOLICITADO,
@@ -251,6 +274,17 @@ def buscar_atendimentos_firebird(data_ref):
             ON tb.ID_TBPROFIS = medico.ID
         LEFT JOIN TBCONVEN convenio
             ON convenio.COD = a.ID_TBCONVEN
+        LEFT JOIN TBESPEC esp_atendimento
+            ON esp_atendimento.COD = (
+                SELECT FIRST 1 me.ESP
+                FROM TBMEDESP me
+                WHERE me.ID_TBCBOPRO = tb.ID
+                  AND me.ATIVO = 'T'
+                  AND me.ESP <> 0
+                ORDER BY me.ESP
+            )
+        LEFT JOIN TBESPEC esp_princ
+            ON esp_princ.COD = medico.ESP_PRINC
         WHERE a.ID_TBCENCUS = 203
           AND CAST(a.DATA_HORA_ENTRADA AS DATE) = ?
         ORDER BY a.DATA_HORA_ENTRADA, paciente.NOME
@@ -385,6 +419,43 @@ def buscar_convenios_locais(codigos_spdata):
     }
 
 
+def buscar_especialidades_medicos_locais(rows):
+    chaves = sorted({
+        chave
+        for row in rows
+        for chave in (
+            normalizar_identificador_medico(row.get("CRM_ATEND")),
+            normalizar_identificador_medico(row.get("CRM")),
+        )
+        if chave
+    })
+    if not chaves:
+        return {}
+
+    registros = db.session.execute(
+        select(Medico).where(
+            Medico.ativo.is_(True),
+            or_(
+                Medico.crm_atendimento_spdata.in_(chaves),
+                Medico.crm.in_(chaves),
+            ),
+        )
+    ).scalars().all()
+
+    especialidades = {}
+    for registro in registros:
+        especialidade = normalizar_especialidade(registro.especialidade)
+        if not especialidade:
+            continue
+
+        for valor in (registro.crm_atendimento_spdata, registro.crm):
+            chave = normalizar_identificador_medico(valor)
+            if chave and chave not in especialidades:
+                especialidades[chave] = especialidade
+
+    return especialidades
+
+
 def convenio_para_frontend(row, convenios_por_codigo):
     codigo = normalizar_int(row.get("ID_CONVENIO_SPDATA") or row.get("CONVENIO"))
     if codigo is None:
@@ -393,7 +464,19 @@ def convenio_para_frontend(row, convenios_por_codigo):
     return convenios_por_codigo.get(codigo, "")
 
 
-def item_para_frontend(row, status_local, convenios_por_codigo):
+def especialidade_para_frontend(row, especialidades_por_medico):
+    for chave in (
+        normalizar_identificador_medico(row.get("CRM_ATEND")),
+        normalizar_identificador_medico(row.get("CRM")),
+    ):
+        especialidade = especialidades_por_medico.get(chave)
+        if especialidade:
+            return especialidade
+
+    return normalizar_especialidade(row.get("ESPECIALIDADE"))
+
+
+def item_para_frontend(row, status_local, convenios_por_codigo, especialidades_por_medico):
     registro = normalizar_texto(row.get("REGISTRO"))
     local = status_local.get(registro)
     if local:
@@ -426,7 +509,7 @@ def item_para_frontend(row, status_local, convenios_por_codigo):
         "crm": crm,
         "crmAtendimento": crm_atendimento,
         "medicoKey": crm_atendimento_key or crm_key or normalizar_texto(row.get("MEDICO")),
-        "especialidade": normalizar_texto(row.get("ESPECIALIDADE")),
+        "especialidade": especialidade_para_frontend(row, especialidades_por_medico),
         "unidade": normalizar_texto(row.get("UNIDADE")),
         "retorno": normalizar_texto(row.get("RETORNO")),
         "tipoAgenda": normalizar_texto(row.get("TIPO_AGENDA")),
@@ -449,12 +532,13 @@ def calcular_resumo(items):
     return resumo
 
 
-def calcular_medicos(rows):
+def calcular_medicos(rows, especialidades_por_medico):
     medicos = {}
     for row in rows:
         nome = normalizar_texto(row.get("MEDICO"))
         crm_atendimento = normalizar_texto(row.get("CRM_ATEND"))
         crm = normalizar_texto(row.get("CRM"))
+        especialidade = especialidade_para_frontend(row, especialidades_por_medico)
         key = (
             normalizar_identificador_medico(row.get("CRM_ATEND"))
             or normalizar_identificador_medico(row.get("CRM"))
@@ -469,9 +553,11 @@ def calcular_medicos(rows):
                 "nome": nome or "Médico não informado",
                 "crm": crm,
                 "crmAtendimento": crm_atendimento,
-                "especialidade": normalizar_texto(row.get("ESPECIALIDADE")),
+                "especialidade": especialidade,
                 "pacientesCount": 0,
             }
+        elif not medicos[key]["especialidade"] and especialidade:
+            medicos[key]["especialidade"] = especialidade
         medicos[key]["pacientesCount"] += 1
 
     return sorted(medicos.values(), key=lambda item: item["nome"])
@@ -503,8 +589,9 @@ def home_check_in():
             row.get("ID_CONVENIO_SPDATA") or row.get("CONVENIO")
             for row in rows_filtradas
         )
+        especialidades_por_medico = buscar_especialidades_medicos_locais(rows_dia)
         items_com_status = [
-            item_para_frontend(row, status_local, convenios_por_codigo)
+            item_para_frontend(row, status_local, convenios_por_codigo, especialidades_por_medico)
             for row in rows_filtradas
         ]
 
@@ -524,7 +611,7 @@ def home_check_in():
             "page": page,
             "pageSize": page_size,
             "total": total,
-            "medicos": calcular_medicos(rows_dia),
+            "medicos": calcular_medicos(rows_dia, especialidades_por_medico),
             "resumo": resumo,
             "data": data_ref.isoformat(),
         }), 200
