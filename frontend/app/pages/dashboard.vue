@@ -183,18 +183,14 @@ const tempoMedioEspera = computed(() => {
             variant="soft"
           />
           <UBadge
-            :label="sala ? `Sala: ${sala}` : 'Sala: —'"
             color="primary"
             variant="soft"
-          />
-          <UButton
-            icon="i-lucide-pencil"
-            color="neutral"
-            variant="ghost"
-            size="lg"
-            aria-label="Definir sala"
+            class="cursor-pointer gap-1"
             @click="showSalaModal = true"
-          />
+          >
+            Sala: {{ sala || '—' }}
+            <UIcon name="i-lucide-pencil" class="h-3 w-3" />
+          </UBadge>
           <UButton
             icon="i-lucide-bell"
             color="neutral"
@@ -425,7 +421,7 @@ const tempoMedioEspera = computed(() => {
     <template #body>
       <div class="space-y-4">
         <p class="text-sm text-muted">
-          Informe a sala onde está atendendo hoje:
+          Informe a sala de atendimento:
         </p>
         <UInput
           v-model="inputSala"
