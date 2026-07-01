@@ -58,7 +58,7 @@ const esperaMedia = computed(() => {
 
             <div class="flex gap-4 w-full mb-6 justify-center items-center">
               <UPageCard
-                class="flex-1 bg-white/20 text-center p-2!"
+                class="flex-1 bg-white/20 text-center p-2! min-w-max"
                 variant="subtle"
               >
                 <p class="text-sm text-white uppercase tracking-wider mb-1">
@@ -69,7 +69,7 @@ const esperaMedia = computed(() => {
                 </p>
               </UPageCard>
               <UPageCard
-                class="flex-1 bg-white/20 text-center p-2!"
+                class="flex-1 bg-white/20 text-center p-2! min-w-max"
                 variant="subtle"
               >
                 <p class="text-sm text-white uppercase tracking-wider mb-1">
