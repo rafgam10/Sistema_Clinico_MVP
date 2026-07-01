@@ -332,16 +332,16 @@ const colunas = [
 
 function corStatus(status: string) {
   switch (status) {
-    case 'nao-confirmado': return 'warning'
-    case 'faltou': return 'error'
+    case 'nao-confirmado': return 'error'
+    case 'faltou': return 'secondary'
     default: return 'neutral'
   }
 }
 
 function rotuloStatus(status: string) {
   switch (status) {
-    case 'nao-confirmado': return 'Não confirmado'
-    case 'faltou': return 'Faltou'
+    case 'nao-confirmado': return 'Faltou'
+    case 'faltou': return 'Desistente'
     default: return status
   }
 }
@@ -479,7 +479,7 @@ onMounted(() => {
           icone="i-lucide-trending-up"
         />
         <CardNoShow
-          titulo="Faltou"
+          titulo="Desistentes"
           :valor="totalFaltou"
           cor="error"
           icone="lucide:user-round-x"
