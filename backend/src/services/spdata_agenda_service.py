@@ -51,6 +51,13 @@ def normalizar_int(valor):
             return None
 
 
+def normalizar_especialidade(valor, limite=None):
+    texto = normalizar_texto(valor, limite)
+    if not texto or texto == "0" or texto.casefold() == "não informado":
+        return None
+    return texto
+
+
 def normalizar_data(valor):
     if valor is None:
         return None
@@ -117,30 +124,45 @@ def buscar_convenios_locais(codigos_spdata):
 def buscar_agenda_spdata(data_ini, data_fim):
     sql = """
         SELECT
-            ID AS SPDATA_AGENDA_ID,
-            REGISTRO AS REGISTRO,
-            GRV_ATE AS GRV_ATE,
-            NOME AS MEDICO,
-            CRM AS CRM,
-            CRM_ATEND AS CRM_ATEND,
-            DATA AS DATA_AGENDA,
-            HORA AS HORA_AGENDA,
-            HR_AGE AS HR_AGE,
-            PACIENTE AS PACIENTE,
-            CPF AS CPF,
-            PRONT AS PRONTUARIO,
-            CONV AS ID_CONVENIO_SPDATA,
-            ESPEC AS ESPECIALIDADE,
-            FONE AS TELEFONE,
-            CELULAR AS CELULAR,
-            EMAIL AS EMAIL,
-            DATA_NASCIMENTO AS DATA_NASCIMENTO,
-            ATENDIDO AS ATENDIDO_SPDATA,
-            ID_RICADPAC AS ID_PACIENTE_SPDATA,
-            OBS AS OBS
-        FROM REPACAGD
-        WHERE CAST(DATA AS DATE) BETWEEN ? AND ?
-        ORDER BY DATA, HORA, PACIENTE
+            r.ID AS SPDATA_AGENDA_ID,
+            r.REGISTRO AS REGISTRO,
+            r.GRV_ATE AS GRV_ATE,
+            r.NOME AS MEDICO,
+            r.CRM AS CRM,
+            r.CRM_ATEND AS CRM_ATEND,
+            r.DATA AS DATA_AGENDA,
+            r.HORA AS HORA_AGENDA,
+            r.HR_AGE AS HR_AGE,
+            r.PACIENTE AS PACIENTE,
+            r.CPF AS CPF,
+            r.PRONT AS PRONTUARIO,
+            r.CONV AS ID_CONVENIO_SPDATA,
+            CASE
+                WHEN r.ESPEC IS NOT NULL AND r.ESPEC <> 0 THEN esp_agenda.NOME
+                WHEN prof.ESP_PRINC IS NOT NULL AND prof.ESP_PRINC <> 0 THEN esp_princ.NOME
+                ELSE NULL
+            END AS ESPECIALIDADE,
+            r.FONE AS TELEFONE,
+            r.CELULAR AS CELULAR,
+            r.EMAIL AS EMAIL,
+            r.DATA_NASCIMENTO AS DATA_NASCIMENTO,
+            r.ATENDIDO AS ATENDIDO_SPDATA,
+            r.ID_RICADPAC AS ID_PACIENTE_SPDATA,
+            r.OBS AS OBS
+        FROM REPACAGD r
+        LEFT JOIN TBESPEC esp_agenda
+            ON esp_agenda.COD = r.ESPEC
+        LEFT JOIN TBPROFIS prof
+            ON prof.ID = (
+                SELECT FIRST 1 cb.ID_TBPROFIS
+                FROM TBCBOPRO cb
+                WHERE CAST(cb.COD AS VARCHAR(50)) = CAST(r.CRM AS VARCHAR(50))
+                ORDER BY cb.ATIVO DESC, cb.ID
+            )
+        LEFT JOIN TBESPEC esp_princ
+            ON esp_princ.COD = prof.ESP_PRINC
+        WHERE CAST(r.DATA AS DATE) BETWEEN ? AND ?
+        ORDER BY r.DATA, r.HORA, r.PACIENTE
     """
 
     with ConnectionDBFireBird() as connection:
@@ -209,7 +231,7 @@ def sincronizar_agenda_spdata(data_ini, data_fim):
         registro.id_paciente_spdata = normalizar_int(item.get("ID_PACIENTE_SPDATA"))
         registro.id_convenio_spdata = id_convenio
         registro.convenio = convenios_por_codigo.get(id_convenio)
-        registro.especialidade = normalizar_texto(item.get("ESPECIALIDADE"), 120)
+        registro.especialidade = normalizar_especialidade(item.get("ESPECIALIDADE"), 120)
         registro.telefone = normalizar_texto(item.get("TELEFONE"), 30)
         registro.celular = normalizar_texto(item.get("CELULAR"), 30)
         registro.email = normalizar_texto(item.get("EMAIL"), 255)

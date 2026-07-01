@@ -1,8 +1,9 @@
 from collections import Counter
 from datetime import date, datetime, time, timedelta
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, select
 
+from src.models.medico_model import Medico
 from src.models.model_mydsystem.med_atendimentos_model import MedAtendimentos
 from src.models.model_mydsystem.med_spdata_agenda_model import MedSpdataAgenda
 from src.services.spdata_agenda_service import sincronizar_agenda_spdata
@@ -26,6 +27,24 @@ def normalizar_texto(valor):
     if valor is None:
         return ""
     return str(valor).strip()
+
+
+def normalizar_identificador_medico(valor):
+    valor = normalizar_texto(valor)
+    if not valor:
+        return ""
+
+    if not valor.replace(".", "").replace(",", "").strip("0"):
+        return ""
+
+    return valor
+
+
+def normalizar_especialidade(valor):
+    texto = normalizar_texto(valor)
+    if not texto or texto == "0" or texto.casefold() == "não informado":
+        return ""
+    return texto
 
 
 def normalizar_status_medsystem(status):
@@ -76,7 +95,56 @@ def atendimento_prioridade(atendimento):
     return 0
 
 
-def montar_item(agenda, atendimento, status, situacao):
+def buscar_especialidades_medicos_locais(agendas):
+    chaves = sorted({
+        chave
+        for agenda in agendas
+        for chave in (
+            normalizar_identificador_medico(agenda.crm_atend),
+            normalizar_identificador_medico(agenda.crm),
+        )
+        if chave
+    })
+    if not chaves:
+        return {}
+
+    registros = db.session.execute(
+        select(Medico).where(
+            Medico.ativo.is_(True),
+            or_(
+                Medico.crm_atendimento_spdata.in_(chaves),
+                Medico.crm.in_(chaves),
+            ),
+        )
+    ).scalars().all()
+
+    especialidades = {}
+    for registro in registros:
+        especialidade = normalizar_especialidade(registro.especialidade)
+        if not especialidade:
+            continue
+
+        for valor in (registro.crm_atendimento_spdata, registro.crm):
+            chave = normalizar_identificador_medico(valor)
+            if chave and chave not in especialidades:
+                especialidades[chave] = especialidade
+
+    return especialidades
+
+
+def especialidade_agenda(agenda, especialidades_por_medico):
+    for chave in (
+        normalizar_identificador_medico(agenda.crm_atend),
+        normalizar_identificador_medico(agenda.crm),
+    ):
+        especialidade = especialidades_por_medico.get(chave)
+        if especialidade:
+            return especialidade
+
+    return normalizar_especialidade(agenda.especialidade)
+
+
+def montar_item(agenda, atendimento, status, situacao, especialidades_por_medico):
     telefone = normalizar_texto(agenda.celular) or normalizar_texto(agenda.telefone)
     return {
         "id": agenda.id,
@@ -86,7 +154,7 @@ def montar_item(agenda, atendimento, status, situacao):
         "telefone": telefone,
         "convenio": normalizar_texto(agenda.convenio),
         "medico": normalizar_texto(agenda.medico),
-        "especialidade": normalizar_texto(agenda.especialidade),
+        "especialidade": especialidade_agenda(agenda, especialidades_por_medico),
         "dataFalta": data_iso(agenda.data_agenda),
         "horario": hora_hhmm(agenda.hora_agenda),
         "status": status,
@@ -130,7 +198,15 @@ def aplicar_filtros(items, medico=None, especialidade=None, convenio=None, statu
 
 
 def opcoes(items, campo):
-    return sorted({item[campo] for item in items if normalizar_texto(item[campo])})
+    return sorted({normalizar_texto(item[campo]) for item in items if normalizar_texto(item[campo])})
+
+
+def opcoes_especialidades(items):
+    return sorted({
+        especialidade
+        for item in items
+        if (especialidade := normalizar_especialidade(item["especialidade"]))
+    })
 
 
 def grafico_por_mes(items):
@@ -225,11 +301,18 @@ def listar_no_show(
 
     agora = datetime.now()
     items_periodo = []
+    especialidades_por_medico = buscar_especialidades_medicos_locais(
+        agenda
+        for agenda, _ in por_agenda.values()
+    )
+
     for agenda, atendimento in por_agenda.values():
         status_item, situacao = situacao_no_show(agenda, atendimento, agora)
         if status_item not in STATUS_NO_SHOW:
             continue
-        items_periodo.append(montar_item(agenda, atendimento, status_item, situacao))
+        items_periodo.append(
+            montar_item(agenda, atendimento, status_item, situacao, especialidades_por_medico)
+        )
 
     items_filtrados = aplicar_filtros(
         items_periodo,
@@ -253,7 +336,7 @@ def listar_no_show(
         "resumo": resumo(items_filtrados),
         "filtros": {
             "medicos": opcoes(items_periodo, "medico"),
-            "especialidades": opcoes(items_periodo, "especialidade"),
+            "especialidades": opcoes_especialidades(items_periodo),
             "convenios": opcoes(items_periodo, "convenio"),
             "anos": sorted({item["dataFalta"][:4] for item in items_periodo if item["dataFalta"]}),
         },

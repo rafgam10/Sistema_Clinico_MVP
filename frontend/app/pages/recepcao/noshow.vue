@@ -194,32 +194,43 @@ const anosDisponiveis = computed(() => {
   return anos.length ? anos : [anoAtual]
 })
 
+function opcaoFiltro(valor: string | null | undefined) {
+  const texto = String(valor ?? '').trim()
+  if (!texto || texto === '0' || texto.toLowerCase() === 'não informado') return ''
+  return texto
+}
+
+function montarOpcoesFiltro(opcoes: string[]) {
+  const itens = [...new Set(opcoes.map(opcaoFiltro).filter(Boolean))]
+  return ['Todos', ...itens.sort((a, b) => a.localeCompare(b, 'pt-BR'))]
+}
+
 const medicosOptions = computed(() => {
   const all = filtrosDisponiveis.value.medicos.length
     ? filtrosDisponiveis.value.medicos
-    : [...new Set(pacientesNoShow.value.map(p => p.medico).filter(Boolean))]
-  return ['Todos', ...all.sort()]
+    : pacientesNoShow.value.map(p => p.medico)
+  return montarOpcoesFiltro(all)
 })
 
 const conveniosOptions = computed(() => {
   const all = filtrosDisponiveis.value.convenios.length
     ? filtrosDisponiveis.value.convenios
-    : [...new Set(pacientesNoShow.value.map(p => p.convenio).filter(Boolean))]
-  return ['Todos', ...all.sort()]
+    : pacientesNoShow.value.map(p => p.convenio)
+  return montarOpcoesFiltro(all)
 })
 
 const especialidadesOptions = computed(() => {
   const all = filtrosDisponiveis.value.especialidades.length
     ? filtrosDisponiveis.value.especialidades
-    : [...new Set(pacientesNoShow.value.map(p => p.especialidade).filter(Boolean))]
-  return ['Todos', ...all.sort()]
+    : pacientesNoShow.value.map(p => p.especialidade)
+  return montarOpcoesFiltro(all)
 })
 
 const dadosFiltrados = computed(() => {
   return pacientesNoShow.value.filter((p) => {
-    if (filtroMedicoActive.value !== 'Todos' && p.medico !== filtroMedicoActive.value) return false
-    if (filtroEspecialidadeActive.value !== 'Todos' && p.especialidade !== filtroEspecialidadeActive.value) return false
-    if (filtroConvenioActive.value !== 'Todos' && p.convenio !== filtroConvenioActive.value) return false
+    if (filtroMedicoActive.value !== 'Todos' && opcaoFiltro(p.medico) !== filtroMedicoActive.value) return false
+    if (filtroEspecialidadeActive.value !== 'Todos' && opcaoFiltro(p.especialidade) !== filtroEspecialidadeActive.value) return false
+    if (filtroConvenioActive.value !== 'Todos' && opcaoFiltro(p.convenio) !== filtroConvenioActive.value) return false
     if (p.dataFalta.substring(0, 7) < filtroPeriodoInicioActive.value) return false
     if (p.dataFalta.substring(0, 7) > filtroPeriodoFimActive.value) return false
     return true
@@ -255,7 +266,8 @@ const chartEspecialidade = computed(() => {
   const map = new Map<string, number>()
   dadosFiltrados.value.forEach(
     (p) => {
-      map.set(p.especialidade, (map.get(p.especialidade) || 0) + 1)
+      const especialidade = opcaoFiltro(p.especialidade) || 'Não informada'
+      map.set(especialidade, (map.get(especialidade) || 0) + 1)
     })
   return {
     labels: [...map.keys()],
