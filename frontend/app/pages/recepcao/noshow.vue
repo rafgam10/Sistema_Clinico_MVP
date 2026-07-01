@@ -481,13 +481,13 @@ onMounted(() => {
         <CardNoShow
           titulo="Desistentes"
           :valor="totalFaltou"
-          cor="error"
+          cor="quinary"
           icone="lucide:user-round-x"
         />
         <CardNoShow
-          titulo="Não confirmado"
+          titulo="Faltou"
           :valor="totalNaoConfirmado"
-          cor="warning"
+          cor="error"
           icone="i-lucide-calendar-x"
         />
         <CardNoShow

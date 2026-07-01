@@ -5,7 +5,8 @@ export default defineAppConfig({
       neutral: 'slate',
       secondary: 'sec',
       tertiary: 'terc',
-      quaternary: 'violet'
+      quaternary: 'violet',
+      quinary: 'tec'
     }
   }
 })

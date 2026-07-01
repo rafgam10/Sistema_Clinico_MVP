@@ -2,7 +2,7 @@
 const props = defineProps<{
   titulo: string
   valor: number | string
-  cor: 'primary' | 'secondary' | 'tertiary' | 'info' | 'warning' | 'error' | 'success'
+  cor: 'primary' | 'secondary' | 'tertiary' | 'info' | 'warning' | 'error' | 'success' | 'quinary'
   icone: string
   medida?: string
 }>()
