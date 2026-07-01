@@ -6,7 +6,7 @@ export default defineAppConfig({
       secondary: 'sec',
       tertiary: 'terc',
       quaternary: 'violet',
-      quinary: 'tec'
+      quinary: 'ter'
     }
   }
 })
