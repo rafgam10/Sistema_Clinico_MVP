@@ -8,15 +8,41 @@ const userName = computed(() => auth.user?.nome || 'Usuário')
 
 interface PacienteNoShow {
   id: number
+  spdataAgendaId: number
+  medsystemAtendimentoId: number | null
   nome: string
   telefone: string
   convenio: string
   medico: string
   especialidade: string
   dataFalta: string
+  horario: string
   status: 'nao-confirmado' | 'faltou'
-  motivo: 'esquecimento' | 'transporte' | 'outros'
+  situacao: string
+  motivo: 'esquecimento' | 'transporte' | 'outros' | null
   recuperado: boolean
+  cpf: string
+  prontuario: string
+}
+
+interface NoShowResponse {
+  items: PacienteNoShow[]
+  total: number
+  page: number
+  pageSize: number
+  resumo: {
+    totalResgate: number
+    faltou: number
+    naoConfirmado: number
+    recuperados: number
+    semContato: number
+  }
+  filtros: {
+    medicos: string[]
+    especialidades: string[]
+    convenios: string[]
+    anos: string[]
+  }
 }
 
 const itensMais = ref<DropdownMenuItem[][]>([
@@ -77,45 +103,42 @@ const itensMais = ref<DropdownMenuItem[][]>([
   ]
 ])
 
-const pacientesNoShow = ref<PacienteNoShow[]>([
-  { id: 1, nome: 'Maria da Silva', telefone: '(11) 99999-0001', convenio: 'Unimed', medico: 'Dr. Carlos Almeida', especialidade: 'Cardiologia', dataFalta: '2025-01-15', status: 'faltou', motivo: 'esquecimento', recuperado: true },
-  { id: 2, nome: 'João Santos', telefone: '(11) 99999-0002', convenio: 'SUS', medico: 'Dra. Marina Costa', especialidade: 'Clínica Médica', dataFalta: '2025-01-22', status: 'nao-confirmado', motivo: 'transporte', recuperado: false },
-  { id: 3, nome: 'Ana Oliveira', telefone: '(11) 99999-0003', convenio: 'Bradesco Saúde', medico: 'Dr. Paulo Oliveira', especialidade: 'Ortopedia', dataFalta: '2025-02-05', status: 'faltou', motivo: 'outros', recuperado: true },
-  { id: 4, nome: 'Carlos Pereira', telefone: '(11) 99999-0004', convenio: 'Amil', medico: 'Dr. Carlos Almeida', especialidade: 'Cardiologia', dataFalta: '2025-02-12', status: 'faltou', motivo: 'esquecimento', recuperado: false },
-  { id: 5, nome: 'Juliana Costa', telefone: '(11) 99999-0005', convenio: 'SulAmérica', medico: 'Dra. Renata Santos', especialidade: 'Ginecologia', dataFalta: '2025-02-18', status: 'nao-confirmado', motivo: 'esquecimento', recuperado: false },
-  { id: 6, nome: 'Pedro Almeida', telefone: '(11) 99999-0006', convenio: 'Unimed', medico: 'Dr. Paulo Oliveira', especialidade: 'Ortopedia', dataFalta: '2025-03-10', status: 'faltou', motivo: 'transporte', recuperado: true },
-  { id: 7, nome: 'Lucia Fernandes', telefone: '(11) 99999-0007', convenio: 'SUS', medico: 'Dra. Marina Costa', especialidade: 'Clínica Médica', dataFalta: '2025-04-03', status: 'faltou', motivo: 'esquecimento', recuperado: true },
-  { id: 8, nome: 'Roberto Lima', telefone: '(11) 99999-0008', convenio: 'NotreDame', medico: 'Dr. Carlos Almeida', especialidade: 'Cardiologia', dataFalta: '2025-04-14', status: 'nao-confirmado', motivo: 'outros', recuperado: false },
-  { id: 9, nome: 'Cristina Rocha', telefone: '(11) 99999-0009', convenio: 'Unimed', medico: 'Dra. Renata Santos', especialidade: 'Ginecologia', dataFalta: '2025-04-28', status: 'faltou', motivo: 'transporte', recuperado: true },
-  { id: 10, nome: 'Fernando Barbosa', telefone: '(11) 99999-0010', convenio: 'Amil', medico: 'Dr. Paulo Oliveira', especialidade: 'Ortopedia', dataFalta: '2025-05-07', status: 'faltou', motivo: 'esquecimento', recuperado: true },
-  { id: 11, nome: 'Marina Duarte', telefone: '(11) 99999-0011', convenio: 'Bradesco Saúde', medico: 'Dra. Marina Costa', especialidade: 'Clínica Médica', dataFalta: '2025-05-19', status: 'nao-confirmado', motivo: 'esquecimento', recuperado: false },
-  { id: 12, nome: 'Ricardo Campos', telefone: '(11) 99999-0012', convenio: 'SulAmérica', medico: 'Dr. Carlos Almeida', especialidade: 'Cardiologia', dataFalta: '2025-06-02', status: 'faltou', motivo: 'transporte', recuperado: false },
-  { id: 13, nome: 'Tatiana Neves', telefone: '(11) 99999-0013', convenio: 'Unimed', medico: 'Dra. Renata Santos', especialidade: 'Ginecologia', dataFalta: '2025-06-15', status: 'faltou', motivo: 'esquecimento', recuperado: true },
-  { id: 14, nome: 'Gustavo Martins', telefone: '(11) 99999-0014', convenio: 'SUS', medico: 'Dr. Paulo Oliveira', especialidade: 'Ortopedia', dataFalta: '2025-06-25', status: 'nao-confirmado', motivo: 'outros', recuperado: false },
-  { id: 15, nome: 'Sandra Vieira', telefone: '(11) 99999-0015', convenio: 'NotreDame', medico: 'Dra. Marina Costa', especialidade: 'Clínica Médica', dataFalta: '2025-07-08', status: 'faltou', motivo: 'esquecimento', recuperado: true },
-  { id: 16, nome: 'Marcos Souza', telefone: '(11) 99999-0016', convenio: 'Amil', medico: 'Dr. Carlos Almeida', especialidade: 'Cardiologia', dataFalta: '2025-07-21', status: 'faltou', motivo: 'transporte', recuperado: true }
-])
+const pacientesNoShow = ref<PacienteNoShow[]>([])
+const loading = ref(false)
+const errorMsg = ref('')
 
-const filtro = ref('')
-const filtroAno = ref('2025')
-const filtroMesInicio = ref('Fevereiro')
-const filtroMesFim = ref('Julho')
-const filtroMedico = ref('Todos')
-const filtroEspecialidade = ref('Todos')
-const filtroConvenio = ref('Todos')
+const filtrosDisponiveis = ref<NoShowResponse['filtros']>({
+  medicos: [],
+  especialidades: [],
+  convenios: [],
+  anos: []
+})
 
-const filtroAnoActive = ref('2025')
-const filtroMesInicioActive = ref('Fevereiro')
-const filtroMesFimActive = ref('Julho')
-const filtroMedicoActive = ref('Todos')
-const filtroEspecialidadeActive = ref('Todos')
-const filtroConvenioActive = ref('Todos')
+const hoje = new Date()
+const anoAtual = String(hoje.getFullYear())
+const mesesOpcoes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+const mesAtualNome = mesesOpcoes[hoje.getMonth()] || 'Janeiro'
 
 const MES_PARA_NUMERO: Record<string, string> = {
   Janeiro: '01', Fevereiro: '02', Março: '03', Abril: '04',
   Maio: '05', Junho: '06', Julho: '07', Agosto: '08',
   Setembro: '09', Outubro: '10', Novembro: '11', Dezembro: '12'
 }
+
+const filtro = ref('')
+const filtroAno = ref(anoAtual)
+const filtroMesInicio = ref(mesAtualNome)
+const filtroMesFim = ref(mesAtualNome)
+const filtroMedico = ref('Todos')
+const filtroEspecialidade = ref('Todos')
+const filtroConvenio = ref('Todos')
+
+const filtroAnoActive = ref(anoAtual)
+const filtroMesInicioActive = ref(mesAtualNome)
+const filtroMesFimActive = ref(mesAtualNome)
+const filtroMedicoActive = ref('Todos')
+const filtroEspecialidadeActive = ref('Todos')
+const filtroConvenioActive = ref('Todos')
 
 const filtroPeriodoInicioActive = computed(() => `${filtroAnoActive.value}-${MES_PARA_NUMERO[filtroMesInicioActive.value]}`)
 const filtroPeriodoFimActive = computed(() => `${filtroAnoActive.value}-${MES_PARA_NUMERO[filtroMesFimActive.value]}`)
@@ -127,27 +150,68 @@ function aplicarFiltros() {
   filtroMedicoActive.value = filtroMedico.value
   filtroEspecialidadeActive.value = filtroEspecialidade.value
   filtroConvenioActive.value = filtroConvenio.value
+  pagination.value.pageIndex = 0
+  carregarNoShow()
 }
 
-const mesesOpcoes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+function ultimoDiaMes(ano: string, mes: string) {
+  return new Date(Number(ano), Number(MES_PARA_NUMERO[mes] || '01'), 0).getDate()
+}
+
+function dataInicioFiltro() {
+  return `${filtroAno.value}-${MES_PARA_NUMERO[filtroMesInicio.value] || '01'}-01`
+}
+
+function dataFimFiltro() {
+  const mes = MES_PARA_NUMERO[filtroMesFim.value] || '01'
+  return `${filtroAno.value}-${mes}-${String(ultimoDiaMes(filtroAno.value, filtroMesFim.value)).padStart(2, '0')}`
+}
+
+async function carregarNoShow() {
+  loading.value = true
+  errorMsg.value = ''
+
+  const params = new URLSearchParams()
+  params.set('dataIni', dataInicioFiltro())
+  params.set('dataFim', dataFimFiltro())
+  params.set('page', '1')
+  params.set('pageSize', '500')
+
+  try {
+    const response = await $fetch<NoShowResponse>(`/api/no-show?${params.toString()}`)
+    pacientesNoShow.value = response.items
+    filtrosDisponiveis.value = response.filtros
+  } catch {
+    pacientesNoShow.value = []
+    errorMsg.value = 'Erro ao carregar lista de resgate'
+  } finally {
+    loading.value = false
+  }
+}
 
 const anosDisponiveis = computed(() => {
-  const anos = [...new Set(pacientesNoShow.value.map(p => p.dataFalta.substring(0, 4)))].sort()
-  return anos.length ? anos : ['2025']
+  const anos = [...new Set([...filtrosDisponiveis.value.anos, anoAtual])].sort()
+  return anos.length ? anos : [anoAtual]
 })
 
 const medicosOptions = computed(() => {
-  const all = [...new Set(pacientesNoShow.value.map(p => p.medico))]
+  const all = filtrosDisponiveis.value.medicos.length
+    ? filtrosDisponiveis.value.medicos
+    : [...new Set(pacientesNoShow.value.map(p => p.medico).filter(Boolean))]
   return ['Todos', ...all.sort()]
 })
 
 const conveniosOptions = computed(() => {
-  const all = [...new Set(pacientesNoShow.value.map(p => p.convenio))]
+  const all = filtrosDisponiveis.value.convenios.length
+    ? filtrosDisponiveis.value.convenios
+    : [...new Set(pacientesNoShow.value.map(p => p.convenio).filter(Boolean))]
   return ['Todos', ...all.sort()]
 })
 
 const especialidadesOptions = computed(() => {
-  const all = [...new Set(pacientesNoShow.value.map(p => p.especialidade))]
+  const all = filtrosDisponiveis.value.especialidades.length
+    ? filtrosDisponiveis.value.especialidades
+    : [...new Set(pacientesNoShow.value.map(p => p.especialidade).filter(Boolean))]
   return ['Todos', ...all.sort()]
 })
 
@@ -209,6 +273,8 @@ const chartDiaSemana = computed(() => {
 })
 
 const totalFiltrado = computed(() => dadosFiltrados.value.length)
+const totalFaltou = computed(() => dadosFiltrados.value.filter(p => p.status === 'faltou').length)
+const totalNaoConfirmado = computed(() => dadosFiltrados.value.filter(p => p.status === 'nao-confirmado').length)
 const totalEsquecimento = computed(() => dadosFiltrados.value.filter(p => p.motivo === 'esquecimento').length)
 const totalTransporte = computed(() => dadosFiltrados.value.filter(p => p.motivo === 'transporte').length)
 const totalOutros = computed(() => dadosFiltrados.value.filter(p => p.motivo === 'outros').length)
@@ -284,6 +350,10 @@ function reagendar(paciente: PacienteNoShow) {
 function recusou(paciente: PacienteNoShow) {
   pacientesNoShow.value = pacientesNoShow.value.filter(p => p.id !== paciente.id)
 }
+
+onMounted(() => {
+  carregarNoShow()
+})
 </script>
 
 <template>
@@ -380,6 +450,14 @@ function recusou(paciente: PacienteNoShow) {
         </UCard>
       </div>
 
+      <UAlert
+        v-if="errorMsg"
+        :title="errorMsg"
+        color="error"
+        variant="subtle"
+        icon="i-lucide-circle-alert"
+      />
+
       <div class="w-full grid grid-cols-5 items-center gap-4">
         <CardNoShow
           titulo="Taxa de Recuperação"
@@ -389,26 +467,26 @@ function recusou(paciente: PacienteNoShow) {
           icone="i-lucide-trending-up"
         />
         <CardNoShow
-          titulo="Faltosos"
-          :valor="totalFaltasMes"
+          titulo="Faltou"
+          :valor="totalFaltou"
           cor="error"
           icone="lucide:user-round-x"
         />
         <CardNoShow
-          titulo="Recuperados"
-          :valor="agendamentosRecuperados"
-          cor="success"
-          icone="i-lucide-calendar-check"
+          titulo="Não confirmado"
+          :valor="totalNaoConfirmado"
+          cor="warning"
+          icone="i-lucide-calendar-x"
         />
         <CardNoShow
           titulo="Sem contato"
-          :valor="283"
+          :valor="0"
           cor="secondary"
           icone="i-lucide-clock"
         />
         <CardNoShow
-          titulo="lista de espera"
-          valor="sei la"
+          titulo="Lista de resgate"
+          :valor="totalFiltrado"
           cor="tertiary"
           icone="lucide:user-round-search"
         />
@@ -489,14 +567,14 @@ function recusou(paciente: PacienteNoShow) {
                 Impacto Financeiro (estimado)
               </p>
               <p :class="`text-2xl font-black text-error`">
-                R$42.800,00
+                R$0,00
               </p>
             </div>
             <UBadge
               color="neutral"
               variant="soft"
             >
-              Prejuizo estimado com faltas no período selecionado
+              Sem regra financeira cadastrada
             </UBadge>
           </div>
         </UCard>
@@ -547,7 +625,22 @@ function recusou(paciente: PacienteNoShow) {
           </div>
         </template>
 
+        <p
+          v-if="loading"
+          class="py-4 text-sm text-muted"
+        >
+          Carregando lista de resgate...
+        </p>
+
+        <p
+          v-else-if="!pacientesVisiveis.length"
+          class="py-4 text-sm text-muted"
+        >
+          Nenhum paciente encontrado para resgate.
+        </p>
+
         <UTable
+          v-else
           ref="table"
           v-model:pagination="pagination"
           :columns="colunas"
@@ -566,18 +659,18 @@ function recusou(paciente: PacienteNoShow) {
                   {{ row.original.nome }}
                 </p>
                 <p class="text-xs text-muted">
-                  {{ row.original.convenio }}
+                  {{ row.original.convenio || 'Convênio não informado' }}
                 </p>
               </div>
             </div>
           </template>
 
           <template #telefone-cell="{ row }">
-            <span class="text-sm">{{ row.original.telefone }}</span>
+            <span class="text-sm">{{ row.original.telefone || 'Não informado' }}</span>
           </template>
 
           <template #dataFalta-cell="{ row }">
-            <span class="text-sm">{{ formatarData(row.original.dataFalta) }}</span>
+            <span class="text-sm">{{ formatarData(row.original.dataFalta) }} {{ row.original.horario || '' }}</span>
           </template>
 
           <template #status-cell="{ row }">
@@ -614,9 +707,7 @@ function recusou(paciente: PacienteNoShow) {
 
                 @click="recusou(row.original)"
               />
-              <UDropdownMenu
-                :items="itensMais "
-              >
+              <UDropdownMenu :items="itensMais">
                 <UButton
                   icon="lucide:menu"
                   label="mais"
@@ -628,11 +719,14 @@ function recusou(paciente: PacienteNoShow) {
           </template>
         </UTable>
 
-        <div class="flex justify-center pt-4">
+        <div
+          v-if="!loading && pacientesVisiveis.length"
+          class="flex justify-center pt-4"
+        >
           <UPagination
             :page="(table?.tableApi?.getState().pagination.pageIndex || 0) + 1"
-            :items-per-page="table?.tableApi?.getState().pagination.pageSize"
-            :total="table?.tableApi?.getFilteredRowModel().rows.length"
+            :items-per-page="table?.tableApi?.getState().pagination.pageSize || pagination.pageSize"
+            :total="table?.tableApi?.getFilteredRowModel().rows.length || 0"
             @update:page="(p) => table?.tableApi?.setPageIndex(p - 1)"
           />
         </div>

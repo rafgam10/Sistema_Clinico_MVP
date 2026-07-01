@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from src.models.db.handler_fb_db import ConnectionDBFireBird
 from src.models.model_mydsystem.med_atendimentos_model import MedAtendimentos
+from src.models.model_mydsystem.med_spdata_convenios_model import MedSpdataConvenio
 from src.security.decorators import roles_required
 from src.settings.extensions import db
 
@@ -60,6 +61,34 @@ def normalizar_texto(valor):
     if valor is None:
         return ""
     return str(valor).strip()
+
+
+def normalizar_int(valor):
+    if valor is None:
+        return None
+
+    texto = normalizar_texto(valor)
+    if not texto:
+        return None
+
+    try:
+        return int(valor)
+    except (TypeError, ValueError):
+        try:
+            return int(float(texto.replace(",", ".")))
+        except (TypeError, ValueError):
+            return None
+
+
+def normalizar_identificador_medico(valor):
+    valor = normalizar_texto(valor)
+    if not valor:
+        return ""
+
+    if not valor.replace(".", "").replace(",", "").strip("0"):
+        return ""
+
+    return valor
 
 
 def normalizar_status_local(status):
@@ -147,6 +176,7 @@ def buscar_agendamentos_firebird(data_ref, medico=None, q=None):
             PACIENTE AS PACIENTE,
             CPF AS CPF,
             PRONT AS PRONTUARIO,
+            CONV AS ID_CONVENIO_SPDATA,
             CONV AS CONVENIO,
             FONE AS FONE,
             CELULAR AS CELULAR,
@@ -286,10 +316,11 @@ def filtrar_rows(rows, medico=None, q=None):
     for row in rows:
         if medico:
             medicos_possiveis = {
-                normalizar_texto(row.get("CRM_ATEND")),
-                normalizar_texto(row.get("CRM")),
+                normalizar_identificador_medico(row.get("CRM_ATEND")),
+                normalizar_identificador_medico(row.get("CRM")),
                 normalizar_texto(row.get("MEDICO")),
             }
+            medicos_possiveis.discard("")
             if medico not in medicos_possiveis:
                 continue
 
@@ -332,7 +363,37 @@ def buscar_status_local(registros):
     return status_por_registro
 
 
-def item_para_frontend(row, status_local):
+def buscar_convenios_locais(codigos_spdata):
+    codigos = sorted({
+        codigo
+        for codigo in (normalizar_int(codigo) for codigo in codigos_spdata)
+        if codigo is not None
+    })
+    if not codigos:
+        return {}
+
+    rows = db.session.execute(
+        select(MedSpdataConvenio.codigo_spdata, MedSpdataConvenio.nome).where(
+            MedSpdataConvenio.codigo_spdata.in_(codigos)
+        )
+    ).all()
+
+    return {
+        codigo: nome
+        for codigo, nome in rows
+        if normalizar_texto(nome)
+    }
+
+
+def convenio_para_frontend(row, convenios_por_codigo):
+    codigo = normalizar_int(row.get("ID_CONVENIO_SPDATA") or row.get("CONVENIO"))
+    if codigo is None:
+        return ""
+
+    return convenios_por_codigo.get(codigo, "")
+
+
+def item_para_frontend(row, status_local, convenios_por_codigo):
     registro = normalizar_texto(row.get("REGISTRO"))
     local = status_local.get(registro)
     if local:
@@ -343,6 +404,8 @@ def item_para_frontend(row, status_local):
         status = status_repacagd(row.get("ATENDIDO"))
     crm_atendimento = normalizar_texto(row.get("CRM_ATEND"))
     crm = normalizar_texto(row.get("CRM"))
+    crm_atendimento_key = normalizar_identificador_medico(row.get("CRM_ATEND"))
+    crm_key = normalizar_identificador_medico(row.get("CRM"))
 
     return {
         "id": row.get("ID_AGENDAMENTO") or registro,
@@ -355,14 +418,14 @@ def item_para_frontend(row, status_local):
         "paciente": normalizar_texto(row.get("PACIENTE")),
         "cpf": normalizar_texto(row.get("CPF")),
         "prontuario": normalizar_texto(row.get("PRONTUARIO")),
-        "convenio": normalizar_texto(row.get("CONVENIO")),
+        "convenio": convenio_para_frontend(row, convenios_por_codigo),
         "telefone": normalizar_texto(row.get("FONE")),
         "celular": normalizar_texto(row.get("CELULAR")),
         "email": normalizar_texto(row.get("EMAIL")),
         "medico": normalizar_texto(row.get("MEDICO")),
         "crm": crm,
         "crmAtendimento": crm_atendimento,
-        "medicoKey": crm_atendimento or crm or normalizar_texto(row.get("MEDICO")),
+        "medicoKey": crm_atendimento_key or crm_key or normalizar_texto(row.get("MEDICO")),
         "especialidade": normalizar_texto(row.get("ESPECIALIDADE")),
         "unidade": normalizar_texto(row.get("UNIDADE")),
         "retorno": normalizar_texto(row.get("RETORNO")),
@@ -392,7 +455,11 @@ def calcular_medicos(rows):
         nome = normalizar_texto(row.get("MEDICO"))
         crm_atendimento = normalizar_texto(row.get("CRM_ATEND"))
         crm = normalizar_texto(row.get("CRM"))
-        key = crm_atendimento or crm or nome
+        key = (
+            normalizar_identificador_medico(row.get("CRM_ATEND"))
+            or normalizar_identificador_medico(row.get("CRM"))
+            or nome
+        )
         if not key:
             continue
 
@@ -432,7 +499,14 @@ def home_check_in():
 
         registros = [row.get("REGISTRO") for row in rows_filtradas]
         status_local = buscar_status_local(registros)
-        items_com_status = [item_para_frontend(row, status_local) for row in rows_filtradas]
+        convenios_por_codigo = buscar_convenios_locais(
+            row.get("ID_CONVENIO_SPDATA") or row.get("CONVENIO")
+            for row in rows_filtradas
+        )
+        items_com_status = [
+            item_para_frontend(row, status_local, convenios_por_codigo)
+            for row in rows_filtradas
+        ]
 
         resumo = calcular_resumo(items_com_status)
 

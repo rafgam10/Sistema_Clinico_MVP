@@ -4,6 +4,7 @@ from .settings.extensions import db, migrate, jwt, cors
 
 from src.commands.exames_commands import importar_exames_spdata_command
 from src.commands.convenios_commands import importar_convenios_spdata_command
+from src.commands.especialidades_commands import importar_especialidades_spdata_command
 from src.commands.medicos_commands import registrar_medico_spdata_command
 from src.commands.usuarios_commands import registrar_admin_command, registrar_recepcao_command
 
@@ -18,6 +19,7 @@ def create_app():
     
     app.cli.add_command(importar_exames_spdata_command)
     app.cli.add_command(importar_convenios_spdata_command)
+    app.cli.add_command(importar_especialidades_spdata_command)
     app.cli.add_command(registrar_medico_spdata_command)
     app.cli.add_command(registrar_admin_command)
     app.cli.add_command(registrar_recepcao_command)
@@ -42,6 +44,7 @@ def create_app():
     from src.models.model_mydsystem.med_spdata_atendimentos_model import MedSpdataAtendimento
     from src.models.model_mydsystem.med_atendimentos_model import MedAtendimentos
     from src.models.model_mydsystem.med_spdata_convenios_model import MedSpdataConvenio
+    from src.models.model_mydsystem.med_spdata_especialidades_model import MedSpdataEspecialidade
 
     # Modelos Médicos:
     from src.models.model_padroes_solicitacoes.modelo_receita_model import ModeloReceita
@@ -63,6 +66,7 @@ def create_app():
     from src.routes.modelo_solicitacao_exames_route import padrao_medico_exame_bp
     from src.routes.agenda_medica_route import agenda_medica_bp
     from src.routes.exames_route import exames_bp
+    from src.routes.no_show_route import no_show_bp
 
     app.register_blueprint(login_bp)
     app.register_blueprint(dashboard_bp)
@@ -72,5 +76,6 @@ def create_app():
     app.register_blueprint(padrao_medico_exame_bp)
     app.register_blueprint(agenda_medica_bp)
     app.register_blueprint(exames_bp)
+    app.register_blueprint(no_show_bp)
 
     return app

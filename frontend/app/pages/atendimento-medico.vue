@@ -13,6 +13,7 @@ onMounted(() => {
 })
 
 onBeforeRouteLeave(() => {
+  salvarDraftAgora()
   if (cronometro.isRunning) cronometro.pause()
 })
 
@@ -27,6 +28,24 @@ const tabItems = [
 ]
 
 type CidResultado = { cid: string, nome: string }
+
+type AtendimentoDraft = {
+  version: 1
+  savedAt: string
+  agendamentoId: number
+  pacienteId: number | null
+  tabAtiva: string
+  anamneseTexto: string
+  cidSelecionado: CidResultado | null
+  searchCid: string
+  receitaTexto: string
+  remedioNome: string
+  remedioDosagem: string
+  remedioDetalhes: string
+  examesSelecionados: string[]
+  exameSelecionado: string
+  buscaTermoExame: string
+}
 
 let buscaTimeout: ReturnType<typeof setTimeout> | null = null
 let cidController: AbortController | null = null
@@ -224,6 +243,192 @@ function adicionarPadraoExame() {
 
 const showAtestadoModal = ref(false)
 const finalizandoConsulta = ref(false)
+const draftSalvoEm = ref<string | null>(null)
+const draftRestaurado = ref(false)
+
+let draftTimer: ReturnType<typeof setTimeout> | null = null
+let restaurandoDraft = false
+let draftDesativado = false
+
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+const draftKey = computed(() => {
+  const ag = agendamento.value
+  if (!ag) return null
+
+  return `medsystem:atendimento-draft:${ag.id}:${ag.paciente.id}`
+})
+
+const draftSalvoHorario = computed(() => {
+  if (!draftSalvoEm.value) return ''
+
+  return new Date(draftSalvoEm.value).toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+})
+
+function montarDraft(): AtendimentoDraft | null {
+  const ag = agendamento.value
+  if (!ag) return null
+
+  return {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    agendamentoId: ag.id,
+    pacienteId: ag.paciente.id ?? null,
+    tabAtiva: tabAtiva.value,
+    anamneseTexto: anamneseTexto.value,
+    cidSelecionado: cidSelecionado.value,
+    searchCid: searchCid.value,
+    receitaTexto: receitaTexto.value,
+    remedioNome: remedioNome.value,
+    remedioDosagem: remedioDosagem.value,
+    remedioDetalhes: remedioDetalhes.value,
+    examesSelecionados: [...examesSelecionados.value],
+    exameSelecionado: exameSelecionado.value,
+    buscaTermoExame: buscaTermoExame.value
+  }
+}
+
+function draftTemConteudo(draft: AtendimentoDraft) {
+  return Boolean(
+    draft.anamneseTexto.trim()
+    || draft.cidSelecionado
+    || draft.searchCid.trim()
+    || draft.receitaTexto.trim()
+    || draft.remedioNome.trim()
+    || draft.remedioDosagem.trim()
+    || draft.remedioDetalhes.trim()
+    || draft.examesSelecionados.length
+    || draft.exameSelecionado.trim()
+    || draft.buscaTermoExame.trim()
+  )
+}
+
+function salvarDraftAgora() {
+  if (!import.meta.client || !draftKey.value || draftDesativado) return
+
+  const draft = montarDraft()
+  if (!draft) return
+
+  if (!draftTemConteudo(draft)) {
+    localStorage.removeItem(draftKey.value)
+    draftSalvoEm.value = null
+    draftRestaurado.value = false
+    return
+  }
+
+  localStorage.setItem(draftKey.value, JSON.stringify(draft))
+  draftSalvoEm.value = draft.savedAt
+}
+
+function salvarDraftComDebounce() {
+  if (restaurandoDraft) return
+  if (draftTimer) clearTimeout(draftTimer)
+
+  draftTimer = setTimeout(() => {
+    salvarDraftAgora()
+  }, 700)
+}
+
+function restaurarDraft() {
+  if (!import.meta.client || !draftKey.value) return
+
+  const raw = localStorage.getItem(draftKey.value)
+  if (!raw) return
+
+  try {
+    const draft = JSON.parse(raw) as AtendimentoDraft
+    const savedAt = new Date(draft.savedAt).getTime()
+
+    if (!savedAt || Date.now() - savedAt > DRAFT_TTL_MS) {
+      localStorage.removeItem(draftKey.value)
+      return
+    }
+
+    restaurandoDraft = true
+
+    tabAtiva.value = draft.tabAtiva || '0'
+    anamneseTexto.value = draft.anamneseTexto || ''
+    cidSelecionado.value = draft.cidSelecionado || null
+    searchCid.value = draft.searchCid || ''
+    receitaTexto.value = draft.receitaTexto || ''
+    remedioNome.value = draft.remedioNome || ''
+    remedioDosagem.value = draft.remedioDosagem || ''
+    remedioDetalhes.value = draft.remedioDetalhes || ''
+    examesSelecionados.value = Array.isArray(draft.examesSelecionados) ? draft.examesSelecionados : []
+    exameSelecionado.value = draft.exameSelecionado || ''
+    buscaTermoExame.value = draft.buscaTermoExame || ''
+    draftSalvoEm.value = draft.savedAt
+    draftRestaurado.value = true
+
+    toast.add({
+      title: 'Rascunho recuperado',
+      description: 'Os dados digitados anteriormente foram restaurados neste atendimento.',
+      color: 'success',
+      icon: 'i-lucide-save'
+    })
+  } catch {
+    localStorage.removeItem(draftKey.value)
+  } finally {
+    setTimeout(() => {
+      restaurandoDraft = false
+    }, 0)
+  }
+}
+
+function limparDraft() {
+  if (!import.meta.client || !draftKey.value) return
+
+  draftDesativado = true
+  localStorage.removeItem(draftKey.value)
+  draftSalvoEm.value = null
+  draftRestaurado.value = false
+}
+
+watch(
+  [
+    tabAtiva,
+    anamneseTexto,
+    cidSelecionado,
+    searchCid,
+    receitaTexto,
+    remedioNome,
+    remedioDosagem,
+    remedioDetalhes,
+    examesSelecionados,
+    exameSelecionado,
+    buscaTermoExame
+  ],
+  () => {
+    salvarDraftComDebounce()
+  },
+  { deep: true }
+)
+
+watch(
+  draftKey,
+  (key) => {
+    if (!key) return
+    draftDesativado = false
+    restaurarDraft()
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
+  window.addEventListener('beforeunload', salvarDraftAgora)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', salvarDraftAgora)
+
+  if (draftTimer) {
+    clearTimeout(draftTimer)
+    salvarDraftAgora()
+  }
+})
 
 async function gerarReceitaPdf() {
   if (!receitaTexto.value.trim()) return
@@ -271,6 +476,7 @@ async function finalizarConsulta() {
       exames: examesSelecionados.value.join('\n'),
       duracao
     })
+    limparDraft()
     cronometro.stop()
     await navigateTo('/dashboard')
   } catch (error) {
@@ -292,6 +498,14 @@ async function finalizarConsulta() {
     <UHeader title="Consulta Atual">
       <template #right>
         <div class="flex items-center gap-2">
+          <UBadge
+            v-if="draftSalvoEm"
+            :color="draftRestaurado ? 'success' : 'neutral'"
+            variant="soft"
+            icon="i-lucide-save"
+          >
+            Rascunho salvo às {{ draftSalvoHorario }}
+          </UBadge>
           <UBadge
             color="neutral"
             variant="subtle"
