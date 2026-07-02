@@ -30,13 +30,14 @@ const tabItems = [
 type CidResultado = { cid: string, nome: string }
 
 type AtendimentoDraft = {
-  version: 1
+  version: 2
   savedAt: string
   agendamentoId: number
   pacienteId: number | null
   tabAtiva: string
   anamneseTexto: string
-  cidSelecionado: CidResultado | null
+  cidSelecionadoLista: CidResultado[]
+  cidPrincipalIndex: number
   searchCid: string
   receitaTexto: string
   remedioNome: string
@@ -53,7 +54,9 @@ let cidRequestId = 0
 
 const searchCid = ref('')
 const resultadosCid = ref<CidResultado[]>([])
-const cidSelecionado = ref<CidResultado | null>(null)
+const cidSelecionadoLista = ref<CidResultado[]>([])
+const cidTempSelecionado = ref<CidResultado | null>(null)
+const cidPrincipalIndex = ref(0)
 const isLoadingCid = ref(false)
 
 watch(searchCid, (val) => {
@@ -133,16 +136,26 @@ function onSearchInput(val: string) {
   }, 300)
 }
 
-function limparCid() {
-  cidSelecionado.value = null
+function removerCid(index: number) {
+  cidSelecionadoLista.value.splice(index, 1)
+  if(cidPrincipalIndex.value >= cidSelecionadoLista.value.length) {
+    cidPrincipalIndex.value = Math.max(0, cidSelecionadoLista.value.length - 1)
+  }
+}
+
+function adicionarCid(item: CidResultado){
+  const jaExiste = cidSelecionadoLista.value.some(c => c.cid === item.cid)
+  if(jaExiste) return
+  cidSelecionadoLista.value.push(item)
+  searchCid.value = ''
+  resultadosCid.value = []
+}
+
+function definirCidPrincipal(index: number) {
+  cidPrincipalIndex.value = index
 }
 
 const anamneseTexto = ref('')
-const diagnosticoSelected = computed(() => {
-  if (!cidSelecionado.value) return undefined
-  return { label: `${cidSelecionado.value.nome} (${cidSelecionado.value.cid})`, value: cidSelecionado.value.cid }
-})
-
 const receitaTexto = ref('')
 const remedioNome = ref('')
 const remedioDosagem = ref('')
@@ -151,7 +164,7 @@ const padraoReceitaSelected = ref<{ label: string, value: PadraoReceita }>()
 
 function adicionarRemedio() {
   if (!remedioNome.value && !remedioDosagem.value) return
-  receitaTexto.value += `• ${remedioNome.value}${remedioDosagem.value ? ` — ${remedioDosagem.value}` : ''}${remedioDetalhes.value ? `\n  ${remedioDetalhes.value}` : ''}\n`
+  receitaTexto.value += `\n• ${remedioNome.value}${remedioDosagem.value ? ` — ${remedioDosagem.value}` : ''}${remedioDetalhes.value ? `\n  ${remedioDetalhes.value}` : ''}\n`
   remedioNome.value = ''
   remedioDosagem.value = ''
   remedioDetalhes.value = ''
@@ -160,7 +173,7 @@ function adicionarRemedio() {
 function adicionarPadraoReceita() {
   if (!padraoReceitaSelected.value) return
   for (const m of padraoReceitaSelected.value.value.medicamentos) {
-    receitaTexto.value += `• ${m.nome} — ${m.dosagem}${m.detalhes ? `\n  ${m.detalhes}` : ''}\n`
+    receitaTexto.value += `\n• ${m.nome} — ${m.dosagem}${m.detalhes ? `\n  ${m.detalhes}` : ''}\n`
   }
   padraoReceitaSelected.value = undefined
 }
@@ -273,13 +286,14 @@ function montarDraft(): AtendimentoDraft | null {
   if (!ag) return null
 
   return {
-    version: 1,
+    version: 2,
     savedAt: new Date().toISOString(),
     agendamentoId: ag.id,
     pacienteId: ag.paciente.id ?? null,
     tabAtiva: tabAtiva.value,
     anamneseTexto: anamneseTexto.value,
-    cidSelecionado: cidSelecionado.value,
+    cidSelecionadoLista: cidSelecionadoLista.value,
+    cidPrincipalIndex: cidPrincipalIndex.value,
     searchCid: searchCid.value,
     receitaTexto: receitaTexto.value,
     remedioNome: remedioNome.value,
@@ -294,7 +308,7 @@ function montarDraft(): AtendimentoDraft | null {
 function draftTemConteudo(draft: AtendimentoDraft) {
   return Boolean(
     draft.anamneseTexto.trim()
-    || draft.cidSelecionado
+    || draft.cidSelecionadoLista?.length
     || draft.searchCid.trim()
     || draft.receitaTexto.trim()
     || draft.remedioNome.trim()
@@ -351,7 +365,14 @@ function restaurarDraft() {
 
     tabAtiva.value = draft.tabAtiva || '0'
     anamneseTexto.value = draft.anamneseTexto || ''
-    cidSelecionado.value = draft.cidSelecionado || null
+    if ((draft as any).version === 1) {
+      const old = (draft as any).cidSelecionado
+      cidSelecionadoLista.value = old ? [old] : []
+      cidPrincipalIndex.value = 0
+    } else {
+      cidSelecionadoLista.value = draft.cidSelecionadoLista || []
+      cidPrincipalIndex.value = draft.cidPrincipalIndex ?? 0
+    }
     searchCid.value = draft.searchCid || ''
     receitaTexto.value = draft.receitaTexto || ''
     remedioNome.value = draft.remedioNome || ''
@@ -391,7 +412,7 @@ watch(
   [
     tabAtiva,
     anamneseTexto,
-    cidSelecionado,
+    cidSelecionadoLista,
     searchCid,
     receitaTexto,
     remedioNome,
@@ -471,7 +492,11 @@ async function finalizarConsulta() {
   try {
     await agendamentosStore.atualizarStatus(agendamentoAtual.id, 'atendido', {
       anamnese: anamneseTexto.value,
-      diagnostico: diagnosticoSelected.value?.value,
+      diagnosticos: cidSelecionadoLista.value.map((cid, i ) => ({
+        cid: cid.cid,
+        descricao: cid.nome,
+        principal: i === 0
+      })),
       medicamentos: receitaTexto.value,
       exames: examesSelecionados.value.join('\n'),
       duracao
@@ -570,7 +595,7 @@ async function finalizarConsulta() {
                     color="neutral"
                     variant="ghost"
                     :class="{ 'bg-primary/10 text-primary': editor?.isActive('bold') }"
-                    @click="editor?.chain().focus().toggleBold().run()"
+                    @click="void editor?.chain().focus().toggleBold().run()"
                   />
                   <UButton
                     icon="i-lucide-italic"
@@ -578,7 +603,7 @@ async function finalizarConsulta() {
                     color="neutral"
                     variant="ghost"
                     :class="{ 'bg-primary/10 text-primary': editor?.isActive('italic') }"
-                    @click="editor?.chain().focus().toggleItalic().run()"
+                    @click="void editor?.chain().focus().toggleItalic().run()"
                   />
                   <UButton
                     icon="i-lucide-strikethrough"
@@ -586,7 +611,7 @@ async function finalizarConsulta() {
                     color="neutral"
                     variant="ghost"
                     :class="{ 'bg-primary/10 text-primary': editor?.isActive('strike') }"
-                    @click="editor?.chain().focus().toggleStrike().run()"
+                    @click="void editor?.chain().focus().toggleStrike().run()"
                   />
                   <USeparator
                     orientation="vertical"
@@ -598,7 +623,7 @@ async function finalizarConsulta() {
                     color="neutral"
                     variant="ghost"
                     :class="{ 'bg-primary/10 text-primary': editor?.isActive('heading', { level: 1 }) }"
-                    @click="editor?.chain().focus().toggleHeading({ level: 1 }).run()"
+                    @click="void editor?.chain().focus().toggleHeading({ level: 1 }).run()"
                   />
                   <UButton
                     icon="i-lucide-heading-2"
@@ -606,7 +631,7 @@ async function finalizarConsulta() {
                     color="neutral"
                     variant="ghost"
                     :class="{ 'bg-primary/10 text-primary': editor?.isActive('heading', { level: 2 }) }"
-                    @click="editor?.chain().focus().toggleHeading({ level: 2 }).run()"
+                    @click="void editor?.chain().focus().toggleHeading({ level: 2 }).run()"
                   />
                   <UButton
                     icon="i-lucide-heading-3"
@@ -614,7 +639,7 @@ async function finalizarConsulta() {
                     color="neutral"
                     variant="ghost"
                     :class="{ 'bg-primary/10 text-primary': editor?.isActive('heading', { level: 3 }) }"
-                    @click="editor?.chain().focus().toggleHeading({ level: 3 }).run()"
+                    @click="void editor?.chain().focus().toggleHeading({ level: 3 }).run()"
                   />
                   <USeparator
                     orientation="vertical"
@@ -626,7 +651,7 @@ async function finalizarConsulta() {
                     color="neutral"
                     variant="ghost"
                     :class="{ 'bg-primary/10 text-primary': editor?.isActive('bulletList') }"
-                    @click="editor?.chain().focus().toggleBulletList().run()"
+                    @click="void editor?.chain().focus().toggleBulletList().run()"
                   />
                   <UButton
                     icon="i-lucide-list-ordered"
@@ -634,7 +659,7 @@ async function finalizarConsulta() {
                     color="neutral"
                     variant="ghost"
                     :class="{ 'bg-primary/10 text-primary': editor?.isActive('orderedList') }"
-                    @click="editor?.chain().focus().toggleOrderedList().run()"
+                    @click="void editor?.chain().focus().toggleOrderedList().run()"
                   />
                   <UButton
                     icon="i-lucide-text-quote"
@@ -642,7 +667,7 @@ async function finalizarConsulta() {
                     color="neutral"
                     variant="ghost"
                     :class="{ 'bg-primary/10 text-primary': editor?.isActive('blockquote') }"
-                    @click="editor?.chain().focus().toggleBlockquote().run()"
+                    @click="void editor?.chain().focus().toggleBlockquote().run()"
                   />
                   <USeparator
                     orientation="vertical"
@@ -653,14 +678,15 @@ async function finalizarConsulta() {
                     size="xs"
                     color="neutral"
                     variant="ghost"
-                    @click="editor?.chain().focus().undo().run()"
+                    @click="void editor?.chain().focus().undo().run()"
                   />
                   <UButton
                     icon="i-lucide-redo"
                     size="xs"
                     color="neutral"
                     variant="ghost"
-                    @click="editor?.chain().focus().redo().run()"
+                    :class="{ 'bg-primary/10 text-primary': editor?.isActive('redo') }"
+                    @click="void editor?.chain().focus().redo().run()"
                   />
                 </div>
               </template>
@@ -668,22 +694,18 @@ async function finalizarConsulta() {
           </UCard>
 
           <UCard
-            :ui="{ header: 'p-1 sm:px-2', body: 'p-2 sm:p-2 ' }"
+            :ui="{ header: 'p-1 sm:px-2', body: 'p-2 sm:p-2' }"
           >
             <template #title>
               <div class="flex items-center gap-2">
-                <UIcon
-                  name="i-lucide-stethoscope"
-                  class="text-primary"
-                />
-                <p class="font-semibold">
-                  Diagnóstico (CID-10)
-                </p>
+                <UIcon name="i-lucide-stethoscope" class="text-primary" />
+                <p class="font-semibold">Diagnósticos (CID-10)</p>
               </div>
             </template>
-            <div class="relative">
+
+            <div class="flex gap-2">
               <UInputMenu
-                v-model="cidSelecionado"
+                v-model="cidTempSelecionado"
                 v-model:search-term="searchCid"
                 :items="resultadosCid"
                 :loading="isLoadingCid"
@@ -692,7 +714,7 @@ async function finalizarConsulta() {
                 icon="i-lucide-search"
                 clear
                 ignore-filter
-                class="w-full"
+                class="flex-1"
               >
                 <template #item-label="{ item }">
                   <span class="font-mono text-xs font-semibold text-primary min-w-10">{{ item.cid }}</span>
@@ -700,35 +722,38 @@ async function finalizarConsulta() {
                   <span class="truncate">{{ item.nome }}</span>
                 </template>
                 <template #empty>
-                  <p
-                    v-if="searchCid"
-                    class="px-3 py-4 text-sm text-muted text-center"
-                  >
+                  <p v-if="searchCid" class="px-3 py-4 text-sm text-muted text-center">
                     Nenhum CID encontrado
                   </p>
                 </template>
               </UInputMenu>
+              <UButton
+                icon="i-lucide-plus"
+                color="primary"
+                :disabled="!cidTempSelecionado"
+                @click="adicionarCid(cidTempSelecionado!); cidTempSelecionado = null"
+              />
+            </div>
 
+                        <div v-if="cidSelecionadoLista.length" class="mt-3 space-y-2">
               <div
-                v-if="cidSelecionado"
-                class="mt-2"
+                v-for="(cid, i) in cidSelecionadoLista"
+                :key="i"
+                class="flex items-center justify-between p-2 rounded-lg border border-muted"
               >
-                <UBadge
-                  color="primary"
-                  variant="soft"
-                  size="lg"
-                >
-                  {{ cidSelecionado.cid }} — {{ cidSelecionado.nome }}
-                  <UButton
-                    icon="i-lucide-x"
-                    size="xs"
-                    color="neutral"
-                    variant="ghost"
-                    @click="limparCid()"
-                  />
-                </UBadge>
+                <span class="text-sm">
+                  {{ cid.cid }} — {{ cid.nome }}
+                  <UBadge v-if="i === 0" size="xs" color="primary" variant="soft">Principal</UBadge>
+                </span>
+                <UButton icon="i-lucide-x" size="xs" color="error" variant="ghost" @click="removerCid(i)" />
               </div>
             </div>
+            <p
+              v-else
+              class="text-sm text-muted italic mt-3 text-center"
+            >
+              Nenhum CID selecionado
+            </p>
           </UCard>
         </div>
 
@@ -987,7 +1012,7 @@ async function finalizarConsulta() {
                 label="Atestado Médico"
                 color="neutral"
                 class="w-full p-3 text-lg font-bold"
-                @click="showAtestadoModal = true"
+                @click="void (showAtestadoModal = true)"
               />
               <UButton
                 icon="i-lucide-send"
@@ -1007,7 +1032,7 @@ async function finalizarConsulta() {
                 color="quaternary"
                 class="w-full p-3 text-lg font-bold"
                 :disabled="!receitaTexto.trim()"
-                @click="tabAtiva = '1'"
+                @click="void (tabAtiva = '1')"
               />
               <UButton
                 icon="i-lucide-flask-conical"
@@ -1015,7 +1040,7 @@ async function finalizarConsulta() {
                 color="warning"
                 class="w-full p-3 text-lg font-bold"
                 :disabled="!examesSelecionados.length"
-                @click="tabAtiva = '2'"
+                @click="void (tabAtiva = '2')"
               />
             </div>
           </UCard>
@@ -1030,7 +1055,7 @@ async function finalizarConsulta() {
               class="p-3 text-lg font-bold min-w-110"
               :loading="finalizandoConsulta"
               :disabled="finalizandoConsulta"
-              @click="finalizarConsulta"
+              @click="void finalizarConsulta()"
             />
           </UCard>
         </div>
