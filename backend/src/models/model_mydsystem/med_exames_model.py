@@ -58,5 +58,17 @@ class Exame(db.Model):
         onupdate=datetime.utcnow,
     )
 
+    solicitacoes_exames = db.relationship(
+        "SolicitacaoExame",
+        back_populates="exame",
+        passive_deletes=True,
+    )
+
+    exames_modelo = db.relationship(
+        "ExamesDoModelo",
+        back_populates="exame",
+        passive_deletes=True,
+    )
+
     def __repr__(self):
         return f"<Exame {self.spdata_id} - {self.nome}>"

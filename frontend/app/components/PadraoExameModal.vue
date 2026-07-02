@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PadraoExame } from '~/types'
+import type { ExameCatalogo, ExameSelecionado, PadraoExame } from '~/types'
 
 const props = defineProps<{
   padrao?: PadraoExame | null
@@ -10,28 +10,81 @@ const open = defineModel<boolean>('open', { default: false })
 const padroesStore = usePadroesStore()
 
 const nome = ref('')
-const exames = ref<string[]>([])
+const exames = ref<ExameSelecionado[]>([])
 const saving = ref(false)
 
-const selectedExame = ref('')
+const selectedExame = ref<ExameCatalogo | null>(null)
 const buscaTermo = ref('')
-const sugestoesExames = ref<{ nome: string, codigo_alfanumerico: string | null, codigo_amb: string | null }[]>([])
+const sugestoesExames = ref<ExameCatalogo[]>([])
 const carregandoExames = ref(false)
 
 let buscaTimeout: ReturnType<typeof setTimeout> | null = null
 let examesController: AbortController | null = null
 let examesRequestId = 0
 
-function adicionarExame(texto: string) {
-  if (!texto?.trim()) return
-  if (exames.value.includes(texto.trim())) return
-  exames.value.push(texto.trim())
-  selectedExame.value = ''
+function normalizarIdExame(valor: unknown) {
+  if (valor === null || valor === undefined || valor === '') return null
+
+  const numero = Number(valor)
+  return Number.isInteger(numero) && numero > 0 ? numero : null
+}
+
+function normalizarExameSelecionado(valor: unknown): ExameSelecionado | null {
+  if (typeof valor === 'string') {
+    const nome = valor.trim()
+    return nome ? { nome, exameId: null } : null
+  }
+
+  if (!valor || typeof valor !== 'object') return null
+
+  const item = valor as Record<string, unknown>
+  const nome = typeof item.nome === 'string' ? item.nome.trim() : ''
+  const exameId = normalizarIdExame(item.exameId ?? item.exame_id ?? item.id)
+
+  if (!nome) return null
+
+  return { nome, exameId }
+}
+
+function exameExisteNaLista(lista: ExameSelecionado[], exame: ExameSelecionado) {
+  const nome = exame.nome.trim().toLocaleLowerCase('pt-BR')
+
+  return lista.some((atual) => {
+    if (atual.exameId && exame.exameId && atual.exameId === exame.exameId) return true
+    return atual.nome.trim().toLocaleLowerCase('pt-BR') === nome
+  })
+}
+
+function normalizarListaExames(valor: unknown) {
+  if (!Array.isArray(valor)) return []
+
+  const itens: ExameSelecionado[] = []
+  for (const item of valor) {
+    const exame = normalizarExameSelecionado(item)
+    if (!exame || exameExisteNaLista(itens, exame)) continue
+    itens.push(exame)
+  }
+
+  return itens
+}
+
+function adicionarExame(valor: unknown) {
+  const exame = normalizarExameSelecionado(valor)
+  if (!exame) return
+  if (exameExisteNaLista(exames.value, exame)) return
+
+  exames.value.push(exame)
+  selectedExame.value = null
   buscaTermo.value = ''
+  sugestoesExames.value = []
+}
+
+function adicionarExameManual() {
+  adicionarExame(buscaTermo.value)
 }
 
 watch(selectedExame, (val) => {
-  if (val?.trim()) adicionarExame(val.trim())
+  if (val) adicionarExame(val)
 })
 
 watch(buscaTermo, (val) => {
@@ -57,9 +110,9 @@ async function buscarExames(q: string) {
 
   carregandoExames.value = true
   try {
-    const data = await $fetch<{ exames: { nome: string, codigo_alfanumerico: string | null, codigo_amb: string | null }[] }>('/api/exames/buscar', {
+    const data = await $fetch<{ exames: ExameCatalogo[] }>('/api/exames/buscar', {
       query: { q: termo },
-      signal: examesController.signal,
+      signal: examesController.signal
     })
 
     if (requestId !== examesRequestId) return
@@ -78,8 +131,8 @@ async function buscarExames(q: string) {
 watch(open, (isOpen) => {
   if (isOpen) {
     nome.value = props.padrao?.nome ?? ''
-    exames.value = props.padrao?.exames?.length ? [...props.padrao.exames] : []
-    selectedExame.value = ''
+    exames.value = normalizarListaExames(props.padrao?.exames)
+    selectedExame.value = null
     buscaTermo.value = ''
     sugestoesExames.value = []
   }
@@ -156,7 +209,7 @@ async function salvar() {
               v-model:search-term="buscaTermo"
               :items="sugestoesExames"
               :loading="carregandoExames"
-              value-key="nome"
+              label-key="nome"
               placeholder="Digite o nome do exame..."
               class="flex-1"
               clear
@@ -168,6 +221,14 @@ async function salvar() {
                 </span>
               </template>
             </UInputMenu>
+            <UButton
+              icon="i-lucide-plus"
+              label="Adicionar"
+              color="primary"
+              variant="soft"
+              :disabled="!buscaTermo.trim()"
+              @click="adicionarExameManual"
+            />
           </div>
 
           <div class="space-y-2">
@@ -176,7 +237,7 @@ async function salvar() {
               :key="i"
               class="flex items-center justify-between p-3 rounded-lg border border-muted"
             >
-              <span class="text-sm">{{ exame }}</span>
+              <span class="text-sm">{{ exame.nome }}</span>
               <UButton
                 icon="i-lucide-x"
                 color="error"

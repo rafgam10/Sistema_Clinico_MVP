@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from src.security.decorators import roles_required
 
 from src.settings.extensions import db
+from src.models.model_mydsystem.med_exames_model import Exame
 from src.models.model_padroes_solicitacoes.modelo_exame_model import ModeloExame
 from src.models.model_padroes_solicitacoes.exames_para_modelo_exame_model import (
     ExamesDoModelo,
@@ -52,6 +53,26 @@ def _get_exame_do_medico(id_exame, medico_id):
     )
 
 
+def _get_exame_catalogo(data):
+    valor = data.get("exame_id") if "exame_id" in data else data.get("exameId")
+    if valor is None or valor == "":
+        return None, None
+
+    try:
+        exame_id = int(valor)
+    except (TypeError, ValueError):
+        raise ValueError("exame_id inválido")
+
+    if exame_id <= 0:
+        raise ValueError("exame_id inválido")
+
+    exame = db.session.get(Exame, exame_id)
+    if not exame:
+        raise ValueError("exame_id não encontrado")
+
+    return exame_id, exame
+
+
 @padrao_medico_exame_bp.route("/criar", methods=["POST"])
 @jwt_required()
 @roles_required("medico")
@@ -70,6 +91,9 @@ def create_padrao_medico_exame():
 
         return jsonify(new_padrao._to_dict()), 201
 
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
@@ -89,17 +113,23 @@ def add_exame_padrao_medico_exame(id_padrao_medico_exame):
             return jsonify({"error": "Padrão de exames não encontrado"}), 404
 
         data = request.get_json() or {}
+        exame_id, exame_catalogo = _get_exame_catalogo(data)
         nome_exame = (data.get("nome_exame") or "").strip()
+        if not nome_exame and exame_catalogo:
+            nome_exame = exame_catalogo.nome
 
         if not nome_exame:
             return jsonify({"error": "Campo nome_exame é obrigatório"}), 400
 
-        new_exame = ExamesDoModelo(nome_exame, id_padrao_medico_exame)
+        new_exame = ExamesDoModelo(nome_exame, id_padrao_medico_exame, exame_id=exame_id)
         db.session.add(new_exame)
         db.session.commit()
 
         return jsonify(new_exame._to_dict()), 201
 
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
@@ -181,6 +211,14 @@ def editar_exame_padrao_medico_exame(id):
         data = request.get_json() or {}
         campos_atualizados = False
 
+        if "exame_id" in data or "exameId" in data:
+            exame_id, exame_catalogo = _get_exame_catalogo(data)
+            exame.exame_id = exame_id
+            campos_atualizados = True
+
+            if exame_catalogo and "nome_exame" not in data:
+                exame.nome_exame = exame_catalogo.nome
+
         if "nome_exame" in data:
             nome_exame = (data.get("nome_exame") or "").strip()
             if not nome_exame:
@@ -194,6 +232,9 @@ def editar_exame_padrao_medico_exame(id):
         db.session.commit()
         return jsonify(exame._to_dict()), 200
 
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500

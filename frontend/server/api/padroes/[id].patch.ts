@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
     if (body.nome) {
       await flaskFetch<any>(event, `/padrao_medico_exame/editar/${id}`, {
         method: 'PUT',
-        body: { nome_modelo: body.nome },
+        body: { nome_modelo: body.nome }
       })
     }
 
@@ -19,14 +19,17 @@ export default defineEventHandler(async (event) => {
 
       for (const e of (atual.exames || [])) {
         await flaskFetch(event, `/padrao_medico_exame/deletar_exame/${e.id}`, {
-          method: 'DELETE',
+          method: 'DELETE'
         })
       }
 
       for (const e of body.exames) {
+        const examePayload = normalizarExamePayload(e)
+        if (!examePayload) continue
+
         await flaskFetch(event, `/padrao_medico_exame/add_exame/${id}`, {
           method: 'POST',
-          body: { nome_exame: e },
+          body: { nome_exame: examePayload.nome, exame_id: examePayload.exame_id }
         })
       }
     }
@@ -37,16 +40,16 @@ export default defineEventHandler(async (event) => {
       medicoId: Number(final.medico_id) || 0,
       nome: final.nome_modelo,
       tipo: 'exame' as const,
-      exames: (final.exames || []).map((e: any) => e.nome_exame),
+      exames: (final.exames || []).map((e: any) => mapExameModelo(e)),
       createdAt: final.created_at,
-      updatedAt: final.updated_at,
+      updatedAt: final.updated_at
     }
   }
 
   if (body.nome) {
     await flaskFetch<any>(event, `/padrao_medico_receita/editar/${id}`, {
       method: 'PUT',
-      body: { nome_modelo: body.nome },
+      body: { nome_modelo: body.nome }
     })
   }
 
@@ -55,14 +58,14 @@ export default defineEventHandler(async (event) => {
 
     for (const m of (atual.medicamentos || [])) {
       await flaskFetch(event, `/padrao_medico_receita/deletar_medicamento/${m.id}`, {
-        method: 'DELETE',
+        method: 'DELETE'
       })
     }
 
     for (const m of body.medicamentos) {
       await flaskFetch(event, `/padrao_medico_receita/add_medicamento/${id}`, {
         method: 'POST',
-        body: { nome_medicamento: m.nome, dosagem: m.dosagem, detalhes: m.detalhes || '' },
+        body: { nome_medicamento: m.nome, dosagem: m.dosagem, detalhes: m.detalhes || '' }
       })
     }
   }
@@ -76,9 +79,9 @@ export default defineEventHandler(async (event) => {
     medicamentos: (final.medicamentos || []).map((m: any) => ({
       nome: m.nome_medicamento,
       dosagem: m.dosagem,
-      detalhes: m.detalhes || '',
+      detalhes: m.detalhes || ''
     })),
     createdAt: final.created_at,
-    updatedAt: final.updated_at,
+    updatedAt: final.updated_at
   }
 })

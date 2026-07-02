@@ -65,6 +65,7 @@ def atualizar_status(med_spdata_atendimento_id):
     except PermissionError as e:
         return jsonify({"error": str(e)}), 403
     except ValueError as e:
+        db.session.rollback()
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         db.session.rollback()

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PadraoReceita, PadraoExame, ItemMedicamento } from '~/types'
+import type { PadraoReceita, PadraoExame, ItemMedicamento, ExameCatalogo, ExameSelecionado } from '~/types'
 import { usePdfMake } from '~/utils/pdf'
 import { buildSolicitacaoExames, buildReceita } from '~/utils/pdf-documents'
 
@@ -30,7 +30,7 @@ const tabItems = [
 type CidResultado = { cid: string, nome: string }
 
 type AtendimentoDraft = {
-  version: 2
+  version: 3
   savedAt: string
   agendamentoId: number
   pacienteId: number | null
@@ -43,9 +43,15 @@ type AtendimentoDraft = {
   remedioNome: string
   remedioDosagem: string
   remedioDetalhes: string
-  examesSelecionados: string[]
-  exameSelecionado: string
+  examesSelecionados: ExameSelecionado[]
+  exameSelecionado: ExameCatalogo | null
   buscaTermoExame: string
+}
+
+type AtendimentoDraftSalvo = Partial<Omit<AtendimentoDraft, 'version'>> & {
+  version?: number
+  savedAt: string
+  cidSelecionado?: CidResultado | null
 }
 
 let buscaTimeout: ReturnType<typeof setTimeout> | null = null
@@ -138,21 +144,17 @@ function onSearchInput(val: string) {
 
 function removerCid(index: number) {
   cidSelecionadoLista.value.splice(index, 1)
-  if(cidPrincipalIndex.value >= cidSelecionadoLista.value.length) {
+  if (cidPrincipalIndex.value >= cidSelecionadoLista.value.length) {
     cidPrincipalIndex.value = Math.max(0, cidSelecionadoLista.value.length - 1)
   }
 }
 
-function adicionarCid(item: CidResultado){
+function adicionarCid(item: CidResultado) {
   const jaExiste = cidSelecionadoLista.value.some(c => c.cid === item.cid)
-  if(jaExiste) return
+  if (jaExiste) return
   cidSelecionadoLista.value.push(item)
   searchCid.value = ''
   resultadosCid.value = []
-}
-
-function definirCidPrincipal(index: number) {
-  cidPrincipalIndex.value = index
 }
 
 const anamneseTexto = ref('')
@@ -178,10 +180,10 @@ function adicionarPadraoReceita() {
   padraoReceitaSelected.value = undefined
 }
 
-const examesSelecionados = ref<string[]>([])
-const exameSelecionado = ref('')
+const examesSelecionados = ref<ExameSelecionado[]>([])
+const exameSelecionado = ref<ExameCatalogo | null>(null)
 const buscaTermoExame = ref('')
-const sugestoesExames = ref<{ nome: string, codigo_alfanumerico: string | null, codigo_amb: string | null }[]>([])
+const sugestoesExames = ref<ExameCatalogo[]>([])
 const carregandoExames = ref(false)
 const exameTemplateSelected = ref<{ label: string, value: PadraoExame }>()
 
@@ -190,7 +192,7 @@ let examesController: AbortController | null = null
 let examesRequestId = 0
 
 watch(exameSelecionado, (val) => {
-  if (val?.trim()) adicionarExame(val.trim())
+  if (val) adicionarExame(val)
 })
 
 watch(buscaTermoExame, (val) => {
@@ -216,9 +218,9 @@ async function buscarExames(q: string) {
 
   carregandoExames.value = true
   try {
-    const data = await $fetch<{ exames: { nome: string, codigo_alfanumerico: string | null, codigo_amb: string | null }[] }>('/api/exames/buscar', {
+    const data = await $fetch<{ exames: ExameCatalogo[] }>('/api/exames/buscar', {
       query: { q: termo },
-      signal: examesController.signal,
+      signal: examesController.signal
     })
 
     if (requestId !== examesRequestId) return
@@ -234,12 +236,65 @@ async function buscarExames(q: string) {
   }
 }
 
-function adicionarExame(texto: string) {
-  if (!texto?.trim()) return
-  if (examesSelecionados.value.includes(texto.trim())) return
-  examesSelecionados.value.push(texto.trim())
-  exameSelecionado.value = ''
+function normalizarIdExame(valor: unknown) {
+  if (valor === null || valor === undefined || valor === '') return null
+
+  const numero = Number(valor)
+  return Number.isInteger(numero) && numero > 0 ? numero : null
+}
+
+function normalizarExameSelecionado(valor: unknown): ExameSelecionado | null {
+  if (typeof valor === 'string') {
+    const nome = valor.trim()
+    return nome ? { nome, exameId: null } : null
+  }
+
+  if (!valor || typeof valor !== 'object') return null
+
+  const item = valor as Record<string, unknown>
+  const nome = typeof item.nome === 'string' ? item.nome.trim() : ''
+  const exameId = normalizarIdExame(item.exameId ?? item.exame_id ?? item.id)
+
+  if (!nome) return null
+
+  return { nome, exameId }
+}
+
+function exameExisteNaLista(lista: ExameSelecionado[], exame: ExameSelecionado) {
+  const nome = exame.nome.trim().toLocaleLowerCase('pt-BR')
+
+  return lista.some((atual) => {
+    if (atual.exameId && exame.exameId && atual.exameId === exame.exameId) return true
+    return atual.nome.trim().toLocaleLowerCase('pt-BR') === nome
+  })
+}
+
+function normalizarListaExames(valor: unknown) {
+  if (!Array.isArray(valor)) return []
+
+  const exames: ExameSelecionado[] = []
+  for (const item of valor) {
+    const exame = normalizarExameSelecionado(item)
+    if (!exame || exameExisteNaLista(exames, exame)) continue
+    exames.push(exame)
+  }
+
+  return exames
+}
+
+function adicionarExame(valor: unknown) {
+  const exame = normalizarExameSelecionado(valor)
+  if (!exame) return
+  if (exameExisteNaLista(examesSelecionados.value, exame)) return
+
+  examesSelecionados.value.push(exame)
+  exameSelecionado.value = null
   buscaTermoExame.value = ''
+  sugestoesExames.value = []
+}
+
+function adicionarExameManual() {
+  adicionarExame(buscaTermoExame.value)
 }
 
 function removerExameDaLista(i: number) {
@@ -249,7 +304,7 @@ function removerExameDaLista(i: number) {
 function adicionarPadraoExame() {
   if (!exameTemplateSelected.value) return
   for (const e of exameTemplateSelected.value.value.exames) {
-    examesSelecionados.value.push(e)
+    adicionarExame(e)
   }
   exameTemplateSelected.value = undefined
 }
@@ -286,7 +341,7 @@ function montarDraft(): AtendimentoDraft | null {
   if (!ag) return null
 
   return {
-    version: 2,
+    version: 3,
     savedAt: new Date().toISOString(),
     agendamentoId: ag.id,
     pacienteId: ag.paciente.id ?? null,
@@ -315,7 +370,7 @@ function draftTemConteudo(draft: AtendimentoDraft) {
     || draft.remedioDosagem.trim()
     || draft.remedioDetalhes.trim()
     || draft.examesSelecionados.length
-    || draft.exameSelecionado.trim()
+    || Boolean(draft.exameSelecionado)
     || draft.buscaTermoExame.trim()
   )
 }
@@ -353,7 +408,7 @@ function restaurarDraft() {
   if (!raw) return
 
   try {
-    const draft = JSON.parse(raw) as AtendimentoDraft
+    const draft = JSON.parse(raw) as AtendimentoDraftSalvo
     const savedAt = new Date(draft.savedAt).getTime()
 
     if (!savedAt || Date.now() - savedAt > DRAFT_TTL_MS) {
@@ -365,8 +420,8 @@ function restaurarDraft() {
 
     tabAtiva.value = draft.tabAtiva || '0'
     anamneseTexto.value = draft.anamneseTexto || ''
-    if ((draft as any).version === 1) {
-      const old = (draft as any).cidSelecionado
+    if (draft.version === 1) {
+      const old = draft.cidSelecionado
       cidSelecionadoLista.value = old ? [old] : []
       cidPrincipalIndex.value = 0
     } else {
@@ -378,8 +433,8 @@ function restaurarDraft() {
     remedioNome.value = draft.remedioNome || ''
     remedioDosagem.value = draft.remedioDosagem || ''
     remedioDetalhes.value = draft.remedioDetalhes || ''
-    examesSelecionados.value = Array.isArray(draft.examesSelecionados) ? draft.examesSelecionados : []
-    exameSelecionado.value = draft.exameSelecionado || ''
+    examesSelecionados.value = normalizarListaExames(draft.examesSelecionados)
+    exameSelecionado.value = null
     buscaTermoExame.value = draft.buscaTermoExame || ''
     draftSalvoEm.value = draft.savedAt
     draftRestaurado.value = true
@@ -478,6 +533,7 @@ async function gerarSolicitacaoExames() {
     paciente: agendamento.value?.paciente.nome ?? 'Paciente',
     data: new Date().toLocaleDateString('pt-BR'),
     exames: examesSelecionados.value
+      .map(e => e.nome)
   })
   pdfMake.createPdf(doc).download('solicitacao-exames.pdf')
 }
@@ -492,13 +548,16 @@ async function finalizarConsulta() {
   try {
     await agendamentosStore.atualizarStatus(agendamentoAtual.id, 'atendido', {
       anamnese: anamneseTexto.value,
-      diagnosticos: cidSelecionadoLista.value.map((cid, i ) => ({
+      diagnosticos: cidSelecionadoLista.value.map((cid, i) => ({
         cid: cid.cid,
         descricao: cid.nome,
         principal: i === 0
       })),
       medicamentos: receitaTexto.value,
-      exames: examesSelecionados.value.join('\n'),
+      exames: examesSelecionados.value.map(e => ({
+        nome: e.nome,
+        exame_id: e.exameId ?? null
+      })),
       duracao
     })
     limparDraft()
@@ -698,8 +757,13 @@ async function finalizarConsulta() {
           >
             <template #title>
               <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-stethoscope" class="text-primary" />
-                <p class="font-semibold">Diagnósticos (CID-10)</p>
+                <UIcon
+                  name="i-lucide-stethoscope"
+                  class="text-primary"
+                />
+                <p class="font-semibold">
+                  Diagnósticos (CID-10)
+                </p>
               </div>
             </template>
 
@@ -722,7 +786,10 @@ async function finalizarConsulta() {
                   <span class="truncate">{{ item.nome }}</span>
                 </template>
                 <template #empty>
-                  <p v-if="searchCid" class="px-3 py-4 text-sm text-muted text-center">
+                  <p
+                    v-if="searchCid"
+                    class="px-3 py-4 text-sm text-muted text-center"
+                  >
                     Nenhum CID encontrado
                   </p>
                 </template>
@@ -735,7 +802,10 @@ async function finalizarConsulta() {
               />
             </div>
 
-                        <div v-if="cidSelecionadoLista.length" class="mt-3 space-y-2">
+            <div
+              v-if="cidSelecionadoLista.length"
+              class="mt-3 space-y-2"
+            >
               <div
                 v-for="(cid, i) in cidSelecionadoLista"
                 :key="i"
@@ -743,9 +813,20 @@ async function finalizarConsulta() {
               >
                 <span class="text-sm">
                   {{ cid.cid }} — {{ cid.nome }}
-                  <UBadge v-if="i === 0" size="xs" color="primary" variant="soft">Principal</UBadge>
+                  <UBadge
+                    v-if="i === 0"
+                    size="xs"
+                    color="primary"
+                    variant="soft"
+                  >Principal</UBadge>
                 </span>
-                <UButton icon="i-lucide-x" size="xs" color="error" variant="ghost" @click="removerCid(i)" />
+                <UButton
+                  icon="i-lucide-x"
+                  size="xs"
+                  color="error"
+                  variant="ghost"
+                  @click="removerCid(i)"
+                />
               </div>
             </div>
             <p
@@ -778,7 +859,6 @@ async function finalizarConsulta() {
             </template>
 
             <div class="flex flex-col gap-4 grow p-4">
-              
               <div class="shrink-0 flex gap-2">
                 <UInputMenu
                   v-model="padraoReceitaSelected"
@@ -881,36 +961,35 @@ async function finalizarConsulta() {
               </div>
             </template>
 
-              <div class="flex flex-col gap-4 grow p-4">
+            <div class="flex flex-col gap-4 grow p-4">
+              <div class="shrink-0 flex gap-2">
+                <UInputMenu
+                  v-model="exameTemplateSelected"
+                  :items="padroesStore.exames.map(p => ({ label: p.nome, value: p }))"
+                  searchable
+                  placeholder="Selecionar padrão de exames..."
+                  class="flex-1 w-full"
+                />
+                <UButton
+                  icon="i-lucide-copy-plus"
+                  label="Adicionar Padrão"
+                  color="secondary"
+                  :disabled="!exameTemplateSelected"
+                  @click="adicionarPadraoExame"
+                />
+              </div>
 
-
-                <div class="shrink-0 flex gap-2">
-                  <UInputMenu
-                    v-model="exameTemplateSelected"
-                    :items="padroesStore.exames.map(p => ({ label: p.nome, value: p }))"
-                    searchable
-                    placeholder="Selecionar padrão de exames..."
-                    class="flex-1 w-full"
-                  />
-                  <UButton
-                    icon="i-lucide-copy-plus"
-                    label="Adicionar Padrão"
-                    color="secondary"
-                    :disabled="!exameTemplateSelected"
-                    @click="adicionarPadraoExame"
-                  />
-                </div>
-
-                                <UFormField
-                  label="Nome do exame"
-                  class="w-full"
-                >
+              <UFormField
+                label="Nome do exame"
+                class="w-full"
+              >
+                <div class="flex gap-2">
                   <UInputMenu
                     v-model="exameSelecionado"
                     v-model:search-term="buscaTermoExame"
                     :items="sugestoesExames"
                     :loading="carregandoExames"
-                    value-key="nome"
+                    label-key="nome"
                     placeholder="Buscar exame..."
                     class="flex-1 w-full"
                     clear
@@ -922,65 +1001,74 @@ async function finalizarConsulta() {
                       </span>
                     </template>
                   </UInputMenu>
-                </UFormField>
+                  <UButton
+                    icon="i-lucide-plus"
+                    label="Adicionar"
+                    color="primary"
+                    variant="soft"
+                    :disabled="!buscaTermoExame.trim()"
+                    @click="adicionarExameManual"
+                  />
+                </div>
+              </UFormField>
 
-                <p
-                  v-if="!padroesStore.exames.length"
-                  class="shrink-0 text-sm text-muted italic"
-                >
-                  Nenhum padrão de exames cadastrado. Crie padrões em "Padrões de Solicitações".
-                </p>
+              <p
+                v-if="!padroesStore.exames.length"
+                class="shrink-0 text-sm text-muted italic"
+              >
+                Nenhum padrão de exames cadastrado. Crie padrões em "Padrões de Solicitações".
+              </p>
 
-                <UCard
-                  class="grow flex flex-col min-h-0"
-                  :ui="{
-                    body: 'overflow-y-auto p-3 grow',
-                    header: 'shrink-0'
-                  }"
-                >
-                  <template #title>
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm font-medium">Exames selecionados</span>
-                      <span class="text-xs text-muted">{{ examesSelecionados.length }} exame(s)</span>
-                    </div>
-                  </template>
-
-                  <div
-                    v-if="examesSelecionados.length"
-                    class="space-y-2"
-                  >
-                    <div
-                      v-for="(exame, i) in examesSelecionados"
-                      :key="i"
-                      class="flex items-center justify-between p-3 rounded-lg border border-muted"
-                    >
-                      <span class="text-sm">{{ exame }}</span>
-                      <UButton
-                        icon="i-lucide-x"
-                        color="error"
-                        variant="ghost"
-                        size="sm"
-                        @click="removerExameDaLista(i)"
-                      />
-                    </div>
+              <UCard
+                class="grow flex flex-col min-h-0"
+                :ui="{
+                  body: 'overflow-y-auto p-3 grow',
+                  header: 'shrink-0'
+                }"
+              >
+                <template #title>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium">Exames selecionados</span>
+                    <span class="text-xs text-muted">{{ examesSelecionados.length }} exame(s)</span>
                   </div>
-                  <p
-                    v-else
-                    class="text-sm text-muted italic py-4 text-center"
-                  >
-                    Nenhum exame adicionado.
-                  </p>
-                </UCard>
+                </template>
 
-                <UButton
-                  icon="i-lucide-file-text"
-                  label="Gerar Solicitação (PDF)"
-                  color="primary"
-                  class="w-full shrink-0"
-                  :disabled="!examesSelecionados.length"
-                  @click="gerarSolicitacaoExames"
-                />
-              </div>
+                <div
+                  v-if="examesSelecionados.length"
+                  class="space-y-2"
+                >
+                  <div
+                    v-for="(exame, i) in examesSelecionados"
+                    :key="i"
+                    class="flex items-center justify-between p-3 rounded-lg border border-muted"
+                  >
+                    <span class="text-sm">{{ exame.nome }}</span>
+                    <UButton
+                      icon="i-lucide-x"
+                      color="error"
+                      variant="ghost"
+                      size="sm"
+                      @click="removerExameDaLista(i)"
+                    />
+                  </div>
+                </div>
+                <p
+                  v-else
+                  class="text-sm text-muted italic py-4 text-center"
+                >
+                  Nenhum exame adicionado.
+                </p>
+              </UCard>
+
+              <UButton
+                icon="i-lucide-file-text"
+                label="Gerar Solicitação (PDF)"
+                color="primary"
+                class="w-full shrink-0"
+                :disabled="!examesSelecionados.length"
+                @click="gerarSolicitacaoExames"
+              />
+            </div>
           </UCard>
         </div>
 

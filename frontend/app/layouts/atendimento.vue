@@ -36,7 +36,7 @@ function temConteudoUtil(descricao: string): boolean {
 }
 
 const historicoItemsVisiveis = computed(() => {
-  return historicoItems.value.filter(item => {
+  return historicoItems.value.filter((item) => {
     if (!item.title) return false
     return Object.values(item.content).some(c => temConteudoUtil(c.description))
   })
@@ -96,7 +96,7 @@ async function fetchHistorico() {
           Anamnese: { icon: 'i-lucide-file-text', description: localItem?.anamnese || r.OBS_ATENDIMENTO || '' },
           diagnostico: { icon: 'i-lucide-clipboard-check', description: localItem ? montarDiagnosticos(localItem) : [r.CID_PRINCIPAL, r.DIAGNOSTICO_PRINCIPAL].filter(Boolean).join(' — ') },
           receita: { icon: 'i-lucide-pill', description: localItem?.medicamentos?.join('\n') || '' },
-          exames: { icon: 'i-lucide-flask-conical', description: localItem?.exames?.join('\n') || '' },
+          exames: { icon: 'i-lucide-flask-conical', description: montarExames(localItem?.exames) }
         }
       })
     }
@@ -116,7 +116,7 @@ async function fetchHistorico() {
           Anamnese: { icon: 'i-lucide-file-text', description: l.anamnese || '' },
           diagnostico: { icon: 'i-lucide-clipboard-check', description: montarDiagnosticos(l) },
           receita: { icon: 'i-lucide-pill', description: l.medicamentos?.join('\n') || '' },
-          exames: { icon: 'i-lucide-flask-conical', description: l.exames?.join('\n') || '' },
+          exames: { icon: 'i-lucide-flask-conical', description: montarExames(l.exames) }
         }
       })
     }
@@ -143,6 +143,18 @@ function montarDiagnosticos(item: HistoricoLocalRecord): string {
     partes.push(`${s.codigo} — ${s.descricao || ''}`)
   }
   return partes.join('\n')
+}
+
+function montarExames(exames?: HistoricoLocalRecord['exames']): string {
+  if (!exames?.length) return ''
+
+  return exames
+    .map((exame) => {
+      if (typeof exame === 'string') return exame
+      return exame.nome || exame.descricao || exame.tipo_exame || ''
+    })
+    .filter(Boolean)
+    .join('\n')
 }
 
 function calcularIdade(dataNascimento: string) {
@@ -286,34 +298,34 @@ function voltarDashboard() {
                       body: 'p-2 sm:p-2'
                     }"
                   >
-                  <template #title>
-                    <div class="flex items-center gap-2">
-                      <UIcon
-                        :name="contentitem.icon"
-                        class="text-white"
+                    <template #title>
+                      <div class="flex items-center gap-2">
+                        <UIcon
+                          :name="contentitem.icon"
+                          class="text-white"
+                        />
+                        <p class="font-semibold text-sm text-white capitalize">
+                          {{ key }}
+                        </p>
+                      </div>
+                    </template>
+                    <div class="relative">
+                      <!-- eslint-disable-next-line vue/no-v-html -->
+                      <div
+                        class="text-sm cursor-pointer"
+                        :class="expandedContent[item.title + '-' + key] ? '' : 'line-clamp-3'"
+                        @click="toggleContent(item.title + '-' + key)"
+                        v-html="sanitizeHtml(contentitem.description)"
                       />
-                      <p class="font-semibold text-sm text-white capitalize">
-                        {{ key }}
-                      </p>
+                      <UIcon
+                        v-if="contentitem.description.length > 100"
+                        :name="expandedContent[item.title + '-' + key] ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                        class="absolute bottom-0 right-0 dark:bg-neutral-900 px-1 cursor-pointer text-muted"
+                        @click.stop="toggleContent(item.title + '-' + key)"
+                      />
                     </div>
-                  </template>
-                  <div class="relative">
-                    <!-- eslint-disable-next-line vue/no-v-html -->
-                    <div
-                      class="text-sm cursor-pointer"
-                      :class="expandedContent[item.title + '-' + key] ? '' : 'line-clamp-3'"
-                      @click="toggleContent(item.title + '-' + key)"
-                      v-html="sanitizeHtml(contentitem.description)"
-                    />
-                    <UIcon
-                      v-if="contentitem.description.length > 100"
-                      :name="expandedContent[item.title + '-' + key] ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                      class="absolute bottom-0 right-0 dark:bg-neutral-900 px-1 cursor-pointer text-muted"
-                      @click.stop="toggleContent(item.title + '-' + key)"
-                    />
-                  </div>
-                </UCard>
-              </template>
+                  </UCard>
+                </template>
               </div>
             </template>
           </UTimeline>

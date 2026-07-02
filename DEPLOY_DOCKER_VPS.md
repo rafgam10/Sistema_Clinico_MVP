@@ -22,6 +22,8 @@ O Firebird/SPDATA fica fora do Docker e deve estar acessivel pela VPS via rede.
 - `frontend/Dockerfile`: imagem do Nuxt em producao.
 - `frontend/.dockerignore`: evita copiar `node_modules`, builds locais e `.env`.
 
+Observacao: o container `backend` executa `flask db upgrade` automaticamente antes de iniciar o Gunicorn. Assim, novas migrations sao aplicadas no start do backend durante o deploy.
+
 ## Antes de publicar
 
 1. Remova credenciais reais do repositorio.
@@ -125,6 +127,8 @@ Na raiz do projeto, execute:
 docker compose up -d --build
 ```
 
+Durante esse processo, o backend aplica as migrations do Flask automaticamente antes de iniciar a API.
+
 Confira se os containers subiram:
 
 ```bash
@@ -133,11 +137,7 @@ docker compose ps
 
 Os servicos `mysql`, `redis`, `backend` e `frontend` devem aparecer como `healthy` apos alguns segundos.
 
-Rode as migrations do Flask no MySQL:
-
-```bash
-docker compose exec backend flask db upgrade
-```
+Se o backend nao ficar `healthy`, verifique os logs. Uma falha de migration impede o Gunicorn de iniciar.
 
 Veja os logs se precisar diagnosticar:
 
@@ -174,9 +174,10 @@ Quando houver novas alteracoes no repositorio:
 cd /opt/sistema-clinico-mvp
 git pull
 docker compose up -d --build
-docker compose exec backend flask db upgrade
 docker image prune -f
 ```
+
+As migrations tambem sao executadas automaticamente nesse fluxo, porque o container `backend` roda `flask db upgrade` a cada start.
 
 ## Parar e reiniciar
 
@@ -227,6 +228,18 @@ Ver logs do backend:
 docker compose logs --tail=200 backend
 ```
 
+Verificar a revisao atual das migrations, se o backend estiver rodando:
+
+```bash
+docker compose exec backend flask db current
+```
+
+Rodar migrations manualmente, apenas para diagnostico ou recuperacao:
+
+```bash
+docker compose run --rm backend flask db upgrade
+```
+
 Entrar no container do backend:
 
 ```bash
@@ -245,6 +258,8 @@ Testar MySQL internamente:
 docker compose exec mysql sh -c 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"'
 ```
 
+Se o build do frontend falhar por falta de memoria, confirme que o `frontend/Dockerfile` contem `NODE_OPTIONS=--max-old-space-size=4096`. Em VPS muito pequenas, aumente a memoria/swap antes de executar `docker compose up -d --build`.
+
 ## Observacoes sobre dominio e HTTPS
 
 Este Compose expoe o frontend em HTTP na porta `80`.
@@ -259,5 +274,5 @@ Para dominio com HTTPS, o ideal e adicionar um proxy reverso como Caddy ou Nginx
 - Firebird/SPDATA acessivel a partir da VPS.
 - Porta `80` liberada.
 - `docker compose up -d --build` executado com sucesso.
-- `docker compose exec backend flask db upgrade` executado com sucesso.
+- Backend ficou `healthy`, indicando que as migrations automaticas passaram e a API iniciou.
 - Aplicacao acessivel pelo navegador.

@@ -8,6 +8,7 @@ from src.models.atendimentos_model import Atendimento
 from src.models.diagnostico_model import Diagnostico
 from src.models.evolucoes_medicas_model import EvolucaoMedica
 from src.models.medico_model import Medico
+from src.models.model_mydsystem.med_exames_model import Exame
 from src.models.model_mydsystem.med_atendimentos_model import (
     MedAtendimentos,
     StatusAtendimentoMedSystem,
@@ -431,6 +432,110 @@ def linhas_texto(valor):
     return linhas
 
 
+def normalizar_exame_id(valor):
+    if valor is None or valor == "":
+        return None
+
+    try:
+        exame_id = int(valor)
+    except (TypeError, ValueError):
+        raise ValueError("exame_id inválido")
+
+    if exame_id <= 0:
+        raise ValueError("exame_id inválido")
+
+    return exame_id
+
+
+def normalizar_exames_consulta(valor):
+    if valor is None or valor == "":
+        return []
+
+    itens = [valor] if isinstance(valor, dict) else valor
+    if isinstance(valor, str):
+        itens = linhas_texto(valor)
+    elif not isinstance(itens, (list, tuple)):
+        itens = [itens]
+
+    exames = []
+    exame_ids = set()
+
+    for item in itens:
+        if isinstance(item, dict):
+            if "exame_id" in item:
+                exame_id_raw = item.get("exame_id")
+            elif "exameId" in item:
+                exame_id_raw = item.get("exameId")
+            else:
+                exame_id_raw = item.get("id")
+
+            exame_id = normalizar_exame_id(exame_id_raw)
+            nome = normalizar_texto(
+                item.get("nome")
+                or item.get("nome_exame")
+                or item.get("tipo_exame")
+                or item.get("descricao")
+                or item.get("label"),
+                255,
+            )
+            descricao = normalizar_texto(
+                item.get("descricao")
+                or item.get("nome")
+                or item.get("nome_exame")
+                or item.get("tipo_exame")
+                or item.get("label")
+            )
+            justificativa = normalizar_texto(item.get("justificativa"))
+        else:
+            exame_id = None
+            nome = normalizar_texto(item, 255)
+            descricao = normalizar_texto(item)
+            justificativa = None
+
+        if not nome and not exame_id:
+            continue
+
+        if exame_id:
+            exame_ids.add(exame_id)
+
+        exames.append({
+            "nome": nome,
+            "exame_id": exame_id,
+            "descricao": descricao,
+            "justificativa": justificativa,
+        })
+
+    exames_por_id = {}
+    if exame_ids:
+        exames_por_id = {
+            exame.id: exame
+            for exame in db.session.execute(
+                select(Exame).where(Exame.id.in_(exame_ids))
+            ).scalars()
+        }
+        ids_inexistentes = sorted(exame_ids - set(exames_por_id.keys()))
+        if ids_inexistentes:
+            raise ValueError(
+                f"exame_id inválido: {', '.join(str(i) for i in ids_inexistentes)}"
+            )
+
+    normalizados = []
+    for item in exames:
+        exame = exames_por_id.get(item["exame_id"])
+        nome = item["nome"] or (exame.nome if exame else None)
+        if not nome:
+            continue
+
+        normalizados.append({
+            "nome": normalizar_texto(nome, 255) or nome[:255],
+            "exame_id": item["exame_id"],
+            "descricao": item["descricao"] or nome,
+            "justificativa": item["justificativa"],
+        })
+
+    return normalizados
+
+
 def normalizar_diagnosticos_consulta(consulta):
     if "diagnosticos" in consulta:
         valor = consulta.get("diagnosticos")
@@ -508,6 +613,10 @@ def normalizar_diagnosticos_consulta(consulta):
 def salvar_conteudo_clinico(spdata, atendimento_medsystem, usuario_id, consulta):
     if not consulta:
         return
+
+    exames_consulta = None
+    if "exames" in consulta:
+        exames_consulta = normalizar_exames_consulta(consulta.get("exames"))
 
     atendimento = db.session.execute(
         select(Atendimento).where(
@@ -598,12 +707,14 @@ def salvar_conteudo_clinico(spdata, atendimento_medsystem, usuario_id, consulta)
         for solicitacao in list(atendimento.solicitacoes_exames):
             db.session.delete(solicitacao)
 
-        for linha in linhas_texto(consulta.get("exames")):
+        for exame in exames_consulta:
             db.session.add(
                 SolicitacaoExame(
                     atendimento_id=atendimento.id,
-                    tipo_exame=normalizar_texto(linha, 255) or linha[:255],
-                    descricao=linha,
+                    tipo_exame=exame["nome"],
+                    exame_id=exame["exame_id"],
+                    descricao=exame["descricao"],
+                    justificativa=exame["justificativa"],
                 )
             )
 

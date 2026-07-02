@@ -49,13 +49,19 @@ interface ServerChamado {
   medicoResponsavel: string
 }
 
+interface ServerExameSelecionado {
+  nome: string
+  exameId?: number | null
+  exame_id?: number | null
+}
+
 interface ServerPadrao {
   id: string
   medicoId: number
   nome: string
   tipo: 'receita' | 'exame'
   medicamentos?: { nome: string, dosagem: string, detalhes: string }[]
-  exames?: string[]
+  exames?: ServerExameSelecionado[]
   html?: string
   createdAt: string
   updatedAt: string
@@ -446,7 +452,7 @@ export function criarAgendamento(data: Omit<ServerAgendamento, 'id' | 'criadoEm'
   return agendamento
 }
 
-export function atualizarStatusAgendamento(id: number, status: ServerAgendamento['status'], consulta?: { anamnese?: string, diagnostico?: string, medicamentos?: string, exames?: string, duracao?: number }) {
+export function atualizarStatusAgendamento(id: number, status: ServerAgendamento['status'], consulta?: { anamnese?: string, diagnostico?: string, medicamentos?: string, exames?: ServerExameSelecionado[], duracao?: number }) {
   const a = agendamentos.find(a => a.id === id)
   if (!a) return null
   a.status = status
@@ -459,7 +465,7 @@ export function atualizarStatusAgendamento(id: number, status: ServerAgendamento
       descricao: consulta?.anamnese || a.descricao,
       diagnostico: consulta?.diagnostico,
       medicamentos: consulta?.medicamentos,
-      exames: consulta?.exames
+      exames: consulta?.exames?.map(e => e.nome).join('\n')
     }
     adicionarHistoricoPaciente(a.pacienteId, entry)
   }

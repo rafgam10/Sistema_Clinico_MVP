@@ -8,16 +8,19 @@ export default defineEventHandler(async (event) => {
   if (body.tipo === 'exame') {
     const template = await flaskFetch<any>(event, '/padrao_medico_exame/criar', {
       method: 'POST',
-      body: { nome_modelo: body.nome },
+      body: { nome_modelo: body.nome }
     })
 
-    const examesCriados: string[] = []
+    const examesCriados: { nome: string, exameId: number | null }[] = []
     for (const e of (body.exames || [])) {
+      const examePayload = normalizarExamePayload(e)
+      if (!examePayload) continue
+
       const exame = await flaskFetch<any>(event, `/padrao_medico_exame/add_exame/${template.id}`, {
         method: 'POST',
-        body: { nome_exame: e },
+        body: { nome_exame: examePayload.nome, exame_id: examePayload.exame_id }
       })
-      examesCriados.push(exame.nome_exame)
+      examesCriados.push(mapExameModelo(exame))
     }
 
     return {
@@ -27,20 +30,20 @@ export default defineEventHandler(async (event) => {
       tipo: 'exame' as const,
       exames: examesCriados,
       createdAt: template.created_at,
-      updatedAt: template.updated_at,
+      updatedAt: template.updated_at
     }
   }
 
   const template = await flaskFetch<any>(event, '/padrao_medico_receita/criar', {
     method: 'POST',
-    body: { nome_modelo: body.nome },
+    body: { nome_modelo: body.nome }
   })
 
   const medicamentosCriados: any[] = []
   for (const m of (body.medicamentos || [])) {
     const med = await flaskFetch<any>(event, `/padrao_medico_receita/add_medicamento/${template.id}`, {
       method: 'POST',
-      body: { nome_medicamento: m.nome, dosagem: m.dosagem, detalhes: m.detalhes || '' },
+      body: { nome_medicamento: m.nome, dosagem: m.dosagem, detalhes: m.detalhes || '' }
     })
     medicamentosCriados.push(med)
   }
@@ -53,9 +56,9 @@ export default defineEventHandler(async (event) => {
     medicamentos: medicamentosCriados.map(m => ({
       nome: m.nome_medicamento,
       dosagem: m.dosagem,
-      detalhes: m.detalhes || '',
+      detalhes: m.detalhes || ''
     })),
     createdAt: template.created_at,
-    updatedAt: template.updated_at,
+    updatedAt: template.updated_at
   }
 })

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const q = query.q as string | undefined
@@ -13,7 +12,7 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 502,
       statusMessage: 'Falha ao buscar exames',
-      data: String(e),
+      data: String(e)
     })
   }
 })

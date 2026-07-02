@@ -30,6 +30,13 @@ class SolicitacaoExame(db.Model):
         nullable=False
     )
 
+    exame_id = db.Column(
+        db.Integer,
+        db.ForeignKey("exames.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+
     descricao = db.Column(
         db.Text,
         nullable=True
@@ -54,6 +61,11 @@ class SolicitacaoExame(db.Model):
 
     atendimento = db.relationship(
         "Atendimento",
+        back_populates="solicitacoes_exames"
+    )
+
+    exame = db.relationship(
+        "Exame",
         back_populates="solicitacoes_exames"
     )
 

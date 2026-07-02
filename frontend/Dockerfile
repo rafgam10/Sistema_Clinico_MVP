@@ -2,7 +2,8 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
-ENV NUXT_TELEMETRY_DISABLED=1
+ENV NUXT_TELEMETRY_DISABLED=1 \
+    NODE_OPTIONS=--max-old-space-size=4096
 
 RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
 

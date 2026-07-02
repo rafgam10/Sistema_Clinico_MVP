@@ -83,6 +83,32 @@ export interface AuthUser {
   clinicaIds: number[]
 }
 
+export interface ExameCatalogo {
+  id: number
+  nome: string
+  codigo_alfanumerico: string | null
+  codigo_amb: string | null
+}
+
+export interface ExameSelecionado {
+  nome: string
+  exameId: number | null
+}
+
+export interface ExameConsultaPayload {
+  nome: string
+  exame_id: number | null
+}
+
+export interface HistoricoExame {
+  nome: string
+  exame_id: number | null
+  descricao: string | null
+  tipo_exame: string | null
+  codigo_alfanumerico: string | null
+  codigo_amb: string | null
+}
+
 export interface Chamado {
   id: number
   pacienteId: number
@@ -115,7 +141,7 @@ export interface HistoricoLocalRecord {
   cid_principal_descricao: string | null
   cids_secundarios: { codigo: string, descricao: string | null }[]
   medicamentos: string[]
-  exames: string[]
+  exames: (HistoricoExame | string)[]
 }
 
 export interface Atendimento {
@@ -147,7 +173,7 @@ export interface PadraoExame {
   medicoId: number
   nome: string
   tipo: 'exame'
-  exames: string[]
+  exames: ExameSelecionado[]
   createdAt: string
   updatedAt: string
 }

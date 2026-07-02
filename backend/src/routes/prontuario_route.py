@@ -22,6 +22,20 @@ prontuario_bp = Blueprint("prontuario", __name__, url_prefix="/prontuario")
 CID_CACHE_TTL = 3600
 CID_CODE_PATTERN = re.compile(r"^[A-Za-z][0-9.]*$")
 
+
+def _solicitacao_exame_to_dict(solicitacao):
+    exame = solicitacao.exame
+    nome = exame.nome if exame else (solicitacao.descricao or solicitacao.tipo_exame)
+
+    return {
+        "nome": nome,
+        "exame_id": solicitacao.exame_id,
+        "descricao": solicitacao.descricao,
+        "tipo_exame": solicitacao.tipo_exame,
+        "codigo_alfanumerico": exame.codigo_alfanumerico if exame else None,
+        "codigo_amb": exame.codigo_amb if exame else None,
+    }
+
 @prontuario_bp.route("/doenca-cid", methods=["GET"])
 @jwt_required()
 @roles_required("medico")
@@ -155,7 +169,10 @@ def historico_paciente_local(paciente_id):
                     f"{p.medicamento} — {p.dosagem}" if p.dosagem else p.medicamento
                     for p in a.prescricoes
                 ],
-                "exames": [s.tipo_exame for s in a.solicitacoes_exames],
+                "exames": [
+                    _solicitacao_exame_to_dict(s)
+                    for s in a.solicitacoes_exames
+                ],
             })
 
         return jsonify(result), 200

@@ -13,9 +13,9 @@ export default defineEventHandler(async (event) => {
       medicoId: Number(raw.medico_id) || 0,
       nome: raw.nome_modelo,
       tipo: 'exame' as const,
-      exames: (raw.exames || []).map((e: any) => e.nome_exame),
+      exames: (raw.exames || []).map((e: any) => mapExameModelo(e)),
       createdAt: raw.created_at,
-      updatedAt: raw.updated_at,
+      updatedAt: raw.updated_at
     }
   }
 
@@ -29,9 +29,9 @@ export default defineEventHandler(async (event) => {
     medicamentos: (raw.medicamentos || []).map((m: any) => ({
       nome: m.nome_medicamento,
       dosagem: m.dosagem,
-      detalhes: m.detalhes || '',
+      detalhes: m.detalhes || ''
     })),
     createdAt: raw.created_at,
-    updatedAt: raw.updated_at,
+    updatedAt: raw.updated_at
   }
 })
