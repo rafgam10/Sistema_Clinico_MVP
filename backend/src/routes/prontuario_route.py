@@ -2,12 +2,19 @@ import json
 import re
 
 from flask import Blueprint, request, jsonify
-
 from flask_jwt_extended import jwt_required
-from src.security.decorators import roles_required
+from sqlalchemy import select
 
+from src.security.decorators import roles_required
 from src.models.db.handler_fb_db import ConnectionDBFireBird
 from src.models.db.handler_redis_db import ConnectionDBRedis
+from src.settings.extensions import db
+from src.models.atendimentos_model import Atendimento
+from src.models.anamnese_model import Anamnese
+from src.models.diagnostico_model import Diagnostico
+from src.models.prescricao_model import Prescricao
+from src.models.solicitacao_exame_model import SolicitacaoExame
+from src.models.evolucoes_medicas_model import EvolucaoMedica
 
 prontuario_bp = Blueprint("prontuario", __name__, url_prefix="/prontuario")
 
@@ -100,6 +107,49 @@ def doenca_cid():
         )
 
         return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@prontuario_bp.route("/historico-local/<int:paciente_id>")
+@jwt_required()
+@roles_required("medico")
+def historico_paciente_local(paciente_id):
+    # Busca no banco LOCAL os atendimentos finalizados deste paciente,
+    # incluindo dados completos de anamnese, CIDs, medicamentos e exames.
+    try:
+        atendimentos = db.session.execute(
+            select(Atendimento).where(
+                Atendimento.spdata_paciente_id == paciente_id,
+                Atendimento.status == "finalizado"
+            ).order_by(Atendimento.data_atendimento.desc())
+        ).scalars().all()
+
+        result = []
+        for a in atendimentos:
+            # Separa CID principal dos secundários
+            diag_principal = next((d for d in a.diagnosticos if d.principal), None)
+            diag_secundarios = [d for d in a.diagnosticos if not d.principal]
+
+            result.append({
+                "spdata_atendimento_id": a.spdata_atendimento_id,
+                "data_consulta": a.data_atendimento.isoformat() if a.data_atendimento else None,
+                "anamnese": a.anamnese.observacoes if a.anamnese else None,
+                "cid_principal": diag_principal.cid_codigo if diag_principal else None,
+                "cid_principal_descricao": diag_principal.cid_descricao if diag_principal else None,
+                "cids_secundarios": [
+                    {"codigo": d.cid_codigo, "descricao": d.cid_descricao}
+                    for d in diag_secundarios
+                ],
+                "medicamentos": [
+                    f"{p.medicamento} — {p.dosagem}" if p.dosagem else p.medicamento
+                    for p in a.prescricoes
+                ],
+                "exames": [s.tipo_exame for s in a.solicitacoes_exames],
+            })
+
+        return jsonify(result), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

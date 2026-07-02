@@ -106,6 +106,17 @@ export interface HistoricoRecord {
   PACIENTE: string
 }
 
+export interface HistoricoLocalRecord {
+  spdata_atendimento_id: number | null
+  data_consulta: string | null
+  anamnese: string | null
+  cid_principal: string | null
+  cid_principal_descricao: string | null
+  cids_secundarios: { codigo: string, descricao: string | null }[]
+  medicamentos: string[]
+  exames: string[]
+}
+
 export interface Atendimento {
   id: number
   pacienteId: number

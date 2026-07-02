@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/no-v-html -->
 <script setup lang="ts">
-import type { HistoricoRecord } from '~/types'
+import type { HistoricoRecord, HistoricoLocalRecord } from '~/types'
 import { formatarDataHistorico } from '~/utils/time'
 
 const { sanitizeHtml } = useSanitize()
@@ -34,32 +34,112 @@ const cardHeaderColors: Record<string, string> = {
 }
 
 async function fetchHistorico() {
+  // Busca histórico de dois lugares:
+  //   1. Firebird legado (historico-paciente) — dados de consultas antigas
+  //   2. Banco local (historico-local) — dados salvos pelo médico no MedSystem
+  // Faz o merge usando spdata_atendimento_id como chave, priorizando o local
+  // quando há correspondência.
   const pacienteId = agendamento.value?.paciente?.id
-  console.log('>>> fetchHistorico pacienteId:', pacienteId)
-  console.log('>>> agendamento:', agendamento.value)
   if (!pacienteId) return
 
   isLoadingHistorico.value = true
   try {
-    const data = await $fetch<HistoricoRecord[]>(`/api/historico-paciente/${pacienteId}`)
-    console.log('>>> historico data:', data)
-    historicoItems.value = data.map(r => ({
-      title: formatarDataHistorico(r.DATA_CONSULTA),
-      icon: 'i-lucide-calendar',
-      subtitle: r.MEDICO || undefined,
-      content: {
-        Anamnese: { icon: 'i-lucide-file-text', description: r.OBS_ATENDIMENTO || r.DIAGNOSTICO_PRINCIPAL || '' },
-        diagnostico: { icon: 'i-lucide-clipboard-check', description: `${r.CID_PRINCIPAL} — ${r.DIAGNOSTICO_PRINCIPAL}` },
-        receita: { icon: 'i-lucide-pill', description: '' },
-        exames: { icon: 'i-lucide-flask-conical', description: '' }
+    const [legado, local] = await Promise.all([
+      $fetch<HistoricoRecord[]>(`/api/historico-paciente/${pacienteId}`),
+      $fetch<HistoricoLocalRecord[]>(`/api/historico-local/${pacienteId}`)
+    ])
+
+    // Indexa registros locais por spdata_atendimento_id para merge
+    const mapaLocal = new Map(
+      local.filter(l => l.spdata_atendimento_id != null)
+        .map(l => [String(l.spdata_atendimento_id), l])
+    )
+
+    const visitados = new Set<string>()
+
+    // Mapeia registros do legado, substituindo/complementando com dados locais
+    historicoItems.value = legado.map(r => {
+      const localItem = r.ID_ATENDIMENTO ? mapaLocal.get(r.ID_ATENDIMENTO) : undefined
+      if (r.ID_ATENDIMENTO) visitados.add(r.ID_ATENDIMENTO)
+
+      return {
+        title: formatarDataHistorico(r.DATA_CONSULTA),
+        icon: 'i-lucide-calendar',
+        subtitle: r.MEDICO || undefined,
+        content: {
+          Anamnese: {
+            icon: 'i-lucide-file-text',
+            description: localItem?.anamnese || r.OBS_ATENDIMENTO || ''
+          },
+          diagnostico: {
+            icon: 'i-lucide-clipboard-check',
+            description: localItem
+              ? montarDiagnosticos(localItem)
+              : `${r.CID_PRINCIPAL} — ${r.DIAGNOSTICO_PRINCIPAL}`
+          },
+          receita: {
+            icon: 'i-lucide-pill',
+            description: localItem?.medicamentos?.join('\n') || ''
+          },
+          exames: {
+            icon: 'i-lucide-flask-conical',
+            description: localItem?.exames?.join('\n') || ''
+          }
+        }
       }
-    }))
+    })
+
+    // Adiciona registros que existem apenas no banco local
+    for (const l of local) {
+      const key = String(l.spdata_atendimento_id)
+      if (!key || key === 'null' || visitados.has(key)) continue
+      visitados.add(key)
+
+      historicoItems.value.push({
+        title: formatarDataHistorico(l.data_consulta || ''),
+        icon: 'i-lucide-calendar',
+        subtitle: undefined,
+        content: {
+          Anamnese: {
+            icon: 'i-lucide-file-text',
+            description: l.anamnese || ''
+          },
+          diagnostico: {
+            icon: 'i-lucide-clipboard-check',
+            description: montarDiagnosticos(l)
+          },
+          receita: {
+            icon: 'i-lucide-pill',
+            description: l.medicamentos?.join('\n') || ''
+          },
+          exames: {
+            icon: 'i-lucide-flask-conical',
+            description: l.exames?.join('\n') || ''
+          }
+        }
+      })
+    }
+
+    // Ordena por data (mais recente primeiro)
+    historicoItems.value.sort((a, b) => b.title.localeCompare(a.title))
   } catch (err) {
-    console.error('>>> fetchHistorico error:', err)
+    console.error('Erro ao buscar histórico:', err)
     historicoItems.value = []
   } finally {
     isLoadingHistorico.value = false
   }
+}
+
+function montarDiagnosticos(item: HistoricoLocalRecord): string {
+  // Formata CID principal + secundários para exibição no card de diagnóstico
+  const partes: string[] = []
+  if (item.cid_principal) {
+    partes.push(`${item.cid_principal} — ${item.cid_principal_descricao || ''} (principal)`)
+  }
+  for (const s of item.cids_secundarios) {
+    partes.push(`${s.codigo} — ${s.descricao || ''}`)
+  }
+  return partes.join('\n')
 }
 
 function calcularIdade(dataNascimento: string) {
