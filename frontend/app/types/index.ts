@@ -109,6 +109,7 @@ export interface HistoricoRecord {
 export interface HistoricoLocalRecord {
   spdata_atendimento_id: number | null
   data_consulta: string | null
+  medico_nome: string | null
   anamnese: string | null
   cid_principal: string | null
   cid_principal_descricao: string | null

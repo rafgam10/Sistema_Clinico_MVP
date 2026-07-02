@@ -57,37 +57,33 @@ async function fetchHistorico() {
 
     const visitados = new Set<string>()
 
+    // Constrói itens em array local com _sortKey (raw ISO) para ordenação correta
+    const items: ({
+      title: string
+      subtitle?: string
+      icon: string
+      content: Record<string, { icon: string, description: string }>
+      _sortKey: string
+    })[] = []
+
     // Mapeia registros do legado, substituindo/complementando com dados locais
-    historicoItems.value = legado.map(r => {
+    for (const r of legado) {
       const localItem = r.ID_ATENDIMENTO ? mapaLocal.get(r.ID_ATENDIMENTO) : undefined
       if (r.ID_ATENDIMENTO) visitados.add(r.ID_ATENDIMENTO)
 
-      return {
+      items.push({
         title: formatarDataHistorico(r.DATA_CONSULTA),
         icon: 'i-lucide-calendar',
         subtitle: r.MEDICO || undefined,
+        _sortKey: r.DATA_CONSULTA,
         content: {
-          Anamnese: {
-            icon: 'i-lucide-file-text',
-            description: localItem?.anamnese || r.OBS_ATENDIMENTO || ''
-          },
-          diagnostico: {
-            icon: 'i-lucide-clipboard-check',
-            description: localItem
-              ? montarDiagnosticos(localItem)
-              : `${r.CID_PRINCIPAL} — ${r.DIAGNOSTICO_PRINCIPAL}`
-          },
-          receita: {
-            icon: 'i-lucide-pill',
-            description: localItem?.medicamentos?.join('\n') || ''
-          },
-          exames: {
-            icon: 'i-lucide-flask-conical',
-            description: localItem?.exames?.join('\n') || ''
-          }
+          Anamnese: { icon: 'i-lucide-file-text', description: localItem?.anamnese || r.OBS_ATENDIMENTO || '' },
+          diagnostico: { icon: 'i-lucide-clipboard-check', description: localItem ? montarDiagnosticos(localItem) : `${r.CID_PRINCIPAL} — ${r.DIAGNOSTICO_PRINCIPAL}` },
+          receita: { icon: 'i-lucide-pill', description: localItem?.medicamentos?.join('\n') || '' },
+          exames: { icon: 'i-lucide-flask-conical', description: localItem?.exames?.join('\n') || '' },
         }
-      }
-    })
+      })
+    }
 
     // Adiciona registros que existem apenas no banco local
     for (const l of local) {
@@ -95,33 +91,24 @@ async function fetchHistorico() {
       if (!key || key === 'null' || visitados.has(key)) continue
       visitados.add(key)
 
-      historicoItems.value.push({
+      items.push({
         title: formatarDataHistorico(l.data_consulta || ''),
         icon: 'i-lucide-calendar',
-        subtitle: undefined,
+        subtitle: l.medico_nome || undefined,
+        _sortKey: l.data_consulta || '',
         content: {
-          Anamnese: {
-            icon: 'i-lucide-file-text',
-            description: l.anamnese || ''
-          },
-          diagnostico: {
-            icon: 'i-lucide-clipboard-check',
-            description: montarDiagnosticos(l)
-          },
-          receita: {
-            icon: 'i-lucide-pill',
-            description: l.medicamentos?.join('\n') || ''
-          },
-          exames: {
-            icon: 'i-lucide-flask-conical',
-            description: l.exames?.join('\n') || ''
-          }
+          Anamnese: { icon: 'i-lucide-file-text', description: l.anamnese || '' },
+          diagnostico: { icon: 'i-lucide-clipboard-check', description: montarDiagnosticos(l) },
+          receita: { icon: 'i-lucide-pill', description: l.medicamentos?.join('\n') || '' },
+          exames: { icon: 'i-lucide-flask-conical', description: l.exames?.join('\n') || '' },
         }
       })
     }
 
-    // Ordena por data (mais recente primeiro)
-    historicoItems.value.sort((a, b) => b.title.localeCompare(a.title))
+    // Ordena por data+hora (mais recente primeiro)
+    items.sort((a, b) => new Date(b._sortKey).getTime() - new Date(a._sortKey).getTime())
+
+    historicoItems.value = items
   } catch (err) {
     console.error('Erro ao buscar histórico:', err)
     historicoItems.value = []

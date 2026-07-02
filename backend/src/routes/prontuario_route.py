@@ -16,6 +16,7 @@ from src.models.prescricao_model import Prescricao
 from src.models.solicitacao_exame_model import SolicitacaoExame
 from src.models.evolucoes_medicas_model import EvolucaoMedica
 
+
 prontuario_bp = Blueprint("prontuario", __name__, url_prefix="/prontuario")
 
 CID_CACHE_TTL = 3600
@@ -132,9 +133,17 @@ def historico_paciente_local(paciente_id):
             diag_principal = next((d for d in a.diagnosticos if d.principal), None)
             diag_secundarios = [d for d in a.diagnosticos if not d.principal]
 
+            # Busca nome do médico na primeira evolução registrada
+            medico_nome = None
+            if a.evolucoes_medicas:
+                evol = a.evolucoes_medicas[0]
+                if evol.medico:
+                    medico_nome = evol.medico.nome_completo
+
             result.append({
                 "spdata_atendimento_id": a.spdata_atendimento_id,
                 "data_consulta": a.data_atendimento.isoformat() if a.data_atendimento else None,
+                "medico_nome": medico_nome,
                 "anamnese": a.anamnese.observacoes if a.anamnese else None,
                 "cid_principal": diag_principal.cid_codigo if diag_principal else None,
                 "cid_principal_descricao": diag_principal.cid_descricao if diag_principal else None,
