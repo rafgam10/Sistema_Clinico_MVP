@@ -26,6 +26,22 @@ const agendamento = computed(() => agendamentosStore.emAtendimento)
 const historicoItems = ref<{ title: string, subtitle?: string, icon: string, content: Record<string, { icon: string, description: string }> }[]>([])
 const isLoadingHistorico = ref(false)
 
+function temConteudoUtil(descricao: string): boolean {
+  const texto = descricao?.trim() || ''
+  if (!texto) return false
+  const lower = texto.toLowerCase()
+  if (lower === 'não informado' || lower === 'nao informado') return false
+  if (/^[\s—–-]+$/.test(texto)) return false
+  return true
+}
+
+const historicoItemsVisiveis = computed(() => {
+  return historicoItems.value.filter(item => {
+    if (!item.title) return false
+    return Object.values(item.content).some(c => temConteudoUtil(c.description))
+  })
+})
+
 const cardHeaderColors: Record<string, string> = {
   Anamnese: 'bg-primary dark:bg-primary-800',
   diagnostico: 'bg-neutral-600 dark:bg-neutral-800',
@@ -78,7 +94,7 @@ async function fetchHistorico() {
         _sortKey: r.DATA_CONSULTA,
         content: {
           Anamnese: { icon: 'i-lucide-file-text', description: localItem?.anamnese || r.OBS_ATENDIMENTO || '' },
-          diagnostico: { icon: 'i-lucide-clipboard-check', description: localItem ? montarDiagnosticos(localItem) : `${r.CID_PRINCIPAL} — ${r.DIAGNOSTICO_PRINCIPAL}` },
+          diagnostico: { icon: 'i-lucide-clipboard-check', description: localItem ? montarDiagnosticos(localItem) : [r.CID_PRINCIPAL, r.DIAGNOSTICO_PRINCIPAL].filter(Boolean).join(' — ') },
           receita: { icon: 'i-lucide-pill', description: localItem?.medicamentos?.join('\n') || '' },
           exames: { icon: 'i-lucide-flask-conical', description: localItem?.exames?.join('\n') || '' },
         }
@@ -242,14 +258,13 @@ function voltarDashboard() {
         <USeparator />
         <div class="overflow-y-auto max-h-max w-full px-2">
           <UTimeline
-            :items="historicoItems"
+            :items="historicoItemsVisiveis"
             color="primary"
-            :default-value="historicoItems.length"
+            :default-value="historicoItemsVisiveis.length"
             size="xs"
           >
             <template #title="{ item }">
-              <div v-if="item.title && item.title.trim() || item.title === '— NAO INFORMADO'"
-               class="flex items-center justify-between w-full">
+              <div class="flex items-center justify-between w-full">
                 <span>{{ item.title }}</span>
                 <span
                   v-if="item.subtitle"
@@ -259,15 +274,18 @@ function voltarDashboard() {
             </template>
             <template #description="{ item }">
               <div class="space-y-2 py-2">
-                <UCard
+                <template
                   v-for="(contentitem, key) in item.content"
                   :key="key"
-                  class="rounded-lg border border-muted hover:bg-muted/50"
-                  :ui="{
-                    header: `p-0.5 sm:px-2 ${cardHeaderColors[key] ?? 'bg-primary dark:bg-primary-800'}`,
-                    body: 'p-2 sm:p-2'
-                  }"
                 >
+                  <UCard
+                    v-if="temConteudoUtil(contentitem.description)"
+                    class="rounded-lg border border-muted hover:bg-muted/50"
+                    :ui="{
+                      header: `p-0.5 sm:px-2 ${cardHeaderColors[key] ?? 'bg-primary dark:bg-primary-800'}`,
+                      body: 'p-2 sm:p-2'
+                    }"
+                  >
                   <template #title>
                     <div class="flex items-center gap-2">
                       <UIcon
@@ -295,6 +313,7 @@ function voltarDashboard() {
                     />
                   </div>
                 </UCard>
+              </template>
               </div>
             </template>
           </UTimeline>
