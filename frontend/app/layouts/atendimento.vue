@@ -248,7 +248,8 @@ function voltarDashboard() {
             size="xs"
           >
             <template #title="{ item }">
-              <div class="flex items-center justify-between w-full">
+              <div v-if="item.title && item.title.trim() || item.title === '— NAO INFORMADO'"
+               class="flex items-center justify-between w-full">
                 <span>{{ item.title }}</span>
                 <span
                   v-if="item.subtitle"
@@ -322,7 +323,7 @@ function voltarDashboard() {
         <UButton
           label="Ir para o Dashboard"
           color="primary"
-          @click="navigateTo('/dashboard')"
+          @click="voltarDashboard"
         />
       </div>
     </UCard>
