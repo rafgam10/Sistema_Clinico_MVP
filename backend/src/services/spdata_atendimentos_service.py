@@ -431,6 +431,80 @@ def linhas_texto(valor):
     return linhas
 
 
+def normalizar_diagnosticos_consulta(consulta):
+    if "diagnosticos" in consulta:
+        valor = consulta.get("diagnosticos")
+    elif "diagnostico" in consulta:
+        valor = consulta.get("diagnostico")
+    else:
+        return None
+
+    if not valor:
+        return []
+
+    if isinstance(valor, dict):
+        itens = [valor]
+    elif isinstance(valor, str):
+        itens = linhas_texto(valor)
+    elif isinstance(valor, (list, tuple)):
+        itens = valor
+    else:
+        itens = [valor]
+
+    diagnosticos = []
+    codigos_usados = set()
+
+    for item in itens:
+        if isinstance(item, dict):
+            cid_codigo = normalizar_texto(
+                item.get("cid")
+                or item.get("cid_codigo")
+                or item.get("codigo")
+                or item.get("value"),
+                20,
+            )
+            cid_descricao = normalizar_texto(
+                item.get("nome")
+                or item.get("cid_descricao")
+                or item.get("descricao")
+                or item.get("label"),
+                255,
+            )
+            diagnostico_descritivo = normalizar_texto(
+                item.get("diagnostico_descritivo") or cid_descricao or cid_codigo
+            )
+        else:
+            texto = normalizar_texto(item, 255)
+            if not texto:
+                continue
+
+            cid_codigo, separador, cid_descricao = texto.partition("—")
+            if not separador:
+                cid_codigo, separador, cid_descricao = texto.partition(" - ")
+
+            cid_codigo = normalizar_texto(cid_codigo, 20)
+            cid_descricao = normalizar_texto(cid_descricao, 255) if separador else None
+            diagnostico_descritivo = texto
+
+        if not cid_codigo:
+            continue
+
+        codigo_chave = cid_codigo.upper()
+        if codigo_chave in codigos_usados:
+            continue
+
+        codigos_usados.add(codigo_chave)
+        diagnosticos.append(
+            {
+                "cid_codigo": cid_codigo,
+                "cid_descricao": cid_descricao,
+                "diagnostico_descritivo": diagnostico_descritivo,
+            }
+        )
+
+    return diagnosticos
+
+
 def salvar_conteudo_clinico(spdata, atendimento_medsystem, usuario_id, consulta):
     if not consulta:
         return
@@ -488,20 +562,19 @@ def salvar_conteudo_clinico(spdata, atendimento_medsystem, usuario_id, consulta)
                 )
             )
 
-    diagnostico = normalizar_texto(consulta.get("diagnostico"), 255)
-    if diagnostico:
-        diagnostico_existente = atendimento.diagnosticos[0] if atendimento.diagnosticos else None
-        if diagnostico_existente:
-            diagnostico_existente.cid_codigo = diagnostico
-            diagnostico_existente.diagnostico_descritivo = diagnostico
-            diagnostico_existente.principal = True
-        else:
+    diagnosticos = normalizar_diagnosticos_consulta(consulta)
+    if diagnosticos is not None:
+        for diagnostico_existente in list(atendimento.diagnosticos):
+            db.session.delete(diagnostico_existente)
+
+        for indice, diagnostico in enumerate(diagnosticos):
             db.session.add(
                 Diagnostico(
                     atendimento_id=atendimento.id,
-                    cid_codigo=diagnostico,
-                    diagnostico_descritivo=diagnostico,
-                    principal=True,
+                    cid_codigo=diagnostico["cid_codigo"],
+                    cid_descricao=diagnostico["cid_descricao"],
+                    diagnostico_descritivo=diagnostico["diagnostico_descritivo"],
+                    principal=indice == 0,
                 )
             )
 
