@@ -153,6 +153,10 @@ Depois disso, acesse:
 http://IP_DA_VPS
 ```
 
+´´´text
+http://200.9.22.89
+´´´
+
 ## Liberar firewall
 
 Se estiver usando `ufw`:
