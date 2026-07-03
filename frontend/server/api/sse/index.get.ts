@@ -1,30 +1,96 @@
+import { getCookie } from 'h3'
+
+const POLL_INTERVAL_MS = 10000
+const KEEP_ALIVE_MS = 15000
+
+function hojeISO() {
+  const data = new Date()
+  data.setMinutes(data.getMinutes() - data.getTimezoneOffset())
+  return data.toISOString().slice(0, 10)
+}
+
 export default defineEventHandler(async (event) => {
   const { req, res } = event.node
+  const query = getQuery(event)
+  const token = getCookie(event, 'auth_token')
+  const config = useRuntimeConfig()
+  const dataParam = Array.isArray(query.data) ? query.data[0] : query.data
+  const pollAgenda = Boolean(dataParam)
+  const data = String(dataParam || hojeISO())
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
+    'Cache-Control': 'no-cache, no-transform',
     'Connection': 'keep-alive',
     'X-Accel-Buffering': 'no'
   })
+  res.flushHeaders?.()
 
-  // Send initial connection event
-  res.write('event: connected\ndata: {}\n\n')
+  let closed = false
+  let lastHash = ''
+  let loadingAgenda = false
 
-  // Keep alive
+  function write(data: string) {
+    if (closed) return
+    try {
+      res.write(data)
+    } catch {
+      closed = true
+    }
+  }
+
+  function send(type: string, payload: unknown) {
+    write(`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`)
+  }
+
+  async function carregarAgenda() {
+    if (!pollAgenda || !token || closed || loadingAgenda) return
+
+    loadingAgenda = true
+
+    try {
+      const items = await $fetch<unknown[]>(`${config.flaskBaseUrl}/agenda-medica/?data=${encodeURIComponent(data)}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      const hash = JSON.stringify(items)
+      if (hash !== lastHash) {
+        lastHash = hash
+        send('agenda:snapshot', { data, items })
+      }
+    } catch {
+      send('agenda:error', { message: 'Falha ao atualizar agenda médica' })
+    } finally {
+      loadingAgenda = false
+    }
+  }
+
+  send('connected', { ok: true })
+  void carregarAgenda()
+
+  const poll = setInterval(() => {
+    void carregarAgenda()
+  }, POLL_INTERVAL_MS)
+
   const keepAlive = setInterval(() => {
-    res.write(':keepalive\n\n')
-  }, 15000)
+    write(':keepalive\n\n')
+  }, KEEP_ALIVE_MS)
 
   const remove = addSseClient({
-    write: (data: string) => res.write(data),
+    write,
     close: () => {
+      closed = true
+      clearInterval(poll)
       clearInterval(keepAlive)
       res.end()
     }
   })
 
   req.on('close', () => {
+    closed = true
+    clearInterval(poll)
     clearInterval(keepAlive)
     remove()
   })

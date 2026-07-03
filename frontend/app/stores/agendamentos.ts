@@ -1,10 +1,27 @@
 import { defineStore } from 'pinia'
 import type { Agendamento, AgendamentoComPaciente, AgendamentoStatus, ExameConsultaPayload, Paciente } from '~/types'
 
+type AgendaSnapshotEvent = {
+  data?: string
+  items: AgendamentoComPaciente[]
+}
+
+type AgendamentoStatusEvent = {
+  id: number
+  status: AgendamentoStatus
+  pacienteId?: number
+}
+
 export const useAgendamentosStore = defineStore('agendamentos', () => {
   const agendamentos = ref<AgendamentoComPaciente[]>([])
   const loading = ref(true)
   let sse: ReturnType<typeof useSse> | null = null
+  let sseHandlersRegistrados = false
+  let filtrosAtuais: {
+    clinicaId?: number
+    data?: string
+    medicoId?: number
+  } = {}
 
   const emAtendimento = computed(() =>
     agendamentos.value.find(a => a.status === 'em-atendimento') ?? null
@@ -34,7 +51,62 @@ export const useAgendamentosStore = defineStore('agendamentos', () => {
     })
   )
 
+  function isAgendamentoComPaciente(value: unknown): value is AgendamentoComPaciente {
+    return Boolean(value && typeof value === 'object' && 'paciente' in value)
+  }
+
+  function atualizarFiltros(clinicaId?: number, data?: string, medicoId?: number) {
+    filtrosAtuais = { clinicaId, data, medicoId }
+  }
+
+  function aplicarStatusAgendamento(evento: AgendamentoStatusEvent | AgendamentoComPaciente) {
+    const index = agendamentos.value.findIndex(ag => ag.id === evento.id)
+
+    if (index === -1) {
+      if (isAgendamentoComPaciente(evento)) agendamentos.value.push(evento)
+      return
+    }
+
+    if (isAgendamentoComPaciente(evento)) {
+      agendamentos.value[index] = evento
+      return
+    }
+
+    agendamentos.value[index] = {
+      ...agendamentos.value[index]!,
+      status: evento.status
+    }
+  }
+
+  function registrarSseHandlers() {
+    if (sseHandlersRegistrados) return
+
+    sse = useSse()
+
+    sse.on('agenda:snapshot', (data: unknown) => {
+      const payload = data as AgendaSnapshotEvent
+
+      if (payload.data && filtrosAtuais.data && payload.data !== filtrosAtuais.data) return
+      if (!Array.isArray(payload.items)) return
+
+      agendamentos.value = payload.items
+      loading.value = false
+    })
+
+    sse.on('agendamento:status', (data: unknown) => {
+      const evento = data as AgendamentoStatusEvent | AgendamentoComPaciente
+      if (!evento?.id || !evento.status) return
+
+      aplicarStatusAgendamento(evento)
+    })
+
+    sseHandlersRegistrados = true
+  }
+
   async function fetchAgendamentos(clinicaId?: number, data?: string, medicoId?: number) {
+    atualizarFiltros(clinicaId, data, medicoId)
+    loading.value = true
+
     try {
       const params = new URLSearchParams()
       if (clinicaId) params.set('clinicaId', String(clinicaId))
@@ -66,24 +138,20 @@ export const useAgendamentosStore = defineStore('agendamentos', () => {
   }
 
   async function init(clinicaId?: number, data?: string, medicoId?: number) {
-    sse = useSse()
-    sse.on('agendamento:status', (data: unknown) => {
-      const ev = data as { id: number, status: AgendamentoStatus, pacienteId: number }
-      const a = agendamentos.value.find(ag => ag.id === ev.id)
-      if (a) a.status = ev.status
-    })
-    sse.connect()
+    atualizarFiltros(clinicaId, data, medicoId)
+    registrarSseHandlers()
+    sse?.connect({ data })
     await fetchAgendamentos(clinicaId, data, medicoId)
   }
 
   async function atualizarStatus(id: number, status: AgendamentoStatus, consulta?: { anamnese?: string, diagnosticos?: { cid: string, descricao?: string, principal: boolean }[], medicamentos?: string, exames?: ExameConsultaPayload[], duracao?: number }) {
     try {
-      await $fetch(`/api/agendamentos/${id}`, {
+      const atualizado = await $fetch<AgendamentoComPaciente>(`/api/agendamentos/${id}`, {
         method: 'PATCH',
         body: { status, consulta }
       })
-      const ag = agendamentos.value.find(a => a.id === id)
-      if (ag) ag.status = status
+      aplicarStatusAgendamento(isAgendamentoComPaciente(atualizado) ? atualizado : { id, status })
+      return atualizado
     } catch (error) {
       console.error('Erro ao atualizar status do agendamento')
       throw error

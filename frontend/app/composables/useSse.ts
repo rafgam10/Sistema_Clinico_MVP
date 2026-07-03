@@ -1,8 +1,36 @@
 type SseHandler = (data: unknown) => void
+type SseConnectOptions = {
+  data?: string
+}
 
 let eventSource: EventSource | null = null
-const handlers = new Map<string, Set<SseHandler>>()
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let currentUrl = ''
+
+const handlers = new Map<string, Set<SseHandler>>()
+const SSE_EVENTS = [
+  'agenda:snapshot',
+  'agenda:error',
+  'agendamento:status',
+  'paciente:status',
+  'chamado:novo',
+  'chamado:concluido'
+]
+
+function buildUrl(options?: SseConnectOptions) {
+  const params = new URLSearchParams()
+  if (options?.data) params.set('data', options.data)
+
+  const qs = params.toString()
+  return `/api/sse${qs ? `?${qs}` : ''}`
+}
+
+function clearReconnectTimer() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+}
 
 function handleEvent(eventType: string, raw: string) {
   try {
@@ -11,25 +39,47 @@ function handleEvent(eventType: string, raw: string) {
   } catch { /* ignore malformed */ }
 }
 
-function connectShared() {
-  if (eventSource && eventSource.readyState !== EventSource.CLOSED) return
+function openConnection(url: string) {
+  clearReconnectTimer()
 
-  eventSource = new EventSource('/api/sse')
+  eventSource = new EventSource(url)
 
   eventSource.onerror = () => {
     eventSource?.close()
-    reconnectTimer = setTimeout(connectShared, 3000)
+    eventSource = null
+    clearReconnectTimer()
+    reconnectTimer = setTimeout(() => {
+      if (currentUrl === url) openConnection(url)
+    }, 3000)
   }
 
-  eventSource.addEventListener('paciente:status', (e) => {
-    handleEvent('paciente:status', e.data)
-  })
-  eventSource.addEventListener('chamado:novo', (e) => {
-    handleEvent('chamado:novo', e.data)
-  })
-  eventSource.addEventListener('chamado:concluido', (e) => {
-    handleEvent('chamado:concluido', e.data)
-  })
+  for (const eventName of SSE_EVENTS) {
+    eventSource.addEventListener(eventName, (event) => {
+      handleEvent(eventName, event.data)
+    })
+  }
+}
+
+function disconnectShared() {
+  clearReconnectTimer()
+
+  if (eventSource) {
+    eventSource.close()
+    eventSource = null
+  }
+
+  currentUrl = ''
+}
+
+function connectShared(options?: SseConnectOptions) {
+  if (!import.meta.client) return
+
+  const nextUrl = options ? buildUrl(options) : currentUrl || buildUrl()
+  if (eventSource && eventSource.readyState !== EventSource.CLOSED && currentUrl === nextUrl) return
+
+  disconnectShared()
+  currentUrl = nextUrl
+  openConnection(nextUrl)
 }
 
 export function useSse() {
@@ -45,19 +95,12 @@ export function useSse() {
     handlers.get(event)?.delete(handler)
   }
 
-  function connect() {
-    connectShared()
+  function connect(options?: SseConnectOptions) {
+    connectShared(options)
   }
 
   function disconnect() {
-    if (eventSource) {
-      eventSource.close()
-      eventSource = null
-    }
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer)
-      reconnectTimer = null
-    }
+    disconnectShared()
   }
 
   return { on, off, connect, disconnect }

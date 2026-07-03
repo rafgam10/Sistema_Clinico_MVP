@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const result = await flaskFetch<{ pacienteId: number }>(event, `/agenda-medica/${id}/status`, {
+    const result = await flaskFetch<{ id?: number, status?: string, pacienteId?: number }>(event, `/agenda-medica/${id}/status`, {
       method: 'PATCH',
       body
     })
@@ -20,6 +20,15 @@ export default defineEventHandler(async (event) => {
     if (body.status === 'atendido' || body.status === 'faltou') {
       concluirChamadoPorPaciente(Number(result.pacienteId) || 0)
     }
+
+    broadcastSse({
+      type: 'agendamento:status',
+      data: {
+        id: Number(result.id) || id,
+        status: result.status || body.status,
+        pacienteId: Number(result.pacienteId) || undefined
+      }
+    })
 
     return result
   } catch (error) {

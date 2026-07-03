@@ -43,7 +43,15 @@ interface NoShowResponse {
     convenios: string[]
     anos: string[]
   }
+  graficos: {
+    porMes: Array<{ label: string, total: number }>
+    porEspecialidade: Array<{ label: string, total: number }>
+    porDiaSemana: Array<{ label: string, total: number }>
+  }
 }
+
+type NoShowResumo = NoShowResponse['resumo']
+type NoShowGraficos = NoShowResponse['graficos']
 
 const itensMais = ref<DropdownMenuItem[][]>([
   // Grupo: Histórico e Ficha
@@ -106,6 +114,19 @@ const itensMais = ref<DropdownMenuItem[][]>([
 const pacientesNoShow = ref<PacienteNoShow[]>([])
 const loading = ref(false)
 const errorMsg = ref('')
+const totalNoShow = ref(0)
+const resumoNoShow = ref<NoShowResumo>({
+  totalResgate: 0,
+  faltou: 0,
+  naoConfirmado: 0,
+  recuperados: 0,
+  semContato: 0
+})
+const graficosNoShow = ref<NoShowGraficos>({
+  porMes: [],
+  porEspecialidade: [],
+  porDiaSemana: []
+})
 
 const filtrosDisponiveis = ref<NoShowResponse['filtros']>({
   medicos: [],
@@ -177,12 +198,32 @@ async function carregarNoShow() {
   params.set('page', '1')
   params.set('pageSize', '500')
 
+  if (filtroMedico.value !== 'Todos') params.set('medico', filtroMedico.value)
+  if (filtroEspecialidade.value !== 'Todos') params.set('especialidade', filtroEspecialidade.value)
+  if (filtroConvenio.value !== 'Todos') params.set('convenio', filtroConvenio.value)
+
   try {
     const response = await $fetch<NoShowResponse>(`/api/no-show?${params.toString()}`)
     pacientesNoShow.value = response.items
+    totalNoShow.value = response.total
+    resumoNoShow.value = response.resumo
+    graficosNoShow.value = response.graficos
     filtrosDisponiveis.value = response.filtros
   } catch {
     pacientesNoShow.value = []
+    totalNoShow.value = 0
+    resumoNoShow.value = {
+      totalResgate: 0,
+      faltou: 0,
+      naoConfirmado: 0,
+      recuperados: 0,
+      semContato: 0
+    }
+    graficosNoShow.value = {
+      porMes: [],
+      porEspecialidade: [],
+      porDiaSemana: []
+    }
     errorMsg.value = 'Erro ao carregar lista de resgate'
   } finally {
     loading.value = false
@@ -237,15 +278,6 @@ const dadosFiltrados = computed(() => {
   })
 })
 
-const faltasPorMes = computed(() => {
-  const meses = Array(12).fill(0)
-  dadosFiltrados.value.forEach((p) => {
-    const mes = parseInt(p.dataFalta.split('-')[1]!) - 1
-    meses[mes]++
-  })
-  return meses
-})
-
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 const chartMeses = computed(() => {
@@ -257,53 +289,44 @@ const chartMeses = computed(() => {
 const chartDados = computed(() => {
   const inicio = parseInt(MES_PARA_NUMERO[filtroMesInicioActive.value]!) - 1
   const fim = parseInt(MES_PARA_NUMERO[filtroMesFimActive.value]!)
-  return faltasPorMes.value.slice(inicio, fim)
+  const totaisPorMes = new Map(graficosNoShow.value.porMes.map(item => [item.label, item.total] as const))
+
+  return MESES_LABELS.slice(inicio, fim).map((_, index) => {
+    const mes = String(inicio + index + 1).padStart(2, '0')
+    return totaisPorMes.get(`${filtroAnoActive.value}-${mes}`) || 0
+  })
 })
 
 const DIAS_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 const chartEspecialidade = computed(() => {
-  const map = new Map<string, number>()
-  dadosFiltrados.value.forEach(
-    (p) => {
-      const especialidade = opcaoFiltro(p.especialidade) || 'Não informada'
-      map.set(especialidade, (map.get(especialidade) || 0) + 1)
-    })
   return {
-    labels: [...map.keys()],
-    dados: [...map.values()]
+    labels: graficosNoShow.value.porEspecialidade.map(item => item.label),
+    dados: graficosNoShow.value.porEspecialidade.map(item => item.total)
   }
 })
 
 const chartDiaSemana = computed(() => {
-  const dias = Array(7).fill(0)
-  dadosFiltrados.value.forEach((p) => {
-    const dia = new Date(p.dataFalta + 'T12:00:00').getDay()
-    dias[dia]++
-  })
-  return { labels: DIAS_LABELS, dados: dias }
+  const totaisPorDia = new Map(graficosNoShow.value.porDiaSemana.map(item => [item.label, item.total] as const))
+  return {
+    labels: DIAS_LABELS,
+    dados: DIAS_LABELS.map(label => totaisPorDia.get(label) || 0)
+  }
 })
 
-const totalFiltrado = computed(() => dadosFiltrados.value.length)
-const totalFaltou = computed(() => dadosFiltrados.value.filter(p => p.status === 'faltou').length)
-const totalNaoConfirmado = computed(() => dadosFiltrados.value.filter(p => p.status === 'nao-confirmado').length)
+const totalFiltrado = computed(() => resumoNoShow.value.totalResgate || totalNoShow.value)
+const totalFaltou = computed(() => resumoNoShow.value.faltou)
+const totalNaoConfirmado = computed(() => resumoNoShow.value.naoConfirmado)
+const totalSemContato = computed(() => resumoNoShow.value.semContato)
 const totalEsquecimento = computed(() => dadosFiltrados.value.filter(p => p.motivo === 'esquecimento').length)
 const totalTransporte = computed(() => dadosFiltrados.value.filter(p => p.motivo === 'transporte').length)
 const totalOutros = computed(() => dadosFiltrados.value.filter(p => p.motivo === 'outros').length)
 
-const agendamentosRecuperados = computed(() => dadosFiltrados.value.filter(p => p.recuperado).length)
+const agendamentosRecuperados = computed(() => resumoNoShow.value.recuperados)
 
 const taxaRecuperacao = computed(() => {
-  const total = dadosFiltrados.value.length
+  const total = totalFiltrado.value
   return total > 0 ? Math.round((agendamentosRecuperados.value / total) * 100) : 0
-})
-
-const totalFaltasMes = computed(() => {
-  const dados = dadosFiltrados.value
-  if (dados.length === 0) return 0
-  const mesesUnicos = [...new Set(dados.map(p => p.dataFalta.substring(0, 7)))].sort()
-  const ultimoMes = mesesUnicos[mesesUnicos.length - 1]
-  return dados.filter(p => p.dataFalta.substring(0, 7) === ultimoMes).length
 })
 
 const pacientesVisiveis = computed(() => {
@@ -492,7 +515,7 @@ onMounted(() => {
         />
         <CardNoShow
           titulo="Sem contato"
-          :valor="0"
+          :valor="totalSemContato"
           cor="secondary"
           icone="i-lucide-clock"
         />
