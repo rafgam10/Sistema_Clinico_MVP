@@ -22,6 +22,8 @@ STATUS_MEDSYSTEM_ALIASES = {
 
 STATUS_NO_SHOW = {"faltou", "nao-confirmado"}
 
+NO_SHOW_GRACE_PERIOD = timedelta(hours=8)
+
 
 def normalizar_texto(valor):
     if valor is None:
@@ -61,12 +63,11 @@ def hora_hhmm(valor):
 
 def consulta_ja_venceu(agenda, agora=None):
     agora = agora or datetime.now()
-    if agenda.data_agenda < agora.date():
-        return True
-    if agenda.data_agenda > agora.date() or not agenda.hora_agenda:
-        return False
 
-    horario_limite = datetime.combine(agenda.data_agenda, agenda.hora_agenda) + timedelta(minutes=60)
+    if not agenda.hora_agenda:
+        return agenda.data_agenda < agora.date()
+
+    horario_limite = datetime.combine(agenda.data_agenda, agenda.hora_agenda) + NO_SHOW_GRACE_PERIOD
     return horario_limite <= agora
 
 
