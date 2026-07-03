@@ -1,4 +1,5 @@
 import { getCookie } from 'h3'
+import { jwtDecode } from 'jwt-decode'
 
 const POLL_INTERVAL_MS = 10000
 const KEEP_ALIVE_MS = 15000
@@ -9,13 +10,23 @@ function hojeISO() {
   return data.toISOString().slice(0, 10)
 }
 
+function getTokenRole(token?: string | null) {
+  if (!token) return null
+
+  try {
+    return jwtDecode<{ role?: string }>(token).role ?? null
+  } catch {
+    return null
+  }
+}
+
 export default defineEventHandler(async (event) => {
   const { req, res } = event.node
   const query = getQuery(event)
   const token = getCookie(event, 'auth_token')
   const config = useRuntimeConfig()
   const dataParam = Array.isArray(query.data) ? query.data[0] : query.data
-  const pollAgenda = Boolean(dataParam)
+  const pollAgenda = Boolean(dataParam) && getTokenRole(token) === 'medico'
   const data = String(dataParam || hojeISO())
 
   res.writeHead(200, {
@@ -68,11 +79,14 @@ export default defineEventHandler(async (event) => {
   }
 
   send('connected', { ok: true })
-  void carregarAgenda()
 
-  const poll = setInterval(() => {
+  let poll: ReturnType<typeof setInterval> | null = null
+  if (pollAgenda) {
     void carregarAgenda()
-  }, POLL_INTERVAL_MS)
+    poll = setInterval(() => {
+      void carregarAgenda()
+    }, POLL_INTERVAL_MS)
+  }
 
   const keepAlive = setInterval(() => {
     write(':keepalive\n\n')
@@ -82,7 +96,7 @@ export default defineEventHandler(async (event) => {
     write,
     close: () => {
       closed = true
-      clearInterval(poll)
+      if (poll) clearInterval(poll)
       clearInterval(keepAlive)
       res.end()
     }
@@ -90,7 +104,7 @@ export default defineEventHandler(async (event) => {
 
   req.on('close', () => {
     closed = true
-    clearInterval(poll)
+    if (poll) clearInterval(poll)
     clearInterval(keepAlive)
     remove()
   })

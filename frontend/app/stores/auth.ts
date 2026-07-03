@@ -71,6 +71,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    if (import.meta.client) useSse().disconnect()
+
     _token.value = null
     user.value = null
     clinicas.value = []

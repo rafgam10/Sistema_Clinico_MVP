@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Chart } from 'vue-chartjs'
-import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend, LineElement, PointElement } from 'chart.js'
+import { Chart as ChartJS, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend, LineController, LineElement, PointElement } from 'chart.js'
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, LineElement, PointElement)
+ChartJS.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend, LineController, LineElement, PointElement)
 
 const props = defineProps<{
   labels: string[]
