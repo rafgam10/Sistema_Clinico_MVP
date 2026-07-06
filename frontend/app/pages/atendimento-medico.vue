@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import type { PadraoReceita, PadraoExame, ItemMedicamento, ExameCatalogo, ExameSelecionado } from '~/types'
+import type { PadraoReceita, PadraoExame, PadraoAnamnese, ItemMedicamento, ExameCatalogo, ExameSelecionado } from '~/types'
 import { usePdfMake } from '~/utils/pdf'
 import { buildSolicitacaoExames, buildReceita } from '~/utils/pdf-documents'
 
 const agendamentosStore = useAgendamentosStore()
 const padroesStore = usePadroesStore()
+const padroesAnamneseStore = usePadroesAnamneseStore()
 const cronometro = useCronometroStore()
 const toast = useToast()
 onMounted(() => {
   padroesStore.fetchAll()
+  padroesAnamneseStore.fetchAll()
   cronometro.start()
 })
 
@@ -158,6 +160,14 @@ function adicionarCid(item: CidResultado) {
 }
 
 const anamneseTexto = ref('')
+const padraoAnamneseSelected = ref<{ label: string, value: PadraoAnamnese }>()
+
+function adicionarPadraoAnamnese() {
+  if (!padraoAnamneseSelected.value) return
+  anamneseTexto.value += padraoAnamneseSelected.value.value.conteudo
+  padraoAnamneseSelected.value = undefined
+}
+
 const receitaTexto = ref('')
 const remedioNome = ref('')
 const remedioDosagem = ref('')
@@ -640,6 +650,22 @@ async function finalizarConsulta() {
                 </p>
               </div>
             </template>
+            <div class="shrink-0 flex gap-2 p-2 border-b border-muted">
+              <UInputMenu
+                v-model="padraoAnamneseSelected"
+                :items="padroesAnamneseStore.padroes.map(p => ({ label: p.nome, value: p }))"
+                searchable
+                placeholder="Inserir Padrão de Anamnese..."
+                class="flex-1"
+              />
+              <UButton
+                icon="i-lucide-copy-plus"
+                label="Adicionar"
+                color="secondary"
+                :disabled="!padraoAnamneseSelected"
+                @click="adicionarPadraoAnamnese"
+              />
+            </div>
             <UEditor
               v-model="anamneseTexto"
               content-type="html"

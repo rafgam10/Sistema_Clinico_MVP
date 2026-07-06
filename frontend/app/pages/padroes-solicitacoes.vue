@@ -1,20 +1,27 @@
 <script setup lang="ts">
-import type { PadraoReceita, PadraoExame } from '~/types'
+import type { PadraoReceita, PadraoExame, PadraoAnamnese } from '~/types'
 
 const padroesStore = usePadroesStore()
+const padroesAnamneseStore = usePadroesAnamneseStore()
 const toast = useToast()
 
-onMounted(() => padroesStore.fetchAll())
+onMounted(() => {
+  padroesStore.fetchAll()
+  padroesAnamneseStore.fetchAll()
+})
 
-const activeTab = ref<'receitas' | 'exames' | null>(null)
+const activeTab = ref<'receitas' | 'exames' | 'anamnese' | null>(null)
 
 const showReceitaModal = ref(false)
 const showExameModal = ref(false)
+const showAnamneseModal = ref(false)
 
 const editingReceita = ref<PadraoReceita | null>(null)
 const editingExame = ref<PadraoExame | null>(null)
+const editingAnamnese = ref<PadraoAnamnese | null>(null)
 
 const confirmDeleteId = ref<string | null>(null)
+const confirmDeleteTipo = ref<'receita' | 'exame' | 'anamnese' | null>(null)
 
 function abrirNovaReceita() {
   editingReceita.value = null
@@ -24,6 +31,11 @@ function abrirNovaReceita() {
 function abrirNovaExame() {
   editingExame.value = null
   showExameModal.value = true
+}
+
+function abrirNovaAnamnese() {
+  editingAnamnese.value = null
+  showAnamneseModal.value = true
 }
 
 function editarReceita(p: PadraoReceita) {
@@ -36,14 +48,24 @@ function editarExame(p: PadraoExame) {
   showExameModal.value = true
 }
 
-function confirmarDeletar(p: PadraoReceita | PadraoExame) {
+function editarAnamnese(p: PadraoAnamnese) {
+  editingAnamnese.value = p
+  showAnamneseModal.value = true
+}
+
+function confirmarDeletar(p: PadraoReceita | PadraoExame | PadraoAnamnese, tipo: 'receita' | 'exame' | 'anamnese') {
   confirmDeleteId.value = p.id
+  confirmDeleteTipo.value = tipo
 }
 
 async function executarDeletar() {
   if (confirmDeleteId.value !== null) {
     try {
-      await padroesStore.deletar(confirmDeleteId.value)
+      if (confirmDeleteTipo.value === 'anamnese') {
+        await padroesAnamneseStore.deletar(confirmDeleteId.value)
+      } else {
+        await padroesStore.deletar(confirmDeleteId.value)
+      }
     } catch {
       toast.add({
         title: 'Erro ao Deletar',
@@ -53,6 +75,7 @@ async function executarDeletar() {
       })
     } finally {
       confirmDeleteId.value = null
+      confirmDeleteTipo.value = null
     }
   }
 }
@@ -65,9 +88,14 @@ function gerenciarExame() {
   activeTab.value = 'exames'
 }
 
+function gerenciarAnamnese() {
+  activeTab.value = 'anamnese'
+}
+
 function activeTabEmpty(): boolean {
   if (activeTab.value === 'receitas') return padroesStore.receitas.length === 0
   if (activeTab.value === 'exames') return padroesStore.exames.length === 0
+  if (activeTab.value === 'anamnese') return padroesAnamneseStore.padroes.length === 0
   return true
 }
 </script>
@@ -81,7 +109,7 @@ function activeTabEmpty(): boolean {
     </UHeader>
 
     <div class="p-6 space-y-6 bg-neutral-100 dark:bg-neutral-950 min-h-screen">
-      <div class="grid grid-cols-2 gap-6">
+      <div class="grid grid-cols-3 gap-6">
         <UCard>
           <template #title>
             <div class="flex items-center gap-2">
@@ -151,17 +179,52 @@ function activeTabEmpty(): boolean {
             />
           </div>
         </UCard>
+
+        <UCard>
+          <template #title>
+            <div class="flex items-center gap-2">
+              <UIcon
+                name="i-lucide-notebook-text"
+                class="text-primary"
+              />
+              <p class="font-semibold">
+                Anamnese
+              </p>
+            </div>
+          </template>
+
+          <template #description>
+            <p class="text-sm text-muted">
+              Modelos de anamnese com texto pré-formatado. No atendimento você insere o padrão no editor.
+            </p>
+          </template>
+
+          <div class="flex gap-2">
+            <UButton
+              icon="i-lucide-plus"
+              label="Novo Modelo"
+              size="sm"
+              @click="abrirNovaAnamnese"
+            />
+            <UButton
+              label="Gerenciar"
+              color="neutral"
+              size="sm"
+              @click="gerenciarAnamnese"
+            />
+          </div>
+        </UCard>
       </div>
 
       <UCard v-if="activeTab">
         <template #title>
           <div class="flex items-center gap-2">
             <UIcon
-              :name="activeTab === 'receitas' ? 'i-lucide-pill' : 'i-lucide-flask-conical'"
+              :name="activeTab === 'receitas' ? 'i-lucide-pill' : activeTab === 'exames' ? 'i-lucide-flask-conical' : 'i-lucide-notebook-text'"
               class="text-primary"
             />
             <p class="font-semibold">
-              Modelos de {{ activeTab === 'receitas' ? 'Receitas Médicas' : 'Pedidos de Exames' }}
+              Modelos de {{ activeTab === 'receitas' ? 'Receitas Médicas' : activeTab === 'exames' ? 'Pedidos de Exames' : 'Anamnese' }}
             </p>
           </div>
         </template>
@@ -195,7 +258,7 @@ function activeTabEmpty(): boolean {
                   color="error"
                   variant="ghost"
                   size="sm"
-                  @click="confirmarDeletar(p)"
+                  @click="confirmarDeletar(p, 'receita')"
                 />
               </div>
             </div>
@@ -229,7 +292,40 @@ function activeTabEmpty(): boolean {
                   color="error"
                   variant="ghost"
                   size="sm"
-                  @click="confirmarDeletar(p)"
+                  @click="confirmarDeletar(p, 'exame')"
+                />
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="activeTab === 'anamnese'">
+            <div
+              v-for="p in padroesAnamneseStore.padroes"
+              :key="p.id"
+              class="flex items-center justify-between p-3 rounded-lg border border-muted hover:bg-muted/50"
+            >
+              <div>
+                <p class="font-medium">
+                  {{ p.nome }}
+                </p>
+                <p class="text-xs text-muted">
+                  {{ new Date(p.updatedAt).toLocaleDateString('pt-BR') }}
+                </p>
+              </div>
+              <div class="flex gap-1">
+                <UButton
+                  icon="i-lucide-pencil"
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  @click="editarAnamnese(p)"
+                />
+                <UButton
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="ghost"
+                  size="sm"
+                  @click="confirmarDeletar(p, 'anamnese')"
                 />
               </div>
             </div>
@@ -253,6 +349,11 @@ function activeTabEmpty(): boolean {
     <PadraoExameModal
       v-model:open="showExameModal"
       :padrao="editingExame"
+    />
+
+    <PadraoAnamneseModal
+      v-model:open="showAnamneseModal"
+      :padrao="editingAnamnese"
     />
 
     <ModalConfirmacao

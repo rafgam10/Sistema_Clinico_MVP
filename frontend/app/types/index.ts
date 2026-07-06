@@ -178,4 +178,13 @@ export interface PadraoExame {
   updatedAt: string
 }
 
+export interface PadraoAnamnese {
+  id: string
+  medicoId: number
+  nome: string
+  conteudo: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type Padrao = PadraoReceita | PadraoExame
