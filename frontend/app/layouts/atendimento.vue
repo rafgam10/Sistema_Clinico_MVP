@@ -23,7 +23,27 @@ onMounted(() => {
 
 const agendamento = computed(() => agendamentosStore.emAtendimento)
 
-const historicoItems = ref<{ title: string, subtitle?: string, icon: string, content: Record<string, { icon: string, description: string }> }[]>([])
+type HistoricoCardType = 'Anamnese' | 'diagnostico' | 'receita' | 'exames'
+
+type HistoricoCard = {
+  id: string
+  type: HistoricoCardType
+  title: string
+  icon: string
+  description: string
+}
+
+type HistoricoTimelineItem = {
+  id: string
+  title: string
+  time?: string
+  subtitle?: string
+  icon: string
+  cards: HistoricoCard[]
+  _sortKey: string
+}
+
+const historicoItems = ref<HistoricoTimelineItem[]>([])
 const isLoadingHistorico = ref(false)
 
 function temConteudoUtil(descricao: string): boolean {
@@ -38,91 +58,118 @@ function temConteudoUtil(descricao: string): boolean {
 const historicoItemsVisiveis = computed(() => {
   return historicoItems.value.filter((item) => {
     if (!item.title) return false
-    return Object.values(item.content).some(c => temConteudoUtil(c.description))
+    return item.cards.some(c => temConteudoUtil(c.description))
   })
 })
 
-const cardHeaderColors: Record<string, string> = {
+const cardHeaderColors: Record<HistoricoCardType, string> = {
   Anamnese: 'bg-primary dark:bg-primary-800',
   diagnostico: 'bg-neutral-600 dark:bg-neutral-800',
   receita: 'bg-secondary dark:bg-secondary-800',
   exames: 'bg-tertiary dark:bg-tertiary-800'
 }
 
+function cpfHistorico(valor?: string | null): string | undefined {
+  const texto = String(valor || '').trim()
+  const semDecimal = texto.endsWith('.0') && texto.slice(0, -2).replace(/\D/g, '').length === 11
+    ? texto.slice(0, -2)
+    : texto
+  const cpf = semDecimal.replace(/\D/g, '')
+  if (cpf.length !== 11) return undefined
+  if (new Set(cpf).size === 1) return undefined
+  return cpf
+}
+
 async function fetchHistorico() {
-  // Busca histórico de dois lugares:
-  //   1. Firebird legado (historico-paciente) — dados de consultas antigas
-  //   2. Banco local (historico-local) — dados salvos pelo médico no MedSystem
-  // Faz o merge usando spdata_atendimento_id como chave, priorizando o local
-  // quando há correspondência.
-  const pacienteId = agendamento.value?.paciente?.id
+  // BioData e MedSystem usam identificadores de atendimento diferentes;
+  // a timeline junta as fontes como consultas separadas e ordena por data.
+  const paciente = agendamento.value?.paciente
+  const pacienteId = paciente?.id
   if (!pacienteId) return
 
   isLoadingHistorico.value = true
   try {
-    const [legado, local] = await Promise.all([
-      $fetch<HistoricoRecord[]>(`/api/historico-paciente/${pacienteId}`),
+    const [biodataResult, localResult] = await Promise.allSettled([
+      $fetch<HistoricoRecord[]>(`/api/historico-paciente/${pacienteId}`, {
+        query: {
+          cpf: cpfHistorico(paciente.cpf),
+          nome: paciente.nome || undefined
+        }
+      }),
       $fetch<HistoricoLocalRecord[]>(`/api/historico-local/${pacienteId}`)
     ])
 
-    // Indexa registros locais por spdata_atendimento_id para merge
-    const mapaLocal = new Map(
-      local.filter(l => l.spdata_atendimento_id != null)
-        .map(l => [String(l.spdata_atendimento_id), l])
-    )
+    const biodata = biodataResult.status === 'fulfilled' ? biodataResult.value : []
+    const local = localResult.status === 'fulfilled' ? localResult.value : []
 
-    const visitados = new Set<string>()
+    if (biodataResult.status === 'rejected') {
+      console.error('Erro ao buscar histórico BioData:', biodataResult.reason)
+    }
+    if (localResult.status === 'rejected') {
+      console.error('Erro ao buscar histórico local:', localResult.reason)
+    }
 
-    // Constrói itens em array local com _sortKey (raw ISO) para ordenação correta
-    const items: ({
-      title: string
-      subtitle?: string
-      icon: string
-      content: Record<string, { icon: string, description: string }>
-      _sortKey: string
-    })[] = []
+    const items: HistoricoTimelineItem[] = []
+    const biodataPorAtendimento = new Map<string, HistoricoTimelineItem>()
 
-    // Mapeia registros do legado, substituindo/complementando com dados locais
-    for (const r of legado) {
-      const localItem = r.ID_ATENDIMENTO ? mapaLocal.get(r.ID_ATENDIMENTO) : undefined
-      if (r.ID_ATENDIMENTO) visitados.add(r.ID_ATENDIMENTO)
+    for (const r of biodata) {
+      const dataHistorico = r.DATA_CONSULTA || r.DATA_ENCERRAMENTO || r.DATA_ANAMNESE || ''
+      const idGrupo = `biodata-${dataHistorico || r.ID_ATENDIMENTO || r.ID_ANAMNESE}`
+      let item = biodataPorAtendimento.get(idGrupo)
 
-      items.push({
-        title: formatarDataHistorico(r.DATA_CONSULTA),
-        icon: 'i-lucide-calendar',
-        subtitle: r.MEDICO || undefined,
-        _sortKey: r.DATA_CONSULTA,
-        content: {
-          Anamnese: { icon: 'i-lucide-file-text', description: localItem?.anamnese || r.OBS_ATENDIMENTO || '' },
-          diagnostico: { icon: 'i-lucide-clipboard-check', description: localItem ? montarDiagnosticos(localItem) : [r.CID_PRINCIPAL, r.DIAGNOSTICO_PRINCIPAL].filter(Boolean).join(' — ') },
-          receita: { icon: 'i-lucide-pill', description: localItem?.medicamentos?.join('\n') || '' },
-          exames: { icon: 'i-lucide-flask-conical', description: montarExames(localItem?.exames) }
+      if (!item) {
+        item = {
+          id: idGrupo,
+          title: formatarDataHistorico(dataHistorico),
+          time: formatarHoraHistorico(dataHistorico),
+          icon: 'i-lucide-calendar',
+          subtitle: r.MEDICO || undefined,
+          _sortKey: r.DATA_CONSULTA || r.DATA_ENCERRAMENTO || r.DATA_ANAMNESE || '',
+          cards: []
         }
+        biodataPorAtendimento.set(idGrupo, item)
+        items.push(item)
+      }
+
+      const anamnese = montarAnamneseBiodata(r)
+      if (temConteudoUtil(anamnese)) {
+        item.cards.push({
+          id: `anamnese-${r.ID_ANAMNESE || item.cards.length}`,
+          type: 'Anamnese',
+          title: 'Anamnese',
+          icon: 'i-lucide-file-text',
+          description: anamnese
+        })
+      }
+
+      adicionarCardUnico(item, {
+        id: `diagnostico-${r.ID_ANAMNESE || item.cards.length}`,
+        type: 'diagnostico',
+        title: 'diagnostico',
+        icon: 'i-lucide-clipboard-check',
+        description: montarDiagnosticosBiodata(r)
       })
     }
 
-    // Adiciona registros que existem apenas no banco local
     for (const l of local) {
-      const key = String(l.spdata_atendimento_id)
-      if (!key || key === 'null' || visitados.has(key)) continue
-      visitados.add(key)
-
+      const dataHistorico = l.data_consulta || ''
       items.push({
-        title: formatarDataHistorico(l.data_consulta || ''),
+        id: `local-${l.spdata_atendimento_id || dataHistorico || items.length}`,
+        title: formatarDataHistorico(dataHistorico),
+        time: formatarHoraHistorico(dataHistorico),
         icon: 'i-lucide-calendar',
         subtitle: l.medico_nome || undefined,
-        _sortKey: l.data_consulta || '',
-        content: {
-          Anamnese: { icon: 'i-lucide-file-text', description: l.anamnese || '' },
-          diagnostico: { icon: 'i-lucide-clipboard-check', description: montarDiagnosticos(l) },
-          receita: { icon: 'i-lucide-pill', description: l.medicamentos?.join('\n') || '' },
-          exames: { icon: 'i-lucide-flask-conical', description: montarExames(l.exames) }
-        }
+        _sortKey: dataHistorico,
+        cards: [
+          { id: 'anamnese-local', type: 'Anamnese', title: 'Anamnese', icon: 'i-lucide-file-text', description: l.anamnese || '' },
+          { id: 'diagnostico-local', type: 'diagnostico', title: 'diagnostico', icon: 'i-lucide-clipboard-check', description: montarDiagnosticos(l) },
+          { id: 'receita-local', type: 'receita', title: 'receita', icon: 'i-lucide-pill', description: l.medicamentos?.join('\n') || '' },
+          { id: 'exames-local', type: 'exames', title: 'exames', icon: 'i-lucide-flask-conical', description: montarExames(l.exames) }
+        ]
       })
     }
 
-    // Ordena por data+hora (mais recente primeiro)
-    items.sort((a, b) => new Date(b._sortKey).getTime() - new Date(a._sortKey).getTime())
+    items.sort((a, b) => timestampHistorico(b._sortKey) - timestampHistorico(a._sortKey))
 
     historicoItems.value = items
   } catch (err) {
@@ -131,6 +178,47 @@ async function fetchHistorico() {
   } finally {
     isLoadingHistorico.value = false
   }
+}
+
+function timestampHistorico(valor: string): number {
+  const timestamp = new Date(valor).getTime()
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+function formatarHoraHistorico(dataStr: string): string {
+  if (!dataStr) return ''
+  const data = new Date(dataStr)
+  if (Number.isNaN(data.getTime())) return ''
+  return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function adicionarCardUnico(item: HistoricoTimelineItem, card: HistoricoCard) {
+  if (!temConteudoUtil(card.description)) return
+  const existe = item.cards.some(c => c.type === card.type && c.description === card.description)
+  if (!existe) item.cards.push(card)
+}
+
+function montarAnamneseBiodata(item: HistoricoRecord): string {
+  return item.ANAMNESE || item.QUEIXA_PRINCIPAL || item.OBS_ATENDIMENTO || ''
+}
+
+function montarDiagnosticosBiodata(item: HistoricoRecord): string {
+  const partes: string[] = []
+
+  if (item.CID_PRINCIPAL || item.DIAGNOSTICO_PRINCIPAL) {
+    partes.push([item.CID_PRINCIPAL, item.DIAGNOSTICO_PRINCIPAL].filter(Boolean).join(' — '))
+  }
+
+  for (const cid of [item.CID_SECUNDARIO, item.CID_TERCIARIO, item.CID_QUATERNARIO]) {
+    if (!cid) continue
+    partes.push(...cid.split('\n').map(c => c.trim()).filter(Boolean))
+  }
+
+  if (item.DIAGNOSTICO_SECUNDARIO) {
+    partes.push(item.DIAGNOSTICO_SECUNDARIO)
+  }
+
+  return partes.join('\n')
 }
 
 function montarDiagnosticos(item: HistoricoLocalRecord): string {
@@ -276,8 +364,14 @@ function voltarDashboard() {
             size="xs"
           >
             <template #title="{ item }">
-              <div class="flex items-center justify-between w-full">
-                <span>{{ item.title }}</span>
+              <div class="flex items-start justify-between w-full gap-2">
+                <div class="leading-tight">
+                  <span>{{ item.title }}</span>
+                  <span
+                    v-if="item.time"
+                    class="block text-xs text-muted"
+                  >{{ item.time }}</span>
+                </div>
                 <span
                   v-if="item.subtitle"
                   class="text-xs text-muted truncate ml-2"
@@ -287,41 +381,42 @@ function voltarDashboard() {
             <template #description="{ item }">
               <div class="space-y-2 py-2">
                 <template
-                  v-for="(contentitem, key) in item.content"
-                  :key="key"
+                  v-for="card in item.cards"
+                  :key="card.id"
                 >
                   <UCard
-                    v-if="temConteudoUtil(contentitem.description)"
+                    v-if="temConteudoUtil(card.description)"
                     class="rounded-lg border border-muted hover:bg-muted/50"
                     :ui="{
-                      header: `p-0.5 sm:px-2 ${cardHeaderColors[key] ?? 'bg-primary dark:bg-primary-800'}`,
+                      header: `p-0.5 sm:px-2 ${cardHeaderColors[card.type]}`,
                       body: 'p-2 sm:p-2'
                     }"
                   >
                     <template #title>
                       <div class="flex items-center gap-2">
                         <UIcon
-                          :name="contentitem.icon"
+                          :name="card.icon"
                           class="text-white"
                         />
                         <p class="font-semibold text-sm text-white capitalize">
-                          {{ key }}
+                          {{ card.title }}
                         </p>
                       </div>
                     </template>
                     <div class="relative">
-                      <!-- eslint-disable-next-line vue/no-v-html -->
+                      <!-- eslint-disable vue/no-v-html -->
                       <div
-                        class="text-sm cursor-pointer"
-                        :class="expandedContent[item.title + '-' + key] ? '' : 'line-clamp-3'"
-                        @click="toggleContent(item.title + '-' + key)"
-                        v-html="sanitizeHtml(contentitem.description)"
+                        class="text-sm cursor-pointer whitespace-pre-line"
+                        :class="expandedContent[item.id + '-' + card.id] ? '' : 'line-clamp-3'"
+                        @click="toggleContent(item.id + '-' + card.id)"
+                        v-html="sanitizeHtml(card.description)"
                       />
+                      <!-- eslint-enable vue/no-v-html -->
                       <UIcon
-                        v-if="contentitem.description.length > 100"
-                        :name="expandedContent[item.title + '-' + key] ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                        v-if="card.description.length > 100"
+                        :name="expandedContent[item.id + '-' + card.id] ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
                         class="absolute bottom-0 right-0 dark:bg-neutral-900 px-1 cursor-pointer text-muted"
-                        @click.stop="toggleContent(item.title + '-' + key)"
+                        @click.stop="toggleContent(item.id + '-' + card.id)"
                       />
                     </div>
                   </UCard>

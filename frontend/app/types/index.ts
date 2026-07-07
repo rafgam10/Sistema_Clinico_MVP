@@ -121,16 +121,25 @@ export interface Chamado {
 }
 
 export interface HistoricoRecord {
-  CID_PRINCIPAL: string
+  ANAMNESE?: string | null
+  CID_PRINCIPAL: string | null
+  CID_SECUNDARIO?: string | null
+  CID_TERCIARIO?: string | null
+  CID_QUATERNARIO?: string | null
+  DATA_ANAMNESE?: string | null
   DATA_CONSULTA: string
-  DIAGNOSTICO_PRINCIPAL: string
-  ID_ATENDIMENTO: string
+  DATA_ENCERRAMENTO?: string | null
+  DIAGNOSTICO_PRINCIPAL: string | null
+  DIAGNOSTICO_SECUNDARIO?: string | null
+  ID_ANAMNESE?: string | null
+  ID_ATENDIMENTO: string | null
   ID_EVOLUCAO: string | null
   ID_SOLICITACAO_EXAME: string | null
   ID_PACIENTE: number
   MEDICO: string | null
   OBS_ATENDIMENTO: string | null
-  PACIENTE: string
+  PACIENTE: string | null
+  QUEIXA_PRINCIPAL?: string | null
 }
 
 export interface HistoricoLocalRecord {
