@@ -7,6 +7,7 @@ from src.models.db.handler_fb_db import ConnectionDBFireBird
 from src.models.model_mydsystem.med_spdata_agenda_model import MedSpdataAgenda
 from src.models.model_mydsystem.med_spdata_convenios_model import MedSpdataConvenio
 from src.settings.extensions import db
+from src.utils.normalizar import normalizar_cpf
 
 
 def normalizar_valor(valor):
@@ -226,7 +227,7 @@ def sincronizar_agenda_spdata(data_ini, data_fim):
         registro.data_agenda = data_agenda
         registro.hora_agenda = normalizar_hora(item.get("HORA_AGENDA") or item.get("HR_AGE"))
         registro.paciente = paciente
-        registro.cpf = normalizar_texto(item.get("CPF"), 20)
+        registro.cpf = normalizar_cpf(item.get("CPF"))
         registro.prontuario = normalizar_texto(item.get("PRONTUARIO"), 50)
         registro.id_paciente_spdata = normalizar_int(item.get("ID_PACIENTE_SPDATA"))
         registro.id_convenio_spdata = id_convenio

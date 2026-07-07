@@ -54,56 +54,32 @@ async function gerarPdf() {
     </template>
 
     <template #body>
-      <div class="grid grid-cols-2 gap-6 p-6 h-full">
-        <div class="space-y-6">
-          <UCard>
-            <template #title>
-              <div class="flex items-center gap-2">
-                <UIcon
-                  name="i-lucide-user"
-                  class="text-primary"
-                />
-                <p class="font-semibold">
-                  Paciente
-                </p>
-              </div>
-            </template>
-            <p class="text-lg font-medium">
-              {{ paciente?.nome ?? '—' }}
-            </p>
-          </UCard>
+      <div class="space-y-4 p-4">
+        <UFormField label="Paciente">
+          <UInput
+            :model-value="paciente?.nome ?? '—'"
+            disabled
+            class="w-full"
+          />
+        </UFormField>
 
-          <div class="grid grid-cols-2 gap-4">
-            <UFormField label="Data de início">
-              <UInput
-                v-model="data"
-                type="date"
-              />
-            </UFormField>
+        <UFormField label="Data de início">
+          <UInput
+            v-model="data"
+            type="date"
+            class="w-full"
+          />
+        </UFormField>
 
-            <UFormField label="Dias de afastamento">
-              <UInput
-                v-model.number="dias"
-                type="number"
-                min="1"
-                placeholder="Ex: 7"
-              />
-            </UFormField>
-          </div>
-        </div>
-
-        <div class="space-y-4">
-          <p class="text-sm font-medium text-muted">
-            Pré-visualização
-          </p>
-          <div
-            class="p-6 border border-muted rounded-md bg-neutral-50 dark:bg-neutral-900 prose prose-sm max-w-none"
-          >
-            <p>
-              {{ textoCompleto }}
-            </p>
-          </div>
-        </div>
+        <UFormField label="Dias de afastamento">
+          <UInput
+            v-model.number="dias"
+            type="number"
+            min="1"
+            placeholder="Ex: 7"
+            class="w-full"
+          />
+        </UFormField>
       </div>
     </template>
 

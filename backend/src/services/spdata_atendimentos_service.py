@@ -21,6 +21,7 @@ from src.models.prescricao_model import Prescricao
 from src.models.solicitacao_exame_model import SolicitacaoExame
 from src.models.db.handler_fb_db import ConnectionDBFireBird
 from src.settings.extensions import db
+from src.utils.normalizar import normalizar_cpf
 
 
 UNIDADE_PADRAO_SPDATA = 203
@@ -279,7 +280,7 @@ def sincronizar_atendimentos_spdata(data_ini, data_fim, crm_medico):
         registro.id_centro_custo_spdata = normalizar_int(item.get("ID_CENTRO_CUSTO_SPDATA"))
         registro.obs_atendimento = normalizar_texto(item.get("OBS_ATENDIMENTO"))
         registro.paciente = paciente
-        registro.cpf = normalizar_texto(item.get("CPF"), 20)
+        registro.cpf = normalizar_cpf(item.get("CPF"))
         registro.prontuario = normalizar_texto(item.get("PRONTUARIO"), 50)
         registro.data_nascimento = normalizar_data(item.get("DATA_NASCIMENTO"))
         registro.sexo = normalizar_texto(item.get("SEXO"), 20)
