@@ -177,7 +177,7 @@ const padraoReceitaSelected = ref<{ label: string, value: PadraoReceita }>()
 
 function adicionarRemedio() {
   if (!remedioNome.value && !remedioDosagem.value) return
-  receitaTexto.value += `\n• ${remedioNome.value}${remedioDosagem.value ? ` — ${remedioDosagem.value}` : ''}${remedioDetalhes.value ? `\n  ${remedioDetalhes.value}` : ''}\n`
+  receitaTexto.value += `\n• ${remedioNome.value}${remedioDosagem.value ? ` — ${remedioDosagem.value}` : ''}${remedioDetalhes.value ? ` — ${remedioDetalhes.value}` : ''}\n`
   remedioNome.value = ''
   remedioDosagem.value = ''
   remedioDetalhes.value = ''
@@ -186,7 +186,7 @@ function adicionarRemedio() {
 function adicionarPadraoReceita() {
   if (!padraoReceitaSelected.value) return
   for (const m of padraoReceitaSelected.value.value.medicamentos) {
-    receitaTexto.value += `\n• ${m.nome} — ${m.dosagem}${m.detalhes ? `\n  ${m.detalhes}` : ''}\n`
+    receitaTexto.value += `\n• ${m.nome} — ${m.dosagem}${m.detalhes ? ` — ${m.detalhes}` : ''}\n`
   }
   padraoReceitaSelected.value = undefined
 }
@@ -523,11 +523,12 @@ async function gerarReceitaPdf() {
   const linhas = receitaTexto.value.trim().split('\n').filter(l => l.trim())
   const medicamentos: ItemMedicamento[] = linhas.map((l) => {
     const text = l.replace(/^[•\-\s]*/, '').trim()
-    const idx = text.indexOf('—')
-    if (idx !== -1) {
-      return { nome: text.slice(0, idx).trim(), dosagem: text.slice(idx + 1).trim(), detalhes: '' }
+    const partes = text.split(' — ')
+    return {
+      nome: partes[0]?.trim() || text,
+      dosagem: partes[1]?.trim() || '',
+      detalhes: partes.slice(2).join(' — ').trim() || ''
     }
-    return { nome: text, dosagem: '', detalhes: '' }
   })
   const doc = await buildReceita({
     paciente: agendamento.value?.paciente.nome ?? 'Paciente',
