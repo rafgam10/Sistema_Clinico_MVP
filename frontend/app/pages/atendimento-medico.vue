@@ -520,20 +520,11 @@ onUnmounted(() => {
 async function gerarReceitaPdf() {
   if (!receitaTexto.value.trim()) return
   const pdfMake = await usePdfMake()
-  const linhas = receitaTexto.value.trim().split('\n').filter(l => l.trim())
-  const medicamentos: ItemMedicamento[] = linhas.map((l) => {
-    const text = l.replace(/^[•\-\s]*/, '').trim()
-    const partes = text.split(' — ')
-    return {
-      nome: partes[0]?.trim() || text,
-      dosagem: partes[1]?.trim() || '',
-      detalhes: partes.slice(2).join(' — ').trim() || ''
-    }
-  })
   const doc = await buildReceita({
     paciente: agendamento.value?.paciente.nome ?? 'Paciente',
     data: new Date().toLocaleDateString('pt-BR'),
-    medicamentos,
+    medicamentos: [],
+    texto: receitaTexto.value,
     medico: auth.user?.nome,
     crm: auth.user?.crm
   })

@@ -72,9 +72,20 @@ export async function buildReceita(params: {
   paciente: string
   data: string
   medicamentos: ItemMedicamento[]
+  texto?: string
   medico?: string
   crm?: string
 }) {
+  const medicamentosContent = params.texto
+    ? [{ text: params.texto, margin: [0, 0, 0, 20] }]
+    : params.medicamentos.map(m => ({
+        columns: [
+          { text: `\u2022 ${m.nome} — ${m.dosagem}`, bold: true,  width: '40%' as const },
+          { text: m.detalhes, width: '60%' as const }
+        ],
+        margin: [0, 0, 0, 12] as [number, number, number, number]
+      }))
+
   return {
     pageSize: 'A4' as const,
     pageMargins: [60, 40, 60, 60] as [number, number, number, number],
@@ -83,13 +94,7 @@ export async function buildReceita(params: {
       { text: `DATA: ${params.data}`, margin: [0, 0, 0, 0], alignment: 'right' as const },
       documentTitle('RECEITA MÉDICA'),
       { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
-      ...params.medicamentos.map(m => ({
-        columns: [
-          { text: `\u2022 ${m.nome} — ${m.dosagem}`, bold: true,  width: '40%' as const },
-          { text: m.detalhes, width: '60%' as const }
-        ],
-        margin: [0, 0, 0, 12] as [number, number, number, number]
-      })),
+      ...medicamentosContent,
       signatureBlock(params.medico, params.crm)
     ],
     defaultStyle
