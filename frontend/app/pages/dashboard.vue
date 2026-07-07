@@ -249,7 +249,7 @@ const tempoMedioEspera = computed(() => {
                 </p>
               </div>
               <p class="text-3xl font-bold ">
-                {{ agendamentosStore.fila.length }} Pessoas
+                {{ agendamentosStore.fila.length }} Pessoa<span v-if="agendamentosStore.fila.length !== 1">s</span>
               </p>
             </div>
           </UPageCard>
@@ -258,11 +258,11 @@ const tempoMedioEspera = computed(() => {
               <div class="flex items-center gap-2">
                 <div class="size-3 bg-success rounded-full" />
                 <p class="text-xl font-medium">
-                  atendidos:
+                  Atendidos:
                 </p>
               </div>
               <p class="text-3xl font-bold ">
-                {{ agendamentosStore.totalAtendidos }} Pessoas
+                {{ agendamentosStore.totalAtendidos }} Pessoa<span v-if="agendamentosStore.totalAtendidos !== 1">s</span>
               </p>
             </div>
           </UPageCard>
@@ -275,7 +275,7 @@ const tempoMedioEspera = computed(() => {
                 </p>
               </div>
               <p class="text-3xl font-bold ">
-                {{ agendamentosStore.totalFaltas }} Pessoas
+                {{ agendamentosStore.totalFaltas }} Pessoa<span v-if="agendamentosStore.totalFaltas !== 1">s</span>
               </p>
             </div>
           </UPageCard>
