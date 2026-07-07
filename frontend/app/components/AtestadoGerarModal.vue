@@ -2,6 +2,7 @@
 import { usePdfMake } from '~/utils/pdf'
 import { buildAtestado } from '~/utils/pdf-documents'
 
+const auth = useAuthStore()
 const open = defineModel<boolean>('open', { default: false })
 
 const agendamentosStore = useAgendamentosStore()
@@ -25,7 +26,9 @@ async function gerarPdf() {
   const pdfMake = await usePdfMake()
   const doc = await buildAtestado({
     paciente: paciente.value?.nome ?? 'Paciente',
-    conteudoHtml: `<p>${textoCompleto.value}</p>`
+    conteudoHtml: `<p>${textoCompleto.value}</p>`,
+    medico: auth.user?.nome,
+    crm: auth.user?.crm
   })
   pdfMake.createPdf(doc).open()
   open.value = false
@@ -35,7 +38,6 @@ async function gerarPdf() {
 <template>
   <UModal
     v-model:open="open"
-    fullscreen
   >
     <template #header>
       <div class="flex items-center justify-between">

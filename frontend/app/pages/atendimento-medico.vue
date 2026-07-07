@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { PadraoReceita, PadraoExame, PadraoAnamnese, ItemMedicamento, ExameCatalogo, ExameSelecionado } from '~/types'
 import { usePdfMake } from '~/utils/pdf'
-import { buildSolicitacaoExames, buildReceita } from '~/utils/pdf-documents'
+import { buildSolicitacaoExames, buildReceita, buildAtestadoComparecimento } from '~/utils/pdf-documents'
 
+const auth = useAuthStore()
 const agendamentosStore = useAgendamentosStore()
 const padroesStore = usePadroesStore()
 const padroesAnamneseStore = usePadroesAnamneseStore()
@@ -528,24 +529,43 @@ async function gerarReceitaPdf() {
     }
     return { nome: text, dosagem: '', detalhes: '' }
   })
-  const doc = buildReceita({
+  const doc = await buildReceita({
     paciente: agendamento.value?.paciente.nome ?? 'Paciente',
     data: new Date().toLocaleDateString('pt-BR'),
-    medicamentos
+    medicamentos,
+    medico: auth.user?.nome,
+    crm: auth.user?.crm
   })
-  pdfMake.createPdf(doc).download('receita-medica.pdf')
+  pdfMake.createPdf(doc).open()
 }
 
 async function gerarSolicitacaoExames() {
   if (!examesSelecionados.value.length) return
   const pdfMake = await usePdfMake()
-  const doc = buildSolicitacaoExames({
+  const doc = await buildSolicitacaoExames({
     paciente: agendamento.value?.paciente.nome ?? 'Paciente',
     data: new Date().toLocaleDateString('pt-BR'),
     exames: examesSelecionados.value
-      .map(e => e.nome)
+      .map(e => e.nome),
+    medico: auth.user?.nome,
+    crm: auth.user?.crm
   })
-  pdfMake.createPdf(doc).download('solicitacao-exames.pdf')
+  pdfMake.createPdf(doc).open()
+}
+
+async function gerarComparecimento() {
+  const ag = agendamento.value
+  if (!ag) return
+  const pdfMake = await usePdfMake()
+  const dataFormatada = new Date(ag.data + 'T12:00:00').toLocaleDateString('pt-BR')
+  const doc = await buildAtestadoComparecimento({
+    paciente: ag.paciente.nome,
+    data: dataFormatada,
+    horario: ag.horario.slice(0, 5),
+    medico: auth.user?.nome,
+    crm: auth.user?.crm
+  })
+  pdfMake.createPdf(doc).open()
 }
 
 async function finalizarConsulta() {
@@ -1120,6 +1140,7 @@ async function finalizarConsulta() {
                 label="Atestado de Comparecimento"
                 color="primary"
                 class="w-full p-3 text-lg font-bold"
+                @click="void gerarComparecimento()"
               />
               <UButton
                 icon="i-lucide-stamp"

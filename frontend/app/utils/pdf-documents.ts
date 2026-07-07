@@ -1,73 +1,140 @@
 import type { ItemMedicamento } from '~/types'
+import { getLogoBase64 } from '~/utils/pdf-assets'
 
-function header() {
-  return { fontSize: 16, bold: true, alignment: 'center' as const, margin: [0, 0, 0, 20] }
+async function hospitalHeader() {
+  const logo = await getLogoBase64()
+  return [
+    {
+      columns: [
+        {
+          image: logo,
+          width: 160
+        },
+        {
+          stack: [
+            { text: 'NATUS LUMINE HOSPITAL E MATERNIDADE', fontSize: 12, bold: true },
+            { text: 'Av. dos Holandeses, n\u00BA 69, Olho D\'Água', fontSize: 9, color: '#555555' },
+            { text: 'São Luís - MA | CEP: 65065-180', fontSize: 9, color: '#555555' },
+            { text: 'Telefone: (98) 2107-5252', fontSize: 9, color: '#555555' }
+          ],
+          alignment: 'right' as const,
+          margin: [0, 5, 0, 0]
+        }
+      ]
+    },
+    { text: '\n' },
+    { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 475, y2: 0, lineWidth: 1, lineColor: '#E0E0E0' }] },
+    { text: '\n' }
+  ]
+}
+
+function documentTitle(title: string) {
+  return { text: title, fontSize: 16, bold: true, alignment: 'center' as const, margin: [0, 10, 0, 20] }
+}
+
+function signatureBlock(medico?: string, crm?: string) {
+  return {
+    stack: [
+      { text: '\n\n\n' },
+      { text: '__________________________________________', alignment: 'center' as const },
+      { text: medico ?? 'Médico Responsável', bold: true, fontSize: 10, alignment: 'center' as const },
+      ...(crm ? [{ text: crm, fontSize: 9, alignment: 'center' as const, color: '#555555' }] : [])
+    ],
+    unbreakable: true
+  }
 }
 
 const defaultStyle = { fontSize: 11, lineHeight: 1.5 }
 
-export function buildSolicitacaoExames(params: { paciente: string, data: string, exames: string[] }) {
+export async function buildSolicitacaoExames(params: {
+  paciente: string
+  data: string
+  exames: string[]
+  medico?: string
+  crm?: string
+}) {
   return {
-    pageSize: 'A4',
-    pageMargins: [60, 60, 60, 60],
+    pageSize: 'A4' as const,
+    pageMargins: [60, 40, 60, 60] as [number, number, number, number],
     content: [
-      { text: 'Solicitação de Exames', style: 'header' },
-      { text: `Paciente: ${params.paciente}`, margin: [0, 10, 0, 0] },
-      { text: `Data: ${params.data}`, margin: [0, 0, 0, 10] },
-      { text: '\n' },
-      { ul: params.exames.map(e => ({ text: e })) },
-      { text: '\n\n\n' },
-      { text: `${params.paciente},` },
-      { text: '\n__________________________' },
-      { text: 'Médico Responsável' }
+      ...(await hospitalHeader()),
+      documentTitle('SOLICITAÇÃO DE EXAMES'),
+      { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
+      { text: `DATA: ${params.data}`, margin: [0, 0, 0, 20] },
+      ...params.exames.map(e => ({ text: `\u2022 ${e}`, margin: [0, 0, 0, 4] })),
+      signatureBlock(params.medico, params.crm)
     ],
-    styles: { header: header() },
     defaultStyle
   }
 }
 
-export function buildReceita(params: { paciente: string, data: string, medicamentos: ItemMedicamento[] }) {
+export async function buildReceita(params: {
+  paciente: string
+  data: string
+  medicamentos: ItemMedicamento[]
+  medico?: string
+  crm?: string
+}) {
   return {
-    pageSize: 'A4',
-    pageMargins: [60, 60, 60, 60],
+    pageSize: 'A4' as const,
+    pageMargins: [60, 40, 60, 60] as [number, number, number, number],
     content: [
-      { text: 'Receita Médica', style: 'header' },
-      { text: `Paciente: ${params.paciente}`, margin: [0, 10, 0, 0] },
-      { text: `Data: ${params.data}`, margin: [0, 0, 0, 10] },
-      { text: '\n' },
+      ...(await hospitalHeader()),
+      { text: `DATA: ${params.data}`, margin: [0, 0, 0, 0], alignment: 'right' as const },
+      documentTitle('RECEITA MÉDICA'),
+      { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
       ...params.medicamentos.map(m => ({
         columns: [
-          { text: `${m.nome} — ${m.dosagem}`, bold: true, width: '40%' },
-          { text: m.detalhes, width: '60%' }
+          { text: `\u2022 ${m.nome} — ${m.dosagem}`, bold: true,  width: '40%' as const },
+          { text: m.detalhes, width: '60%' as const }
         ],
-        margin: [0, 0, 0, 8] as [number, number, number, number]
+        margin: [0, 0, 0, 12] as [number, number, number, number]
       })),
-      { text: '\n\n\n' },
-      { text: `${params.paciente},` },
-      { text: '\n__________________________' },
-      { text: 'Médico Responsável' }
+      signatureBlock(params.medico, params.crm)
     ],
-    styles: { header: header() },
     defaultStyle
   }
 }
 
-export async function buildAtestado(params: { paciente: string, conteudoHtml: string }) {
+export async function buildAtestadoComparecimento(params: {
+  paciente: string
+  data: string
+  horario: string
+  medico?: string
+  crm?: string
+}) {
+  return {
+    pageSize: 'A4' as const,
+    pageMargins: [60, 40, 60, 60] as [number, number, number, number],
+    content: [
+      ...(await hospitalHeader()),
+      documentTitle('ATESTADO DE COMPARECIMENTO'),
+      { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
+      { text: '\n' },
+      { text: `Atesto, para os devidos fins, que o(a) paciente ${params.paciente} compareceu a esta unidade de sa\u00FAdde no dia ${params.data} \u00E0s ${params.horario}, para atendimento m\u00E9dico.`, margin: [0, 0, 0, 10] },
+      signatureBlock(params.medico, params.crm)
+    ],
+    defaultStyle
+  }
+}
+
+export async function buildAtestado(params: {
+  paciente: string
+  conteudoHtml: string
+  medico?: string
+  crm?: string
+}) {
   const htmlToPdfmake = (await import('html-to-pdfmake')).default
 
   return {
-    pageSize: 'A4',
-    pageMargins: [60, 60, 60, 60],
+    pageSize: 'A4' as const,
+    pageMargins: [60, 40, 60, 60] as [number, number, number, number],
     content: [
-      { text: 'ATESTADO MÉDICO', style: 'header' },
-      { text: '\n' },
+      ...(await hospitalHeader()),
+      documentTitle('ATESTADO MÉDICO'),
       ...htmlToPdfmake(params.conteudoHtml, { window }),
-      { text: '\n\n\n' },
-      { text: `${params.paciente}, ____________________________________________________` },
-      { text: '\n' },
-      { text: 'Médico Responsável, ____________________________________________________' }
+      signatureBlock(params.medico, params.crm)
     ],
-    styles: { header: header() },
     defaultStyle
   }
 }

@@ -80,6 +80,7 @@ export interface AuthUser {
   email: string
   role: 'medico' | 'recepcao'
   especialidades?: string[]
+  crm?: string
   clinicaIds: number[]
 }
 
