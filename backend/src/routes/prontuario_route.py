@@ -244,67 +244,97 @@ def _referencia_paciente_biodata(paciente_id):
     return cpf, nome
 
 
-def _executar_historico_biodata(where_clause, params):
+def _executar_historico_biodata(where_clause, params, limit, offset):
+    row_start = offset + 1
+    row_end = offset + limit + 1
     sql = f"""
-        SELECT TOP 5
-            a.intAtendimentoId AS ID_ATENDIMENTO,
-            a.datAtendimento AS DATA_CONSULTA,
-            a.datEncerrado AS DATA_ENCERRAMENTO,
-            p.strProfissional AS MEDICO,
-            a.strObservacao AS OBS_ATENDIMENTO,
-            a.strQueixaPrincipal AS QUEIXA_PRINCIPAL,
-            a.strCodigoCID AS CID_PRINCIPAL,
-            a.strCID2 AS CID_SECUNDARIO,
-            a.strCID3 AS CID_TERCIARIO,
-            a.strCID4 AS CID_QUATERNARIO,
-            an.intAnamneseId AS ID_ANAMNESE,
-            an.datAnamnese AS DATA_ANAMNESE,
-            CAST(an.strAnamnese AS NVARCHAR(MAX)) AS ANAMNESE_RTF,
-            CAST(an.strAnamneseMobile AS NVARCHAR(MAX)) AS ANAMNESE_MOBILE
-        FROM [BioData].[dbo].[tblAnamnese] an
-        JOIN [BioData].[dbo].[tblAtendimento] a
-            ON a.intAtendimentoId = an.intAtendimentoId
-        JOIN [Repositorio].[dbo].[tblCliente] c
-            ON c.intClienteId = a.intClienteId
-        LEFT JOIN [BioData].[dbo].[tblProfissional] p
-            ON p.intProfissionalId = a.intProfissionalId
-        WHERE UPPER(ISNULL(a.bolEncerrado, 'N')) = 'S'
-          AND UPPER(ISNULL(an.bolNaoCompartilhar, 'N')) <> 'S'
-          AND {where_clause}
-        ORDER BY COALESCE(an.datAnamnese, a.datEncerrado, a.datAtendimento, a.datAtende) DESC,
-                 an.intAnamneseId DESC;
+        WITH historico AS (
+            SELECT
+                a.intAtendimentoId AS ID_ATENDIMENTO,
+                a.datAtendimento AS DATA_CONSULTA,
+                a.datEncerrado AS DATA_ENCERRAMENTO,
+                p.strProfissional AS MEDICO,
+                a.strObservacao AS OBS_ATENDIMENTO,
+                a.strQueixaPrincipal AS QUEIXA_PRINCIPAL,
+                a.strCodigoCID AS CID_PRINCIPAL,
+                a.strCID2 AS CID_SECUNDARIO,
+                a.strCID3 AS CID_TERCIARIO,
+                a.strCID4 AS CID_QUATERNARIO,
+                an.intAnamneseId AS ID_ANAMNESE,
+                an.datAnamnese AS DATA_ANAMNESE,
+                CAST(an.strAnamnese AS NVARCHAR(MAX)) AS ANAMNESE_RTF,
+                CAST(an.strAnamneseMobile AS NVARCHAR(MAX)) AS ANAMNESE_MOBILE,
+                ROW_NUMBER() OVER (
+                    ORDER BY COALESCE(an.datAnamnese, a.datEncerrado, a.datAtendimento, a.datAtende) DESC,
+                             an.intAnamneseId DESC
+                ) AS RN
+            FROM [BioData].[dbo].[tblAnamnese] an
+            JOIN [BioData].[dbo].[tblAtendimento] a
+                ON a.intAtendimentoId = an.intAtendimentoId
+            JOIN [Repositorio].[dbo].[tblCliente] c
+                ON c.intClienteId = a.intClienteId
+            LEFT JOIN [BioData].[dbo].[tblProfissional] p
+                ON p.intProfissionalId = a.intProfissionalId
+            WHERE UPPER(ISNULL(a.bolEncerrado, 'N')) = 'S'
+              AND UPPER(ISNULL(an.bolNaoCompartilhar, 'N')) <> 'S'
+              AND {where_clause}
+        )
+        SELECT
+            ID_ATENDIMENTO,
+            DATA_CONSULTA,
+            DATA_ENCERRAMENTO,
+            MEDICO,
+            OBS_ATENDIMENTO,
+            QUEIXA_PRINCIPAL,
+            CID_PRINCIPAL,
+            CID_SECUNDARIO,
+            CID_TERCIARIO,
+            CID_QUATERNARIO,
+            ID_ANAMNESE,
+            DATA_ANAMNESE,
+            ANAMNESE_RTF,
+            ANAMNESE_MOBILE
+        FROM historico
+        WHERE RN BETWEEN ? AND ?
+        ORDER BY RN;
     """
 
     with ConnectionSqlServer() as con:
         cursor = con.cursor()
-        cursor.execute(sql, params)
+        cursor.execute(sql, [*params, row_start, row_end])
         columns = [desc[0] for desc in cursor.description]
         rows = cursor.fetchall()
         cursor.close()
 
-    return [
+    items = [
         {
             coluna: _normalizar_sql_value(valor)
             for coluna, valor in zip(columns, row)
         }
         for row in rows
     ]
+    return items[:limit], len(items) > limit
 
 
-def _historico_biodata(paciente_id):
+def _historico_biodata(paciente_id, limit=10, offset=0):
     cpf, nome = _referencia_paciente_biodata(paciente_id)
     historico = []
+    has_more = False
 
     if cpf:
-        historico = _executar_historico_biodata(
+        historico, has_more = _executar_historico_biodata(
             "REPLACE(REPLACE(REPLACE(REPLACE(c.strCPF, '.', ''), '-', ''), '/', ''), ' ', '') = ?",
             [cpf],
+            limit,
+            offset,
         )
 
-    if not historico and nome:
-        historico = _executar_historico_biodata(
+    if not historico and offset == 0 and nome:
+        historico, has_more = _executar_historico_biodata(
             "UPPER(LTRIM(RTRIM(c.strCliente))) = UPPER(LTRIM(RTRIM(?)))",
             [nome],
+            limit,
+            offset,
         )
 
     result = []
@@ -337,7 +367,12 @@ def _historico_biodata(paciente_id):
             "ID_SOLICITACAO_EXAME": None,
         })
 
-    return result
+    return {
+        "items": result,
+        "limit": limit,
+        "offset": offset,
+        "has_more": has_more,
+    }
 
 @prontuario_bp.route("/doenca-cid", methods=["GET"])
 @jwt_required()
@@ -489,7 +524,13 @@ def historico_paciente_local(paciente_id):
 @roles_required("medico")
 def historico_paciente(id:int):
     try:
-        return jsonify(_historico_biodata(id)), 200
+        limit = request.args.get("limit", default=10, type=int)
+        offset = request.args.get("offset", default=0, type=int)
+
+        limit = min(max(limit or 10, 1), 50)
+        offset = max(offset or 0, 0)
+
+        return jsonify(_historico_biodata(id, limit, offset)), 200
             
     except Exception as e:
         current_app.logger.exception("Erro ao buscar histórico do paciente no BioData")
