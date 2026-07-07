@@ -1,11 +1,33 @@
 <script setup lang="ts">
+import { useSse } from '~/composables/useSse'
+
 const chamadosStore = useChamadosStore()
 const agendamentosStore = useAgendamentosStore()
+
+function falarChamado(pacienteNome: string, localAtendimento: string) {
+  if (!('speechSynthesis' in window)) return
+  window.speechSynthesis.cancel()
+  const msg = new SpeechSynthesisUtterance(
+    `Chamando ${pacienteNome}, por favor dirija-se \u00E0 ${localAtendimento}`
+  )
+  msg.lang = 'pt-BR'
+  msg.rate = 1.1
+  msg.volume = 1
+  window.speechSynthesis.speak(msg)
+}
 
 onMounted(async () => {
   const hoje = formatarDataISO(new Date())
   await agendamentosStore.fetchAgendamentos(undefined, hoje)
   chamadosStore.init()
+
+  const sse = useSse()
+  sse.on('chamado:novo', (data: unknown) => {
+    const chamado = data as { pacienteNome?: string; localAtendimento?: string }
+    if (chamado?.pacienteNome) {
+      falarChamado(chamado.pacienteNome, chamado.localAtendimento ?? 'sala de atendimento')
+    }
+  })
 })
 
 const { agora, horaFormatada, dataFormatada } = useRelogio()
