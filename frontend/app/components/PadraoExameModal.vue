@@ -182,7 +182,7 @@ async function salvar() {
           icon="i-lucide-x"
           color="neutral"
           variant="ghost"
-          @click="open = false"
+          @click="void (open = false)"
         />
       </div>
     </template>
@@ -268,7 +268,7 @@ async function salvar() {
             label="Cancelar"
             color="neutral"
             variant="ghost"
-            @click="open = false"
+            @click="void (open = false)"
           />
           <UButton
             label="Salvar"

@@ -186,7 +186,7 @@ const tempoMedioEspera = computed(() => {
             color="primary"
             variant="soft"
             class="cursor-pointer gap-1"
-            @click="showSalaModal = true"
+            @click="void (showSalaModal = true)"
           >
             Sala: {{ sala || '—' }}
             <UIcon name="i-lucide-pencil" class="h-3 w-3" />

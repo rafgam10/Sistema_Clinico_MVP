@@ -48,7 +48,7 @@ async function gerarPdf() {
           icon="i-lucide-x"
           color="neutral"
           variant="ghost"
-          @click="open = false"
+          @click="void (open = false)"
         />
       </div>
     </template>
@@ -113,7 +113,7 @@ async function gerarPdf() {
           label="Cancelar"
           color="neutral"
           variant="ghost"
-          @click="open = false"
+          @click="void (open = false)"
         />
         <UButton
           icon="i-lucide-printer"

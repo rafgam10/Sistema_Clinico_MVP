@@ -68,7 +68,7 @@ onMounted(async () => {
           :label="showRaw ? 'Ver Cards' : 'Ver Raw JSON'"
           size="sm"
           variant="outline"
-          @click="showRaw = !showRaw"
+          @click="void (showRaw = !showRaw)"
         />
       </div>
 

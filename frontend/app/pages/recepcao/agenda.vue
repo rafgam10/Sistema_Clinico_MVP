@@ -316,7 +316,7 @@ async function criarAgendamento() {
                 color="neutral"
                 variant="ghost"
                 size="sm"
-                @click="showNovoAgendamento = false"
+                @click="void (showNovoAgendamento = false)"
               />
             </div>
           </template>
@@ -390,7 +390,7 @@ async function criarAgendamento() {
                 label="Cancelar"
                 color="neutral"
                 variant="soft"
-                @click="showNovoAgendamento = false"
+                @click="void (showNovoAgendamento = false)"
               />
               <UButton
                 label="Agendar"
