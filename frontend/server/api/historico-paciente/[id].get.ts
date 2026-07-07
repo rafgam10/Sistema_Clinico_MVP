@@ -16,9 +16,13 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const params = new URLSearchParams()
   const cpf = normalizarCpf(query.cpf)
+  const limit = Number(query.limit || 10)
+  const offset = Number(query.offset || 0)
 
   if (cpf) params.set('cpf', cpf)
   if (query.nome) params.set('nome', String(query.nome))
+  params.set('limit', String(Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 50) : 10))
+  params.set('offset', String(Number.isFinite(offset) ? Math.max(offset, 0) : 0))
 
   const qs = params.toString()
   return await flaskFetch(event, `/prontuario/historico-paciente/${id}${qs ? `?${qs}` : ''}`)

@@ -142,6 +142,13 @@ export interface HistoricoRecord {
   QUEIXA_PRINCIPAL?: string | null
 }
 
+export interface HistoricoResponse {
+  items: HistoricoRecord[]
+  limit: number
+  offset: number
+  has_more: boolean
+}
+
 export interface HistoricoLocalRecord {
   spdata_atendimento_id: number | null
   data_consulta: string | null

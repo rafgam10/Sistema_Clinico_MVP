@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/no-v-html -->
 <script setup lang="ts">
-import type { HistoricoRecord, HistoricoLocalRecord } from '~/types'
+import type { HistoricoRecord, HistoricoResponse, HistoricoLocalRecord } from '~/types'
 import { formatarDataHistorico } from '~/utils/time'
 
 const { sanitizeHtml } = useSanitize()
@@ -45,6 +45,24 @@ type HistoricoTimelineItem = {
 
 const historicoItems = ref<HistoricoTimelineItem[]>([])
 const isLoadingHistorico = ref(false)
+const isLoadingMaisHistorico = ref(false)
+const historicoScrollRef = ref<HTMLElement | null>(null)
+const biodataHistorico = ref<HistoricoRecord[]>([])
+const localHistorico = ref<HistoricoLocalRecord[]>([])
+const biodataOffset = ref(0)
+const biodataHasMore = ref(false)
+
+const HISTORICO_BIODATA_LIMIT = 10
+
+useInfiniteScroll(
+  historicoScrollRef,
+  () => {
+    if (biodataHasMore.value && !isLoadingHistorico.value && !isLoadingMaisHistorico.value) {
+      void carregarMaisHistoricoBiodata()
+    }
+  },
+  { distance: 160 }
+)
 
 function temConteudoUtil(descricao: string): boolean {
   const texto = descricao?.trim() || ''
@@ -81,26 +99,31 @@ function cpfHistorico(valor?: string | null): string | undefined {
 }
 
 async function fetchHistorico() {
-  // BioData e MedSystem usam identificadores de atendimento diferentes;
-  // a timeline junta as fontes como consultas separadas e ordena por data.
   const paciente = agendamento.value?.paciente
   const pacienteId = paciente?.id
   if (!pacienteId) return
 
   isLoadingHistorico.value = true
+  biodataHistorico.value = []
+  localHistorico.value = []
+  historicoItems.value = []
+  biodataOffset.value = 0
+  biodataHasMore.value = false
+
   try {
     const [biodataResult, localResult] = await Promise.allSettled([
-      $fetch<HistoricoRecord[]>(`/api/historico-paciente/${pacienteId}`, {
-        query: {
-          cpf: cpfHistorico(paciente.cpf),
-          nome: paciente.nome || undefined
-        }
-      }),
+      buscarHistoricoBiodata(0),
       $fetch<HistoricoLocalRecord[]>(`/api/historico-local/${pacienteId}`)
     ])
 
-    const biodata = biodataResult.status === 'fulfilled' ? biodataResult.value : []
-    const local = localResult.status === 'fulfilled' ? localResult.value : []
+    const biodataResponse = biodataResult.status === 'fulfilled' ? biodataResult.value : null
+    localHistorico.value = localResult.status === 'fulfilled' ? localResult.value : []
+
+    if (biodataResponse) {
+      adicionarRegistrosBiodata(biodataResponse.items)
+      biodataOffset.value = biodataResponse.offset + biodataResponse.items.length
+      biodataHasMore.value = biodataResponse.has_more
+    }
 
     if (biodataResult.status === 'rejected') {
       console.error('Erro ao buscar histórico BioData:', biodataResult.reason)
@@ -109,75 +132,133 @@ async function fetchHistorico() {
       console.error('Erro ao buscar histórico local:', localResult.reason)
     }
 
-    const items: HistoricoTimelineItem[] = []
-    const biodataPorAtendimento = new Map<string, HistoricoTimelineItem>()
-
-    for (const r of biodata) {
-      const dataHistorico = r.DATA_CONSULTA || r.DATA_ENCERRAMENTO || r.DATA_ANAMNESE || ''
-      const idGrupo = `biodata-${dataHistorico || r.ID_ATENDIMENTO || r.ID_ANAMNESE}`
-      let item = biodataPorAtendimento.get(idGrupo)
-
-      if (!item) {
-        item = {
-          id: idGrupo,
-          title: formatarDataHistorico(dataHistorico),
-          time: formatarHoraHistorico(dataHistorico),
-          icon: 'i-lucide-calendar',
-          subtitle: r.MEDICO || undefined,
-          _sortKey: r.DATA_CONSULTA || r.DATA_ENCERRAMENTO || r.DATA_ANAMNESE || '',
-          cards: []
-        }
-        biodataPorAtendimento.set(idGrupo, item)
-        items.push(item)
-      }
-
-      const anamnese = montarAnamneseBiodata(r)
-      if (temConteudoUtil(anamnese)) {
-        item.cards.push({
-          id: `anamnese-${r.ID_ANAMNESE || item.cards.length}`,
-          type: 'Anamnese',
-          title: 'Anamnese',
-          icon: 'i-lucide-file-text',
-          description: anamnese
-        })
-      }
-
-      adicionarCardUnico(item, {
-        id: `diagnostico-${r.ID_ANAMNESE || item.cards.length}`,
-        type: 'diagnostico',
-        title: 'diagnostico',
-        icon: 'i-lucide-clipboard-check',
-        description: montarDiagnosticosBiodata(r)
-      })
-    }
-
-    for (const l of local) {
-      const dataHistorico = l.data_consulta || ''
-      items.push({
-        id: `local-${l.spdata_atendimento_id || dataHistorico || items.length}`,
-        title: formatarDataHistorico(dataHistorico),
-        time: formatarHoraHistorico(dataHistorico),
-        icon: 'i-lucide-calendar',
-        subtitle: l.medico_nome || undefined,
-        _sortKey: dataHistorico,
-        cards: [
-          { id: 'anamnese-local', type: 'Anamnese', title: 'Anamnese', icon: 'i-lucide-file-text', description: l.anamnese || '' },
-          { id: 'diagnostico-local', type: 'diagnostico', title: 'diagnostico', icon: 'i-lucide-clipboard-check', description: montarDiagnosticos(l) },
-          { id: 'receita-local', type: 'receita', title: 'receita', icon: 'i-lucide-pill', description: l.medicamentos?.join('\n') || '' },
-          { id: 'exames-local', type: 'exames', title: 'exames', icon: 'i-lucide-flask-conical', description: montarExames(l.exames) }
-        ]
-      })
-    }
-
-    items.sort((a, b) => timestampHistorico(b._sortKey) - timestampHistorico(a._sortKey))
-
-    historicoItems.value = items
+    remontarHistoricoItems()
   } catch (err) {
     console.error('Erro ao buscar histórico:', err)
     historicoItems.value = []
   } finally {
     isLoadingHistorico.value = false
   }
+}
+
+async function buscarHistoricoBiodata(offset: number): Promise<HistoricoResponse> {
+  const paciente = agendamento.value?.paciente
+  const pacienteId = paciente?.id
+  if (!pacienteId) {
+    return { items: [], limit: HISTORICO_BIODATA_LIMIT, offset, has_more: false }
+  }
+
+  return await $fetch<HistoricoResponse>(`/api/historico-paciente/${pacienteId}`, {
+    query: {
+      cpf: cpfHistorico(paciente.cpf),
+      nome: paciente.nome || undefined,
+      limit: HISTORICO_BIODATA_LIMIT,
+      offset
+    }
+  })
+}
+
+async function carregarMaisHistoricoBiodata() {
+  if (!biodataHasMore.value || isLoadingMaisHistorico.value || isLoadingHistorico.value) return
+
+  isLoadingMaisHistorico.value = true
+  try {
+    const response = await buscarHistoricoBiodata(biodataOffset.value)
+    adicionarRegistrosBiodata(response.items)
+    biodataOffset.value = response.offset + response.items.length
+    biodataHasMore.value = response.has_more
+    remontarHistoricoItems()
+  } catch (err) {
+    console.error('Erro ao carregar mais histórico BioData:', err)
+  } finally {
+    isLoadingMaisHistorico.value = false
+  }
+}
+
+function adicionarRegistrosBiodata(registros: HistoricoRecord[]) {
+  const existentes = new Set(biodataHistorico.value.map(chaveHistoricoBiodata))
+  const novos = registros.filter((registro) => {
+    const chave = chaveHistoricoBiodata(registro)
+    if (existentes.has(chave)) return false
+    existentes.add(chave)
+    return true
+  })
+
+  biodataHistorico.value.push(...novos)
+}
+
+function chaveHistoricoBiodata(registro: HistoricoRecord) {
+  return registro.ID_ANAMNESE || `${registro.ID_ATENDIMENTO || ''}-${registro.DATA_ANAMNESE || ''}-${registro.ANAMNESE || ''}`
+}
+
+function remontarHistoricoItems() {
+  historicoItems.value = montarHistoricoItems(biodataHistorico.value, localHistorico.value)
+}
+
+function montarHistoricoItems(biodata: HistoricoRecord[], local: HistoricoLocalRecord[]) {
+  const items: HistoricoTimelineItem[] = []
+  const biodataPorAtendimento = new Map<string, HistoricoTimelineItem>()
+
+  for (const r of biodata) {
+    const dataHistorico = r.DATA_CONSULTA || r.DATA_ENCERRAMENTO || r.DATA_ANAMNESE || ''
+    const idGrupo = `biodata-${dataHistorico || r.ID_ATENDIMENTO || r.ID_ANAMNESE}`
+    let item = biodataPorAtendimento.get(idGrupo)
+
+    if (!item) {
+      item = {
+        id: idGrupo,
+        title: formatarDataHistorico(dataHistorico),
+        time: formatarHoraHistorico(dataHistorico),
+        icon: 'i-lucide-calendar',
+        subtitle: r.MEDICO || undefined,
+        _sortKey: r.DATA_CONSULTA || r.DATA_ENCERRAMENTO || r.DATA_ANAMNESE || '',
+        cards: []
+      }
+      biodataPorAtendimento.set(idGrupo, item)
+      items.push(item)
+    }
+
+    const anamnese = montarAnamneseBiodata(r)
+    if (temConteudoUtil(anamnese)) {
+      item.cards.push({
+        id: `anamnese-${r.ID_ANAMNESE || item.cards.length}`,
+        type: 'Anamnese',
+        title: 'Anamnese',
+        icon: 'i-lucide-file-text',
+        description: anamnese
+      })
+    }
+
+    adicionarCardUnico(item, {
+      id: `diagnostico-${r.ID_ANAMNESE || item.cards.length}`,
+      type: 'diagnostico',
+      title: 'diagnostico',
+      icon: 'i-lucide-clipboard-check',
+      description: montarDiagnosticosBiodata(r)
+    })
+  }
+
+  for (const l of local) {
+    const dataHistorico = l.data_consulta || ''
+    items.push({
+      id: `local-${l.spdata_atendimento_id || dataHistorico || items.length}`,
+      title: formatarDataHistorico(dataHistorico),
+      time: formatarHoraHistorico(dataHistorico),
+      icon: 'i-lucide-calendar',
+      subtitle: l.medico_nome || undefined,
+      _sortKey: dataHistorico,
+      cards: [
+        { id: 'anamnese-local', type: 'Anamnese', title: 'Anamnese', icon: 'i-lucide-file-text', description: l.anamnese || '' },
+        { id: 'diagnostico-local', type: 'diagnostico', title: 'diagnostico', icon: 'i-lucide-clipboard-check', description: montarDiagnosticos(l) },
+        { id: 'receita-local', type: 'receita', title: 'receita', icon: 'i-lucide-pill', description: l.medicamentos?.join('\n') || '' },
+        { id: 'exames-local', type: 'exames', title: 'exames', icon: 'i-lucide-flask-conical', description: montarExames(l.exames) }
+      ]
+    })
+  }
+
+  items.sort((a, b) => timestampHistorico(b._sortKey) - timestampHistorico(a._sortKey))
+
+  return items
 }
 
 function timestampHistorico(valor: string): number {
@@ -356,7 +437,10 @@ function voltarDashboard() {
           </div>
         </div>
         <USeparator />
-        <div class="overflow-y-auto max-h-max w-full px-2">
+        <div
+          ref="historicoScrollRef"
+          class="overflow-y-auto max-h-[calc(100vh-18rem)] w-full px-2"
+        >
           <UTimeline
             :items="historicoItemsVisiveis"
             color="primary"
@@ -424,6 +508,22 @@ function voltarDashboard() {
               </div>
             </template>
           </UTimeline>
+
+          <div class="flex justify-center py-3">
+            <UIcon
+              v-if="isLoadingMaisHistorico"
+              name="i-lucide-loader-circle"
+              class="size-5 animate-spin text-muted"
+            />
+            <UButton
+              v-else-if="biodataHasMore"
+              label="Carregar mais histórico"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              @click="void carregarMaisHistoricoBiodata()"
+            />
+          </div>
         </div>
       </div>
     </USidebar>
