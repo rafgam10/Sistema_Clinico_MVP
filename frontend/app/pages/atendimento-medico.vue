@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PadraoReceita, PadraoExame, PadraoAnamnese, ItemMedicamento, ExameCatalogo, ExameSelecionado } from '~/types'
+import type { PadraoReceita, PadraoExame, PadraoAnamnese, ExameCatalogo, ExameSelecionado } from '~/types'
 import { usePdfMake } from '~/utils/pdf'
 import { buildSolicitacaoExames, buildReceita, buildAtestadoComparecimento } from '~/utils/pdf-documents'
 import { gerarHtmlGuiaTiss, imprimirGuiaTiss } from '~/utils/guia-tiss'

@@ -412,39 +412,38 @@ const tempoMedioEspera = computed(() => {
         </UTable>
       </UCard>
     </div>
+    <UModal
+      v-model:open="showSalaModal"
+      :close="false"
+    >
+      <template #header>
+        <h2 class="text-lg font-semibold">
+          Sala de Atendimento
+        </h2>
+      </template>
+
+      <template #body>
+        <div class="space-y-4">
+          <p class="text-sm text-muted">
+            Informe a sala de atendimento:
+          </p>
+          <UInput
+            v-model="inputSala"
+            placeholder="Ex: Consultório 2"
+            size="lg"
+          />
+        </div>
+      </template>
+
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <UButton
+            label="Salvar"
+            :disabled="!inputSala"
+            @click="confirmarSala"
+          />
+        </div>
+      </template>
+    </UModal>
   </div>
-
-  <UModal
-    v-model:open="showSalaModal"
-    :close="false"
-  >
-    <template #header>
-      <h2 class="text-lg font-semibold">
-        Sala de Atendimento
-      </h2>
-    </template>
-
-    <template #body>
-      <div class="space-y-4">
-        <p class="text-sm text-muted">
-          Informe a sala de atendimento:
-        </p>
-        <UInput
-          v-model="inputSala"
-          placeholder="Ex: Consultório 2"
-          size="lg"
-        />
-      </div>
-    </template>
-
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <UButton
-          label="Salvar"
-          :disabled="!inputSala"
-          @click="confirmarSala"
-        />
-      </div>
-    </template>
-  </UModal>
 </template>
