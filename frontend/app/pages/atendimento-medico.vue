@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PadraoReceita, PadraoExame, PadraoAnamnese, ItemMedicamento, ExameCatalogo, ExameSelecionado } from '~/types'
 import { usePdfMake } from '~/utils/pdf'
-import { buildSolicitacaoExames, buildReceita, buildAtestadoComparecimento } from '~/utils/pdf-documents'
+import { buildSolicitacaoExames, buildReceita, buildAtestadoComparecimento, buildGuiaTiss } from '~/utils/pdf-documents'
 
 const auth = useAuthStore()
 const agendamentosStore = useAgendamentosStore()
@@ -257,7 +257,7 @@ function normalizarIdExame(valor: unknown) {
 function normalizarExameSelecionado(valor: unknown): ExameSelecionado | null {
   if (typeof valor === 'string') {
     const nome = valor.trim()
-    return nome ? { nome, exameId: null } : null
+    return nome ? { nome, exameId: null, codigo_amb: null, codigo_alfanumerico: null } : null
   }
 
   if (!valor || typeof valor !== 'object') return null
@@ -265,10 +265,12 @@ function normalizarExameSelecionado(valor: unknown): ExameSelecionado | null {
   const item = valor as Record<string, unknown>
   const nome = typeof item.nome === 'string' ? item.nome.trim() : ''
   const exameId = normalizarIdExame(item.exameId ?? item.exame_id ?? item.id)
+  const codigo_amb = typeof item.codigo_amb === 'string' ? item.codigo_amb : null
+  const codigo_alfanumerico = typeof item.codigo_alfanumerico === 'string' ? item.codigo_alfanumerico : null
 
   if (!nome) return null
 
-  return { nome, exameId }
+  return { nome, exameId, codigo_amb, codigo_alfanumerico }
 }
 
 function exameExisteNaLista(lista: ExameSelecionado[], exame: ExameSelecionado) {
@@ -537,6 +539,24 @@ async function gerarReceitaPdf() {
 async function gerarSolicitacaoExames() {
   if (!examesSelecionados.value.length) return
   const pdfMake = await usePdfMake()
+
+  const convenio = (agendamento.value?.paciente.convenio ?? '').toLowerCase()
+
+  if (convenio && convenio !== 'particular') {
+    const doc = await buildGuiaTiss({
+      paciente: agendamento.value?.paciente.nome ?? 'Paciente',
+      cpf: agendamento.value?.paciente.cpf,
+      convenio: agendamento.value?.paciente.convenio ?? '',
+      data: new Date().toLocaleDateString('pt-BR'),
+      exames: examesSelecionados.value,
+      medico: auth.user?.nome,
+      crm: auth.user?.crm,
+      especialidade: auth.user?.especialidades?.join(', ')
+    })
+    pdfMake.createPdf(doc).open()
+    return
+  }
+
   const doc = await buildSolicitacaoExames({
     paciente: agendamento.value?.paciente.nome ?? 'Paciente',
     data: new Date().toLocaleDateString('pt-BR'),
@@ -583,7 +603,9 @@ async function finalizarConsulta() {
       medicamentos: receitaTexto.value,
       exames: examesSelecionados.value.map(e => ({
         nome: e.nome,
-        exame_id: e.exameId ?? null
+        exame_id: e.exameId ?? null,
+        codigo_amb: e.codigo_amb ?? null,
+        codigo_alfanumerico: e.codigo_alfanumerico ?? null
       })),
       duracao
     })

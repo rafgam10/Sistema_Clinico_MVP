@@ -94,11 +94,15 @@ export interface ExameCatalogo {
 export interface ExameSelecionado {
   nome: string
   exameId: number | null
+  codigo_amb?: string | null
+  codigo_alfanumerico?: string | null
 }
 
 export interface ExameConsultaPayload {
   nome: string
   exame_id: number | null
+  codigo_amb?: string | null
+  codigo_alfanumerico?: string | null
 }
 
 export interface HistoricoExame {

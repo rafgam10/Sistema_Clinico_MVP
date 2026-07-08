@@ -54,7 +54,7 @@ type NoShowResumo = NoShowResponse['resumo']
 type NoShowGraficos = NoShowResponse['graficos']
 
 const itensMais = ref<DropdownMenuItem[][]>([
-  // Grupo: Histórico e Ficha
+  /* Grupo: Histórico e Ficha
   [
     {
       label: 'Histórico do Paciente',
@@ -65,36 +65,21 @@ const itensMais = ref<DropdownMenuItem[][]>([
       icon: 'i-lucide-file-text'
     }
   ],
+  */
 
   // Grupo: Ações da Consulta
   [
     {
-      label: 'Reagendar Consulta',
-      icon: 'i-lucide-calendar-clock'
-    },
-    {
       label: 'Registrar Motivo da Falta',
       icon: 'i-lucide-message-square'
-    },
-    {
-      label: 'Registrar Contato',
-      icon: 'i-lucide-phone'
     }
   ],
 
   // Grupo: Classificação e Bloqueio
   [
     {
-      label: 'Alterar Classificação',
-      icon: 'i-lucide-tag'
-    },
-    {
       label: 'Bloquear Agendamento Futuro',
       icon: 'i-lucide-ban'
-    },
-    {
-      label: 'Remover No Show',
-      icon: 'i-lucide-user-x'
     }
   ],
 
