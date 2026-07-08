@@ -22,7 +22,9 @@ class LoginController:
                 "id": usuario.id,
                 "email": usuario.email,
                 "nome_completo": usuario.nome_completo,
-                "role": usuario.role
+                "role": usuario.role,
+                "crm": usuario.medico.crm if usuario.medico else None,
+                "especialidade": usuario.medico.especialidade if usuario.medico else None
             }
         )
         return token

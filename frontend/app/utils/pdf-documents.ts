@@ -32,12 +32,13 @@ function documentTitle(title: string) {
   return { text: title, fontSize: 16, bold: true, alignment: 'center' as const, margin: [0, 10, 0, 20] }
 }
 
-function signatureBlock(medico?: string, crm?: string) {
+function signatureBlock(medico?: string, crm?: string, especialidade?: string) {
   return {
     stack: [
       { text: '\n\n\n' },
       { text: '__________________________________________', alignment: 'center' as const },
       { text: medico ?? 'Médico Responsável', bold: true, fontSize: 10, alignment: 'center' as const },
+      ...(especialidade ? [{ text: especialidade, fontSize: 9, alignment: 'center' as const, color: '#555555' }] : []),
       ...(crm ? [{ text: crm, fontSize: 9, alignment: 'center' as const, color: '#555555' }] : [])
     ],
     unbreakable: true
@@ -52,6 +53,7 @@ export async function buildSolicitacaoExames(params: {
   exames: string[]
   medico?: string
   crm?: string
+  especialidade?: string
 }) {
   return {
     pageSize: 'A4' as const,
@@ -62,7 +64,7 @@ export async function buildSolicitacaoExames(params: {
       { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
       { text: `DATA: ${params.data}`, margin: [0, 0, 0, 20] },
       ...params.exames.map(e => ({ text: `\u2022 ${e}`, margin: [0, 0, 0, 4] })),
-      signatureBlock(params.medico, params.crm)
+      signatureBlock(params.medico, params.crm, params.especialidade)
     ],
     defaultStyle
   }
@@ -75,6 +77,7 @@ export async function buildReceita(params: {
   texto?: string
   medico?: string
   crm?: string
+  especialidade?: string
 }) {
   const medicamentosContent = params.texto
     ? [{ text: params.texto, margin: [0, 0, 0, 20] }]
@@ -95,7 +98,7 @@ export async function buildReceita(params: {
       documentTitle('RECEITA MÉDICA'),
       { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
       ...medicamentosContent,
-      signatureBlock(params.medico, params.crm)
+      signatureBlock(params.medico, params.crm, params.especialidade)
     ],
     defaultStyle
   }
@@ -107,6 +110,7 @@ export async function buildAtestadoComparecimento(params: {
   horario: string
   medico?: string
   crm?: string
+  especialidade?: string
 }) {
   return {
     pageSize: 'A4' as const,
@@ -117,7 +121,7 @@ export async function buildAtestadoComparecimento(params: {
       { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
       { text: '\n' },
       { text: `Atesto, para os devidos fins, que o(a) paciente ${params.paciente} compareceu a esta unidade de sa\u00FAdde no dia ${params.data} \u00E0s ${params.horario}, para atendimento m\u00E9dico.`, margin: [0, 0, 0, 10] },
-      signatureBlock(params.medico, params.crm)
+      signatureBlock(params.medico, params.crm, params.especialidade)
     ],
     defaultStyle
   }
@@ -128,6 +132,7 @@ export async function buildAtestado(params: {
   conteudoHtml: string
   medico?: string
   crm?: string
+  especialidade?: string
 }) {
   const htmlToPdfmake = (await import('html-to-pdfmake')).default
 
@@ -138,7 +143,7 @@ export async function buildAtestado(params: {
       ...(await hospitalHeader()),
       documentTitle('ATESTADO MÉDICO'),
       ...htmlToPdfmake(params.conteudoHtml, { window }),
-      signatureBlock(params.medico, params.crm)
+      signatureBlock(params.medico, params.crm, params.especialidade)
     ],
     defaultStyle
   }
@@ -151,6 +156,7 @@ export async function buildEncaminhamento(params: {
   profissionalExterno: string
   medico?: string
   crm?: string
+  especialidade?: string
 }) {
   const profissional = params.profissionalExterno.trim() || 'n\u00E3o informado'
 
@@ -164,7 +170,7 @@ export async function buildEncaminhamento(params: {
       { text: `DATA: ${params.data}`, margin: [0, 0, 0, 20] },
       { text: `Encaminho para ${params.encaminharPara}`, margin: [0, 0, 0, 10] },
       { text: `Profissional: ${profissional}`, margin: [0, 0, 0, 10] },
-      signatureBlock(params.medico, params.crm)
+      signatureBlock(params.medico, params.crm, params.especialidade)
     ],
     defaultStyle
   }
@@ -176,6 +182,7 @@ export async function buildSolicitacaoProcedimento(params: {
   descricao: string
   medico?: string
   crm?: string
+  especialidade?: string
 }) {
   const htmlToPdfmake = (await import('html-to-pdfmake')).default
 
@@ -188,7 +195,7 @@ export async function buildSolicitacaoProcedimento(params: {
       { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
       { text: `DATA: ${params.data}`, margin: [0, 0, 0, 20] },
       ...htmlToPdfmake(`<p>${params.descricao}</p>`, { window }),
-      signatureBlock(params.medico, params.crm)
+      signatureBlock(params.medico, params.crm, params.especialidade)
     ],
     defaultStyle
   }

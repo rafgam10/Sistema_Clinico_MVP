@@ -22,7 +22,8 @@ async function gerarPdf() {
     encaminharPara: encaminharPara.value.trim(),
     profissionalExterno: profissionalExterno.value.trim(),
     medico: auth.user?.nome,
-    crm: auth.user?.crm
+    crm: auth.user?.crm,
+    especialidade: auth.user?.especialidades?.join(', ')
   })
   pdfMake.createPdf(doc).open()
   open.value = false

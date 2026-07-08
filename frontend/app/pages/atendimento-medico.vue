@@ -528,7 +528,8 @@ async function gerarReceitaPdf() {
     medicamentos: [],
     texto: receitaTexto.value,
     medico: auth.user?.nome,
-    crm: auth.user?.crm
+    crm: auth.user?.crm,
+    especialidade: auth.user?.especialidades?.join(', ')
   })
   pdfMake.createPdf(doc).open()
 }
@@ -542,7 +543,8 @@ async function gerarSolicitacaoExames() {
     exames: examesSelecionados.value
       .map(e => e.nome),
     medico: auth.user?.nome,
-    crm: auth.user?.crm
+    crm: auth.user?.crm,
+    especialidade: auth.user?.especialidades?.join(', ')
   })
   pdfMake.createPdf(doc).open()
 }
@@ -557,7 +559,8 @@ async function gerarComparecimento() {
     data: dataFormatada,
     horario: ag.horario.slice(0, 5),
     medico: auth.user?.nome,
-    crm: auth.user?.crm
+    crm: auth.user?.crm,
+    especialidade: auth.user?.especialidades?.join(', ')
   })
   pdfMake.createPdf(doc).open()
 }

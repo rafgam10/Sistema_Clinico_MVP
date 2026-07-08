@@ -17,7 +17,8 @@ export default defineEventHandler(async (event) => {
       nome: jwt.nome_completo,
       email: jwt.email,
       role: jwt.role as 'medico' | 'recepcao',
-      especialidades: [] as string[],
+      crm: jwt.crm ?? undefined,
+      especialidades: jwt.especialidade ? [jwt.especialidade] : [],
       clinicaIds: jwt.role === 'recepcao' ? [1] : [1, 2]
     }
 

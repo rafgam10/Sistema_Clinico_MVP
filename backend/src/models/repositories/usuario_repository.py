@@ -1,3 +1,5 @@
+from sqlalchemy.orm import joinedload
+
 from src.models.interfaces.usuario_interface import IUsuario
 
 from src.settings.extensions import db
@@ -7,7 +9,12 @@ class UsuarioRepository(IUsuario):
     
     def get_usuario(self, email: str):
         try:    
-            usuario = db.session.query(Usuario).filter(Usuario.email == email).first()
+            usuario = (
+                db.session.query(Usuario)
+                .options(joinedload(Usuario.medico))
+                .filter(Usuario.email == email)
+                .first()
+            )
             return usuario
         
         except Exception as e:

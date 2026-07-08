@@ -28,7 +28,8 @@ async function gerarPdf() {
     paciente: paciente.value?.nome ?? 'Paciente',
     conteudoHtml: `<p>${textoCompleto.value}</p>`,
     medico: auth.user?.nome,
-    crm: auth.user?.crm
+    crm: auth.user?.crm,
+    especialidade: auth.user?.especialidades?.join(', ')
   })
   pdfMake.createPdf(doc).open()
   open.value = false
