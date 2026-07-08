@@ -80,7 +80,7 @@ export async function buildReceita(params: {
     ? [{ text: params.texto, margin: [0, 0, 0, 20] }]
     : params.medicamentos.map(m => ({
         columns: [
-          { text: `\u2022 ${m.nome} — ${m.dosagem}`, bold: true,  width: '40%' as const },
+          { text: `\u2022 ${m.nome} — ${m.dosagem}`, bold: true, width: '40%' as const },
           { text: m.detalhes, width: '60%' as const }
         ],
         margin: [0, 0, 0, 12] as [number, number, number, number]
@@ -138,6 +138,56 @@ export async function buildAtestado(params: {
       ...(await hospitalHeader()),
       documentTitle('ATESTADO MÉDICO'),
       ...htmlToPdfmake(params.conteudoHtml, { window }),
+      signatureBlock(params.medico, params.crm)
+    ],
+    defaultStyle
+  }
+}
+
+export async function buildEncaminhamento(params: {
+  paciente: string
+  data: string
+  encaminharPara: string
+  profissionalExterno: string
+  medico?: string
+  crm?: string
+}) {
+  const profissional = params.profissionalExterno.trim() || 'n\u00E3o informado'
+
+  return {
+    pageSize: 'A4' as const,
+    pageMargins: [60, 40, 60, 60] as [number, number, number, number],
+    content: [
+      ...(await hospitalHeader()),
+      documentTitle('ENCAMINHAMENTO M\u00C9DICO'),
+      { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
+      { text: `DATA: ${params.data}`, margin: [0, 0, 0, 20] },
+      { text: `Encaminho para ${params.encaminharPara}`, margin: [0, 0, 0, 10] },
+      { text: `Profissional: ${profissional}`, margin: [0, 0, 0, 10] },
+      signatureBlock(params.medico, params.crm)
+    ],
+    defaultStyle
+  }
+}
+
+export async function buildSolicitacaoProcedimento(params: {
+  paciente: string
+  data: string
+  descricao: string
+  medico?: string
+  crm?: string
+}) {
+  const htmlToPdfmake = (await import('html-to-pdfmake')).default
+
+  return {
+    pageSize: 'A4' as const,
+    pageMargins: [60, 40, 60, 60] as [number, number, number, number],
+    content: [
+      ...(await hospitalHeader()),
+      documentTitle('SOLICITA\u00C7\u00C3O DE PROCEDIMENTO'),
+      { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
+      { text: `DATA: ${params.data}`, margin: [0, 0, 0, 20] },
+      ...htmlToPdfmake(`<p>${params.descricao}</p>`, { window }),
       signatureBlock(params.medico, params.crm)
     ],
     defaultStyle

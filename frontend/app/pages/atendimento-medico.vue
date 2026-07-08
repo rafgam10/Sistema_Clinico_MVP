@@ -321,6 +321,8 @@ function adicionarPadraoExame() {
 }
 
 const showAtestadoModal = ref(false)
+const showEncaminhamentoModal = ref(false)
+const showProcedimentoModal = ref(false)
 const finalizandoConsulta = ref(false)
 const draftSalvoEm = ref<string | null>(null)
 const draftRestaurado = ref(false)
@@ -1146,12 +1148,14 @@ async function finalizarConsulta() {
                 label="Encaminhamento Médico"
                 color="secondary"
                 class="w-full p-3 text-lg font-bold"
+                @click="void (showEncaminhamentoModal = true)"
               />
               <UButton
                 icon="i-lucide-clipboard-list"
                 label="Solicitação de Procedimento"
                 color="tertiary"
                 class="w-full p-3 text-lg font-bold"
+                @click="void (showProcedimentoModal = true)"
               />
               <UButton
                 icon="i-lucide-file-text"
@@ -1191,6 +1195,12 @@ async function finalizarConsulta() {
 
     <AtestadoGerarModal
       v-model:open="showAtestadoModal"
+    />
+    <EncaminhamentoGerarModal
+      v-model:open="showEncaminhamentoModal"
+    />
+    <ProcedimentoGerarModal
+      v-model:open="showProcedimentoModal"
     />
   </div>
 </template>

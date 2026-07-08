@@ -1,9 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  runtimeConfig: {
-    flaskBaseUrl: process.env.NUXT_FLASK_BASE_URL || 'http://localhost:5000',
-    enableMockAuth: process.env.NUXT_ENABLE_MOCK_AUTH === 'true'
-  },
 
   modules: [
     '@nuxt/eslint',
@@ -26,6 +22,9 @@ export default defineNuxtConfig({
     theme: {
       colors: ['tertiary', 'error', 'success', 'info', 'warning', 'secondary', 'quaternary', 'quinary']
     }
+  }, runtimeConfig: {
+    flaskBaseUrl: process.env.NUXT_FLASK_BASE_URL || 'http://localhost:5000',
+    enableMockAuth: process.env.NUXT_ENABLE_MOCK_AUTH === 'true'
   },
 
   routeRules: {

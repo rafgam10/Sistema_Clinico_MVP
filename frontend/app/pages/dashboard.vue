@@ -189,7 +189,10 @@ const tempoMedioEspera = computed(() => {
             @click="void (showSalaModal = true)"
           >
             Sala: {{ sala || '—' }}
-            <UIcon name="i-lucide-pencil" class="h-3 w-3" />
+            <UIcon
+              name="i-lucide-pencil"
+              class="h-3 w-3"
+            />
           </UBadge>
           <UButton
             icon="i-lucide-bell"
@@ -411,7 +414,10 @@ const tempoMedioEspera = computed(() => {
     </div>
   </div>
 
-  <UModal v-model:open="showSalaModal" :close="false">
+  <UModal
+    v-model:open="showSalaModal"
+    :close="false"
+  >
     <template #header>
       <h2 class="text-lg font-semibold">
         Sala de Atendimento
