@@ -4,6 +4,7 @@ blinker==1.9.0
 certifi==2026.5.20
 click==8.4.1
 defusedxml==0.7.1
+edge-tts==7.2.8
 firebird-base==2.0.3
 firebird-driver==2.0.3
 Flask==3.1.3

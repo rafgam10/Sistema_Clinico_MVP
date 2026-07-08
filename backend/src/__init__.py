@@ -69,6 +69,7 @@ def create_app():
     from src.routes.agenda_medica_route import agenda_medica_bp
     from src.routes.exames_route import exames_bp
     from src.routes.no_show_route import no_show_bp
+    from src.routes.tts_route import tts_bp
 
     app.register_blueprint(login_bp)
     app.register_blueprint(dashboard_bp)
@@ -80,5 +81,6 @@ def create_app():
     app.register_blueprint(agenda_medica_bp)
     app.register_blueprint(exames_bp)
     app.register_blueprint(no_show_bp)
+    app.register_blueprint(tts_bp)
 
     return app
