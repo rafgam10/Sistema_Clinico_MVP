@@ -23,7 +23,7 @@ class LoginController:
                 "email": usuario.email,
                 "nome_completo": usuario.nome_completo,
                 "role": usuario.role,
-                "crm": usuario.medico.crm if usuario.medico else None,
+                "crm": usuario.medico.crm_atendimento_spdata if usuario.medico else None,
                 "especialidade": usuario.medico.especialidade if usuario.medico else None
             }
         )
