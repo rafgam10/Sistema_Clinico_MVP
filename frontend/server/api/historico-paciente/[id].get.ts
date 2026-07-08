@@ -1,9 +1,10 @@
 function normalizarCpf(valor: unknown): string | undefined {
   const texto = String(valor || '').trim()
-  const semDecimal = texto.endsWith('.0') && texto.slice(0, -2).replace(/\D/g, '').length === 11
+  const semDecimal = texto.endsWith('.0') && [10, 11].includes(texto.slice(0, -2).replace(/\D/g, '').length)
     ? texto.slice(0, -2)
     : texto
-  const cpf = semDecimal.replace(/\D/g, '')
+  const digitos = semDecimal.replace(/\D/g, '')
+  const cpf = digitos.length === 10 ? digitos.padStart(11, '0') : digitos
 
   if (cpf.length !== 11) return undefined
   if (new Set(cpf).size === 1) return undefined

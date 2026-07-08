@@ -127,7 +127,7 @@ export interface HistoricoRecord {
   CID_TERCIARIO?: string | null
   CID_QUATERNARIO?: string | null
   DATA_ANAMNESE?: string | null
-  DATA_CONSULTA: string
+  DATA_CONSULTA?: string | null
   DATA_ENCERRAMENTO?: string | null
   DIAGNOSTICO_PRINCIPAL: string | null
   DIAGNOSTICO_SECUNDARIO?: string | null

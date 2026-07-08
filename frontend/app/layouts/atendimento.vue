@@ -89,10 +89,11 @@ const cardHeaderColors: Record<HistoricoCardType, string> = {
 
 function cpfHistorico(valor?: string | null): string | undefined {
   const texto = String(valor || '').trim()
-  const semDecimal = texto.endsWith('.0') && texto.slice(0, -2).replace(/\D/g, '').length === 11
+  const semDecimal = texto.endsWith('.0') && [10, 11].includes(texto.slice(0, -2).replace(/\D/g, '').length)
     ? texto.slice(0, -2)
     : texto
-  const cpf = semDecimal.replace(/\D/g, '')
+  const digitos = semDecimal.replace(/\D/g, '')
+  const cpf = digitos.length === 10 ? digitos.padStart(11, '0') : digitos
   if (cpf.length !== 11) return undefined
   if (new Set(cpf).size === 1) return undefined
   return cpf
@@ -200,8 +201,8 @@ function montarHistoricoItems(biodata: HistoricoRecord[], local: HistoricoLocalR
   const biodataPorAtendimento = new Map<string, HistoricoTimelineItem>()
 
   for (const r of biodata) {
-    const dataHistorico = r.DATA_CONSULTA || r.DATA_ENCERRAMENTO || r.DATA_ANAMNESE || ''
-    const idGrupo = `biodata-${dataHistorico || r.ID_ATENDIMENTO || r.ID_ANAMNESE}`
+    const dataHistorico = r.DATA_ANAMNESE || r.DATA_CONSULTA || r.DATA_ENCERRAMENTO || ''
+    const idGrupo = `biodata-${dataHistorico || r.ID_ANAMNESE}`
     let item = biodataPorAtendimento.get(idGrupo)
 
     if (!item) {
@@ -211,7 +212,7 @@ function montarHistoricoItems(biodata: HistoricoRecord[], local: HistoricoLocalR
         time: formatarHoraHistorico(dataHistorico),
         icon: 'i-lucide-calendar',
         subtitle: r.MEDICO || undefined,
-        _sortKey: r.DATA_CONSULTA || r.DATA_ENCERRAMENTO || r.DATA_ANAMNESE || '',
+        _sortKey: r.DATA_ANAMNESE || r.DATA_CONSULTA || r.DATA_ENCERRAMENTO || '',
         cards: []
       }
       biodataPorAtendimento.set(idGrupo, item)
