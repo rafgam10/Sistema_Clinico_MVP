@@ -169,7 +169,7 @@ export async function buildEncaminhamento(params: {
       { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
       { text: `DATA: ${params.data}`, margin: [0, 0, 0, 20] },
       { text: `Encaminho para ${params.encaminharPara}`, margin: [0, 0, 0, 10] },
-      { text: `Profissional: ${profissional}`, margin: [0, 0, 0, 10] },
+      { text: `Profissional Externo: ${profissional}`, margin: [0, 0, 0, 10] },
       signatureBlock(params.medico, params.crm, params.especialidade)
     ],
     defaultStyle
