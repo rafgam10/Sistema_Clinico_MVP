@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia SP/SADT</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f4f4f9;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .guia-container {
+            width: 100%;
+            max-width: 1200px;
+            background-color: #fff;
+            padding: 10px;
+            border: 1px solid #000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
+        .logo-amil {
+            color: #004d99;
+            font-size: 32px;
+            font-weight: bold;
+            font-style: italic;
+            width: 150px;
+            letter-spacing: -1px;
+        }
+        .title {
+            flex-grow: 1;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .guia-num-prestador {
+            font-size: 10px;
+            text-align: right;
+            width: 200px;
+        }
+        .section-header {
+            background-color: #e6e6e6;
+            font-size: 10px;
+            padding: 2px 5px;
+            border: 1px solid #000;
+            border-bottom: none;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .row {
+            display: flex;
+            width: 100%;
+            border: 1px solid #000;
+            border-bottom: none;
+        }
+        .row.last {
+            border-bottom: 1px solid #000;
+        }
+        .field {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #000;
+            padding: 2px 4px;
+        }
+        .field:last-child {
+            border-right: none;
+        }
+        .label {
+            font-size: 9px;
+            color: #333;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        input {
+            border: none;
+            outline: none;
+            font-size: 11px;
+            width: 100%;
+            font-family: Arial, sans-serif;
+            background-color: transparent;
+        }
+        input:focus {
+            background-color: #eef7ff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+            margin-top: 5px;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 2px 4px;
+            font-size: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f9f9f9;
+            font-size: 9px;
+            font-weight: normal;
+        }
+        td input {
+            font-size: 11px;
+        }
+
+        .w-5 { width: 5%; }
+        .w-10 { width: 10%; }
+        .w-15 { width: 15%; }
+        .w-20 { width: 20%; }
+        .w-25 { width: 25%; }
+        .w-30 { width: 30%; }
+        .w-33 { width: 33.33%; }
+        .w-35 { width: 35%; }
+        .w-40 { width: 40%; }
+        .w-45 { width: 45%; }
+        .w-50 { width: 50%; }
+        .w-60 { width: 60%; }
+        .w-65 { width: 65%; }
+        .w-70 { width: 70%; }
+        .w-75 { width: 75%; }
+        .w-80 { width: 80%; }
+        .w-90 { width: 90%; }
+        .w-100 { width: 100%; }
+
+        @media print {
+            body {
+                background-color: #fff;
+                padding: 0;
+            }
+            .guia-container {
+                box-shadow: none;
+                border: none;
+                max-width: 100%;
+                width: 297mm;
+            }
+            input {
+                background-color: transparent !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="guia-container">
+    <div class="header">
+        <div class="logo-amil">{{CONVENIO}}</div>
+        <div class="title">GUIA DE SERVIÇO PROFISSIONAL / SERVIÇO AUXILIAR DE DIAGNÓSTICO E TERAPIA - SP/SADT</div>
+        <div class="guia-num-prestador">2 - No. Guia do Prestador <input type="text" value="" style="width: 30px; border-bottom: 1px solid #000;"></div>
+    </div>
+
+    <!-- Cabecalho 1 -->
+    <div class="row">
+        <div class="field w-15">
+            <span class="label">1 - Registro ANS</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-20">
+            <span class="label">3 - Número da Guia Principal</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-65">
+            <!-- Em branco -->
+        </div>
+    </div>
+    <div class="row last">
+        <div class="field w-15">
+            <span class="label">4 - Data da Autorização</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-20">
+            <span class="label">5 - Senha</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-25">
+            <span class="label">6 - Data Validade da Senha</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-40">
+            <span class="label">7 - Número da Guia Atribuído pela Operadora</span>
+            <input type="text" value="">
+        </div>
+    </div>
+
+    <!-- Dados do Beneficiário -->
+    <div class="section-header">Dados do Beneficiário</div>
+    <div class="row">
+        <div class="field w-30">
+            <span class="label">8 - Número da Carteira</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-15">
+            <span class="label">9 - Validade da Carteira</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-45">
+            <span class="label">89 - Nome Social</span>
+            <input type="text" value="{{PACIENTE}}">
+        </div>
+        <div class="field w-10">
+            <span class="label">12 - Atendimento a RN</span>
+            <input type="text" value="N">
+        </div>
+    </div>
+    <div class="row last">
+        <div class="field w-100">
+            <span class="label">10 - Nome</span>
+            <input type="text" value="{{PACIENTE}}">
+        </div>
+    </div>
+
+    <!-- Dados do Contratado Solicitante -->
+    <div class="section-header">Dados do Contratado Solicitante</div>
+    <div class="row">
+        <div class="field w-25">
+            <span class="label">13 - Código na Operadora / CNPJ / CPF</span>
+            <input type="text" value="{{CPF}}">
+        </div>
+        <div class="field w-75">
+            <span class="label">14 - Nome do Contratado</span>
+            <input type="text" value="">
+        </div>
+    </div>
+    <div class="row last">
+        <div class="field w-40">
+            <span class="label">15 - Nome do Profissional Solicitante</span>
+            <input type="text" value="{{MEDICO}}">
+        </div>
+        <div class="field w-15">
+            <span class="label">16 - Conselho Profissional</span>
+            <input type="text" value="8">
+        </div>
+        <div class="field w-15">
+            <span class="label">17 - Número do Conselho</span>
+            <input type="text" value="{{CRM_NUMERO}}">
+        </div>
+        <div class="field w-5">
+            <span class="label">18 - UF</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-10">
+            <span class="label">19 - Código CBO</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-15">
+            <span class="label">20 - Assinatura do Profissional Solicitante</span>
+            <input type="text" value="">
+        </div>
+    </div>
+
+    <!-- Dados da Solicitação -->
+    <div class="section-header">Dados da Solicitação / Procedimentos e Exames Solicitados</div>
+    <div class="row">
+        <div class="field w-15">
+            <span class="label">21 - Caráter do Atendimento</span>
+            <input type="text" value="1">
+        </div>
+        <div class="field w-15">
+            <span class="label">22 - Data da Solicitação</span>
+            <input type="text" value="{{DATA_SOLICITACAO}}">
+        </div>
+        <div class="field w-50">
+            <span class="label">23 - Indicação Clínica</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-20">
+            <span class="label">90 - Indicador de Cobertura Especial</span>
+            <input type="text" value="">
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 5%;">24 - Tabela</th>
+                <th style="width: 15%;">25 - Código do Procedimento</th>
+                <th style="width: 60%;">26 - Descrição</th>
+                <th style="width: 10%;">27 - Qt. Solic.</th>
+                <th style="width: 10%;">28 - Qt. Autoriz.</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{EXAMES_ROWS}}
+        </tbody>
+    </table>
+
+    <!-- Dados do Contratado Executante -->
+    <div class="section-header">Dados do Contratado Executante</div>
+    <div class="row last">
+        <div class="field w-25">
+            <span class="label">29 - Código na Operadora</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-60">
+            <span class="label">30 - Nome do Contratado</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-15">
+            <span class="label">31 - Código CNES</span>
+            <input type="text" value="">
+        </div>
+    </div>
+
+    <!-- Dados do Atendimento -->
+    <div class="section-header">Dados do Atendimento</div>
+    <div class="row last">
+        <div class="field w-15">
+            <span class="label">32 - Tipo de Atendimento</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-25">
+            <span class="label">33 - Indicação de Acidente</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-15">
+            <span class="label">34 - Tipo de Consulta</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-20">
+            <span class="label">35 - Motivo de Encerramento</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-10">
+            <span class="label">91 - Regime de Atendimento</span>
+            <input type="text" value="">
+        </div>
+        <div class="field w-15">
+            <span class="label">92 - Saúde Ocupacional</span>
+            <input type="text" value="">
+        </div>
+    </div>
+
+    <!-- Procedimentos Realizados -->
+    <div class="section-header">Dados da Execução / Procedimentos e Exames realizados</div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 8%;">36 - Data</th>
+                <th style="width: 5%;">37 - Hora Inicial</th>
+                <th style="width: 5%;">38 - Hora Final</th>
+                <th style="width: 5%;">39 - Tabela</th>
+                <th style="width: 10%;">40 - Código do Procedimento</th>
+                <th style="width: 32%;">41 - Descrição</th>
+                <th style="width: 4%;">42 - Qtde.</th>
+                <th style="width: 4%;">43 - Via</th>
+                <th style="width: 4%;">44 - Tec.</th>
+                <th style="width: 8%;">45 - % Re./Acresc.</th>
+                <th style="width: 8%;">46 - Valor Unitário (R$)</th>
+                <th style="width: 7%;">47 - Valor Total (R$)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1 - <input type="text" value="" style="width: 70%; float: right;"></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value="" style="text-align: right;"></td>
+                <td><input type="text" value="" style="text-align: right;"></td>
+            </tr>
+            <tr>
+                <td>2 - <input type="text" value="" style="width: 70%; float: right;"></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value="" style="text-align: right;"></td>
+                <td><input type="text" value="" style="text-align: right;"></td>
+            </tr>
+            <tr>
+                <td>3 - <input type="text" value="" style="width: 70%; float: right;"></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value="" style="text-align: right;"></td>
+                <td><input type="text" value="" style="text-align: right;"></td>
+            </tr>
+            <tr>
+                <td>4 - <input type="text" value="" style="width: 70%; float: right;"></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value="" style="text-align: right;"></td>
+                <td><input type="text" value="" style="text-align: right;"></td>
+            </tr>
+            <tr>
+                <td>5 - <input type="text" value="" style="width: 70%; float: right;"></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value="" style="text-align: right;"></td>
+                <td><input type="text" value="" style="text-align: right;"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Profissionais Executantes -->
+    <div class="section-header">Identificação do(s) Profissional(is) Executante(s)</div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 5%;">48 - Seq. Ref.</th>
+                <th style="width: 5%;">49 - Grau Part.</th>
+                <th style="width: 15%;">50 - Código na Operadora / CPF</th>
+                <th style="width: 40%;">51 - Nome do Profissional</th>
+                <th style="width: 10%;">52 - Conselho Profissional</th>
+                <th style="width: 10%;">53 - Número no Conselho</th>
+                <th style="width: 5%;">54 - UF</th>
+                <th style="width: 10%;">55 - Código CBO</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1</td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+                <td><input type="text" value=""></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Datas e Assinaturas -->
+    <div class="row" style="margin-top: 5px;">
+        <div class="field w-100">
+            <span class="label">56 - Data de Realização de Procedimento em Série 57 - Assinatura do Beneficiário ou Responsável</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px;">
+                <div style="width: 18%;">1 - <input type="text" value="" style="width: 70%; border-bottom: 1px solid #ccc;"></div>
+                <div style="width: 18%;">3 - <input type="text" value="" style="width: 70%; border-bottom: 1px solid #ccc;"></div>
+                <div style="width: 18%;">5 - <input type="text" value="" style="width: 70%; border-bottom: 1px solid #ccc;"></div>
+                <div style="width: 18%;">7 - <input type="text" value="" style="width: 70%; border-bottom: 1px solid #ccc;"></div>
+                <div style="width: 18%;">9 - <input type="text" value="" style="width: 70%; border-bottom: 1px solid #ccc;"></div>
+
+                <div style="width: 18%;">2 - <input type="text" value="" style="width: 70%; border-bottom: 1px solid #ccc;"></div>
+                <div style="width: 18%;">4 - <input type="text" value="" style="width: 70%; border-bottom: 1px solid #ccc;"></div>
+                <div style="width: 18%;">6 - <input type="text" value="" style="width: 70%; border-bottom: 1px solid #ccc;"></div>
+                <div style="width: 18%;">8 - <input type="text" value="" style="width: 70%; border-bottom: 1px solid #ccc;"></div>
+                <div style="width: 18%;">10 - <input type="text" value="" style="width: 70%; border-bottom: 1px solid #ccc;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="field w-100" style="height: 40px;">
+            <span class="label">58 - Observação / Justificativa</span>
+            <input type="text" value="">
+        </div>
+    </div>
+
+    <!-- Totais -->
+    <div class="row">
+        <div class="field w-15">
+            <span class="label">59 - Total Procedimentos (R$)</span>
+            <input type="text" value="" style="text-align: right;">
+        </div>
+        <div class="field w-15">
+            <span class="label">60 - Total Taxas e Aluguéis (R$)</span>
+            <input type="text" value="" style="text-align: right;">
+        </div>
+        <div class="field w-15">
+            <span class="label">61 - Total Materiais (R$)</span>
+            <input type="text" value="" style="text-align: right;">
+        </div>
+        <div class="field w-15">
+            <span class="label">62 - Total de OPME (R$)</span>
+            <input type="text" value="" style="text-align: right;">
+        </div>
+        <div class="field w-15">
+            <span class="label">63 - Total de Medicamentos (R$)</span>
+            <input type="text" value="" style="text-align: right;">
+        </div>
+        <div class="field w-15">
+            <span class="label">64 - Total Gases Medicinais (R$)</span>
+            <input type="text" value="" style="text-align: right;">
+        </div>
+        <div class="field w-10">
+            <span class="label">65 - Total Geral (R$)</span>
+            <input type="text" value="" style="text-align: right; font-weight: bold;">
+        </div>
+    </div>
+
+    <!-- Assinaturas Finais -->
+    <div class="row last">
+        <div class="field w-33" style="width: 33.33%; height: 50px;">
+            <span class="label">66 - Assinatura do Responsável pela Autorização</span>
+        </div>
+        <div class="field w-33" style="width: 33.33%;">
+            <span class="label">67 - Assinatura do Beneficiário ou Responsável</span>
+        </div>
+        <div class="field w-33" style="width: 33.33%;">
+            <span class="label">68 - Assinatura do Contratado</span>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

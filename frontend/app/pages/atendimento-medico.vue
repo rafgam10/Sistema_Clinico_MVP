@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { PadraoReceita, PadraoExame, PadraoAnamnese, ItemMedicamento, ExameCatalogo, ExameSelecionado } from '~/types'
 import { usePdfMake } from '~/utils/pdf'
-import { buildSolicitacaoExames, buildReceita, buildAtestadoComparecimento, buildGuiaTiss } from '~/utils/pdf-documents'
+import { buildSolicitacaoExames, buildReceita, buildAtestadoComparecimento } from '~/utils/pdf-documents'
+import { gerarHtmlGuiaTiss, imprimirGuiaTiss } from '~/utils/guia-tiss'
 
 const auth = useAuthStore()
 const agendamentosStore = useAgendamentosStore()
@@ -538,25 +539,24 @@ async function gerarReceitaPdf() {
 
 async function gerarSolicitacaoExames() {
   if (!examesSelecionados.value.length) return
-  const pdfMake = await usePdfMake()
 
   const convenio = (agendamento.value?.paciente.convenio ?? '').toLowerCase()
 
   if (convenio && convenio !== 'particular') {
-    const doc = await buildGuiaTiss({
+    const html = await gerarHtmlGuiaTiss({
       paciente: agendamento.value?.paciente.nome ?? 'Paciente',
       cpf: agendamento.value?.paciente.cpf,
       convenio: agendamento.value?.paciente.convenio ?? '',
       data: new Date().toLocaleDateString('pt-BR'),
       exames: examesSelecionados.value,
       medico: auth.user?.nome,
-      crm: auth.user?.crm,
-      especialidade: auth.user?.especialidades?.join(', ')
+      crm: auth.user?.crm
     })
-    pdfMake.createPdf(doc).open()
+    imprimirGuiaTiss(html)
     return
   }
 
+  const pdfMake = await usePdfMake()
   const doc = await buildSolicitacaoExames({
     paciente: agendamento.value?.paciente.nome ?? 'Paciente',
     data: new Date().toLocaleDateString('pt-BR'),
