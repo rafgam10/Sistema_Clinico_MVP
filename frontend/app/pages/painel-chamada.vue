@@ -4,16 +4,85 @@ import { useSse } from '~/composables/useSse'
 const chamadosStore = useChamadosStore()
 const agendamentosStore = useAgendamentosStore()
 
-function falarChamado(pacienteNome: string, localAtendimento: string) {
-  if (!('speechSynthesis' in window)) return
-  window.speechSynthesis.cancel()
-  const msg = new SpeechSynthesisUtterance(
-    `Chamando ${pacienteNome}, por favor dirija-se \u00E0 ${localAtendimento}`
-  )
-  msg.lang = 'pt-BR'
-  msg.rate = 1.1
-  msg.volume = 1
-  window.speechSynthesis.speak(msg)
+const audioRef = ref<HTMLAudioElement | null>(null)
+const audioUrl = ref<string | null>(null)
+const audioAtivo = ref(false)
+const ttsLoading = ref(false)
+const ttsError = ref(false)
+const ttsRequestId = ref(0)
+const ttsAbortController = ref<AbortController | null>(null)
+
+function limparAudioAtual() {
+  audioRef.value?.pause()
+  audioRef.value = null
+
+  if (audioUrl.value) {
+    URL.revokeObjectURL(audioUrl.value)
+    audioUrl.value = null
+  }
+}
+
+function ativarAudio() {
+  audioAtivo.value = true
+  ttsError.value = false
+}
+
+async function falarChamado(pacienteNome: string, localAtendimento: string) {
+  if (!audioAtivo.value) return
+
+  const requestId = ttsRequestId.value + 1
+  ttsRequestId.value = requestId
+  ttsAbortController.value?.abort()
+
+  const abortController = new AbortController()
+  ttsAbortController.value = abortController
+  const texto = `Chamando ${pacienteNome}, por favor dirija-se à ${localAtendimento}`
+
+  limparAudioAtual()
+  ttsLoading.value = true
+  ttsError.value = false
+
+  try {
+    const res = await fetch('/api/tts/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: texto }),
+      signal: abortController.signal
+    })
+
+    if (!res.ok) throw new Error('Erro ao gerar áudio')
+    if (requestId !== ttsRequestId.value) return
+
+    const blob = await res.blob()
+    if (requestId !== ttsRequestId.value) return
+
+    const url = URL.createObjectURL(blob)
+    const audio = new Audio(url)
+
+    audioUrl.value = url
+    audioRef.value = audio
+
+    audio.onended = () => {
+      if (requestId !== ttsRequestId.value) return
+      ttsLoading.value = false
+      limparAudioAtual()
+    }
+    audio.onerror = () => {
+      if (requestId !== ttsRequestId.value) return
+      ttsLoading.value = false
+      ttsError.value = true
+      limparAudioAtual()
+    }
+
+    await audio.play()
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') return
+    if (requestId !== ttsRequestId.value) return
+
+    ttsLoading.value = false
+    ttsError.value = true
+    limparAudioAtual()
+  }
 }
 
 onMounted(async () => {
@@ -23,11 +92,17 @@ onMounted(async () => {
 
   const sse = useSse()
   sse.on('chamado:novo', (data: unknown) => {
-    const chamado = data as { pacienteNome?: string; localAtendimento?: string }
+    const chamado = data as { pacienteNome?: string, localAtendimento?: string }
     if (chamado?.pacienteNome) {
-      falarChamado(chamado.pacienteNome, chamado.localAtendimento ?? 'sala de atendimento')
+      void falarChamado(chamado.pacienteNome, chamado.localAtendimento ?? 'sala de atendimento')
     }
   })
+})
+
+onBeforeUnmount(() => {
+  ttsRequestId.value += 1
+  ttsAbortController.value?.abort()
+  limparAudioAtual()
 })
 
 const { agora, horaFormatada, dataFormatada } = useRelogio()
@@ -51,6 +126,38 @@ const esperaMedia = computed(() => {
     <header class="flex items-center justify-between shrink-0">
       <div class="flex items-center gap-3">
         <LogoMed :isrecepcao="false" />
+        <UButton
+          v-if="!audioAtivo"
+          icon="i-lucide-volume-2"
+          label="Ativar áudio"
+          color="primary"
+          variant="soft"
+          @click="ativarAudio"
+        />
+        <div
+          v-else-if="ttsLoading"
+          class="flex items-center gap-1 text-sm text-muted"
+        >
+          <UIcon
+            name="i-lucide-volume-2"
+            class="animate-pulse"
+          />
+          Falando...
+        </div>
+        <div
+          v-else-if="ttsError"
+          class="flex items-center gap-1 text-sm text-error"
+        >
+          <UIcon name="i-lucide-volume-x" />
+          Erro no áudio
+        </div>
+        <UBadge
+          v-else
+          icon="i-lucide-volume-2"
+          label="Áudio ativo"
+          color="success"
+          variant="soft"
+        />
       </div>
       <div class="text-right">
         <p class="text-2xl font-light text-muted">
@@ -70,12 +177,12 @@ const esperaMedia = computed(() => {
           >
             <div class="w-full">
               <p class="text-xl font-medium text-white text-center tracking-widest uppercase mb-4">
-              Chamando Agora
-            </p>
+                Chamando Agora
+              </p>
 
-            <p class="text-5xl md:text-7xl font-bold text-center text-white leading-tight mb-6">
-              {{ ultimoChamado.pacienteNome }}
-            </p>
+              <p class="text-5xl md:text-7xl font-bold text-center text-white leading-tight mb-6">
+                {{ ultimoChamado.pacienteNome }}
+              </p>
             </div>
 
             <div class="flex gap-4 w-full mb-6 justify-center items-center">
