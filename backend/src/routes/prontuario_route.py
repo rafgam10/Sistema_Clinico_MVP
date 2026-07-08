@@ -250,50 +250,33 @@ def _executar_historico_biodata(where_clause, params, limit, offset):
     sql = f"""
         WITH historico AS (
             SELECT
-                a.intAtendimentoId AS ID_ATENDIMENTO,
-                a.datAtendimento AS DATA_CONSULTA,
-                a.datEncerrado AS DATA_ENCERRAMENTO,
-                p.strProfissional AS MEDICO,
-                a.strObservacao AS OBS_ATENDIMENTO,
-                a.strQueixaPrincipal AS QUEIXA_PRINCIPAL,
-                a.strCodigoCID AS CID_PRINCIPAL,
-                a.strCID2 AS CID_SECUNDARIO,
-                a.strCID3 AS CID_TERCIARIO,
-                a.strCID4 AS CID_QUATERNARIO,
                 an.intAnamneseId AS ID_ANAMNESE,
                 an.datAnamnese AS DATA_ANAMNESE,
                 CAST(an.strAnamnese AS NVARCHAR(MAX)) AS ANAMNESE_RTF,
                 CAST(an.strAnamneseMobile AS NVARCHAR(MAX)) AS ANAMNESE_MOBILE,
+                c.intClienteId AS ID_PACIENTE_BIODATA,
+                c.strCliente AS PACIENTE,
+                c.strCPF AS CPF,
+                p.strProfissional AS MEDICO,
                 ROW_NUMBER() OVER (
-                    ORDER BY COALESCE(an.datAnamnese, a.datEncerrado, a.datAtendimento, a.datAtende) DESC,
-                             an.intAnamneseId DESC
+                    ORDER BY an.datAnamnese DESC, an.intAnamneseId DESC
                 ) AS RN
             FROM [BioData].[dbo].[tblAnamnese] an
-            JOIN [BioData].[dbo].[tblAtendimento] a
-                ON a.intAtendimentoId = an.intAtendimentoId
             JOIN [Repositorio].[dbo].[tblCliente] c
-                ON c.intClienteId = a.intClienteId
+                ON c.intClienteId = an.intClienteId
             LEFT JOIN [BioData].[dbo].[tblProfissional] p
-                ON p.intProfissionalId = a.intProfissionalId
-            WHERE UPPER(ISNULL(a.bolEncerrado, 'N')) = 'S'
-              AND UPPER(ISNULL(an.bolNaoCompartilhar, 'N')) <> 'S'
-              AND {where_clause}
+                ON p.intProfissionalId = an.intProfissionalId
+            WHERE {where_clause}
         )
         SELECT
-            ID_ATENDIMENTO,
-            DATA_CONSULTA,
-            DATA_ENCERRAMENTO,
-            MEDICO,
-            OBS_ATENDIMENTO,
-            QUEIXA_PRINCIPAL,
-            CID_PRINCIPAL,
-            CID_SECUNDARIO,
-            CID_TERCIARIO,
-            CID_QUATERNARIO,
             ID_ANAMNESE,
             DATA_ANAMNESE,
             ANAMNESE_RTF,
-            ANAMNESE_MOBILE
+            ANAMNESE_MOBILE,
+            ID_PACIENTE_BIODATA,
+            PACIENTE,
+            CPF,
+            MEDICO
         FROM historico
         WHERE RN BETWEEN ? AND ?
         ORDER BY RN;
@@ -323,13 +306,13 @@ def _historico_biodata(paciente_id, limit=10, offset=0):
 
     if cpf:
         historico, has_more = _executar_historico_biodata(
-            "REPLACE(REPLACE(REPLACE(REPLACE(c.strCPF, '.', ''), '-', ''), '/', ''), ' ', '') = ?",
+            "c.strCPF = ?",
             [cpf],
             limit,
             offset,
         )
 
-    if not historico and offset == 0 and nome:
+    if not historico and nome and (not cpf or offset == 0):
         historico, has_more = _executar_historico_biodata(
             "UPPER(LTRIM(RTRIM(c.strCliente))) = UPPER(LTRIM(RTRIM(?)))",
             [nome],
@@ -340,28 +323,21 @@ def _historico_biodata(paciente_id, limit=10, offset=0):
     result = []
     for item in historico:
         anamnese = _rtf_para_texto(item.get("ANAMNESE_RTF")) or _rtf_para_texto(item.get("ANAMNESE_MOBILE"))
-        cid_secundarios = [
-            item.get("CID_SECUNDARIO"),
-            item.get("CID_TERCIARIO"),
-            item.get("CID_QUATERNARIO"),
-        ]
-        cid_secundarios = [cid for cid in cid_secundarios if _texto_ou_none(cid)]
-
         result.append({
-            "ID_ATENDIMENTO": str(item.get("ID_ATENDIMENTO")) if item.get("ID_ATENDIMENTO") is not None else None,
+            "ID_ATENDIMENTO": None,
             "ID_ANAMNESE": str(item.get("ID_ANAMNESE")) if item.get("ID_ANAMNESE") is not None else None,
-            "ID_PACIENTE": paciente_id,
-            "PACIENTE": nome,
-            "DATA_CONSULTA": item.get("DATA_CONSULTA"),
-            "DATA_ENCERRAMENTO": item.get("DATA_ENCERRAMENTO"),
+            "ID_PACIENTE": item.get("ID_PACIENTE_BIODATA") or paciente_id,
+            "PACIENTE": item.get("PACIENTE") or nome,
+            "DATA_CONSULTA": item.get("DATA_ANAMNESE"),
+            "DATA_ENCERRAMENTO": None,
             "DATA_ANAMNESE": item.get("DATA_ANAMNESE"),
             "MEDICO": item.get("MEDICO"),
             "ANAMNESE": anamnese,
-            "OBS_ATENDIMENTO": item.get("OBS_ATENDIMENTO"),
-            "QUEIXA_PRINCIPAL": item.get("QUEIXA_PRINCIPAL"),
-            "CID_PRINCIPAL": item.get("CID_PRINCIPAL"),
+            "OBS_ATENDIMENTO": None,
+            "QUEIXA_PRINCIPAL": None,
+            "CID_PRINCIPAL": None,
             "DIAGNOSTICO_PRINCIPAL": None,
-            "CID_SECUNDARIO": "\n".join(cid_secundarios) if cid_secundarios else None,
+            "CID_SECUNDARIO": None,
             "DIAGNOSTICO_SECUNDARIO": None,
             "ID_EVOLUCAO": None,
             "ID_SOLICITACAO_EXAME": None,
