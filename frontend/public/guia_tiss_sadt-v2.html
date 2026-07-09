@@ -48,8 +48,17 @@
             font-weight: bold;
             font-style: italic;
             width: 100px;
+            height: 34px;
+            display: flex;
+            align-items: center;
             letter-spacing: -1px;
             line-height: 1;
+            overflow: hidden;
+        }
+        .logo-amil img {
+            max-width: 100px;
+            max-height: 34px;
+            object-fit: contain;
         }
         .title {
             flex-grow: 1;
@@ -174,7 +183,7 @@
 
 <div class="guia-container">
     <div class="header">
-        <div class="logo-amil">{{CONVENIO}}</div>
+        <div class="logo-amil">{{CONVENIO_LOGO}}</div>
         <div class="title">GUIA DE SERVIÇO PROFISSIONAL / SERVIÇO AUXILIAR DE DIAGNÓSTICO E TERAPIA - SP/SADT</div>
         <div class="guia-num-prestador">2 - No. Guia do Prestador <input type="text" value="" style="width: 35px; border-bottom: 1px solid #000; display: inline-block; height: 11px; text-align: center;"></div>
     </div>

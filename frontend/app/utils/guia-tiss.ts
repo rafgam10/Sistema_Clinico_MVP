@@ -5,11 +5,14 @@ export interface ExameTiss {
 }
 
 const EXAMES_POR_PAGINA = 4
+let convenioLogoIndex: Record<string, string> | null = null
+let convenioLogoIndexLoaded = false
 
 export async function gerarHtmlGuiaTiss(params: {
   paciente: string
   cpf?: string
   convenio: string
+  idConvenioSpdata?: number | null
   data: string
   exames: ExameTiss[]
   medico?: string
@@ -24,6 +27,7 @@ export async function gerarHtmlGuiaTiss(params: {
   const afterBody = template.slice(bodyEnd)
 
   const batches = chunk(params.exames, EXAMES_POR_PAGINA)
+  const convenioLogo = await convenioLogoHtml(params.convenio, params.idConvenioSpdata)
 
   const pages = batches.map((batch, batchIdx) => {
     const startNum = batchIdx * EXAMES_POR_PAGINA
@@ -36,6 +40,7 @@ export async function gerarHtmlGuiaTiss(params: {
 
     return bodyContent
       .replaceAll('{{CONVENIO}}', escapeHtml(params.convenio))
+      .replaceAll('{{CONVENIO_LOGO}}', convenioLogo)
       .replaceAll('{{PACIENTE}}', escapeHtml(params.paciente))
       .replaceAll('{{CPF}}', escapeHtml(params.cpf ?? ''))
       .replaceAll('{{MEDICO}}', escapeHtml(params.medico ?? ''))
@@ -84,6 +89,63 @@ function escapeHtml(text: string): string {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
+}
+
+async function convenioLogoHtml(convenio: string, idConvenioSpdata?: number | null) {
+  const fallback = escapeHtml(convenio)
+  if (!idConvenioSpdata) return fallback
+
+  try {
+    const index = await getConvenioLogoIndex()
+    const logoPath = index[String(idConvenioSpdata)]
+    if (!logoPath) return fallback
+
+    const response = await fetch(logoPath)
+    if (!response.ok) return fallback
+
+    const dataUrl = await blobToDataUrl(await response.blob())
+    return `<img src="${escapeHtml(dataUrl)}" alt="${fallback}">`
+  } catch {
+    return fallback
+  }
+}
+
+async function getConvenioLogoIndex() {
+  if (convenioLogoIndexLoaded) return convenioLogoIndex ?? {}
+
+  convenioLogoIndexLoaded = true
+
+  try {
+    const response = await fetch('/img/convenios/index.json')
+    if (!response.ok) {
+      convenioLogoIndex = {}
+      return convenioLogoIndex
+    }
+
+    const data = await response.json() as unknown
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      convenioLogoIndex = {}
+      return convenioLogoIndex
+    }
+
+    convenioLogoIndex = Object.fromEntries(
+      Object.entries(data as Record<string, unknown>)
+        .filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+    )
+  } catch {
+    convenioLogoIndex = {}
+  }
+
+  return convenioLogoIndex
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(new Error('Falha ao carregar logo do convênio'))
+    reader.readAsDataURL(blob)
+  })
 }
 
 function extractCrmNumero(crm?: string): string {

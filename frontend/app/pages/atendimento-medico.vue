@@ -547,6 +547,7 @@ async function gerarSolicitacaoExames() {
       paciente: agendamento.value?.paciente.nome ?? 'Paciente',
       cpf: agendamento.value?.paciente.cpf,
       convenio: agendamento.value?.paciente.convenio ?? '',
+      idConvenioSpdata: agendamento.value?.paciente.idConvenioSpdata,
       data: new Date().toLocaleDateString('pt-BR'),
       exames: examesSelecionados.value,
       medico: auth.user?.nome,

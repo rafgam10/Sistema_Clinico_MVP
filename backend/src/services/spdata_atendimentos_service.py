@@ -352,6 +352,7 @@ def agenda_para_frontend(spdata, atendimento=None, convenios_por_codigo=None):
     data_atendimento = data_iso(spdata.data_atendimento)
     horario = hora_hhmm(spdata.hora_entrada)
     paciente_id = spdata.id_paciente_spdata or spdata.id
+    id_convenio_spdata = normalizar_int(spdata.id_convenio_spdata)
 
     return {
         "id": spdata.id,
@@ -377,6 +378,7 @@ def agenda_para_frontend(spdata, atendimento=None, convenios_por_codigo=None):
             "alergias": [],
             "medicamentosEmUso": [],
             "convenio": convenio_para_frontend(spdata, convenios_por_codigo),
+            "idConvenioSpdata": id_convenio_spdata,
             "telefone": spdata.celular or "",
             "email": spdata.email or "Não Informado",
             "cpf": spdata.cpf or "",

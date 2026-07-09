@@ -478,6 +478,7 @@ def especialidade_para_frontend(row, especialidades_por_medico):
 
 def item_para_frontend(row, status_local, convenios_por_codigo, especialidades_por_medico):
     registro = normalizar_texto(row.get("REGISTRO"))
+    id_convenio_spdata = normalizar_int(row.get("ID_CONVENIO_SPDATA") or row.get("CONVENIO"))
     local = status_local.get(registro)
     if local:
         status = local["status"]
@@ -502,6 +503,7 @@ def item_para_frontend(row, status_local, convenios_por_codigo, especialidades_p
         "cpf": normalizar_texto(row.get("CPF")),
         "prontuario": normalizar_texto(row.get("PRONTUARIO")),
         "convenio": convenio_para_frontend(row, convenios_por_codigo),
+        "idConvenioSpdata": id_convenio_spdata,
         "telefone": normalizar_texto(row.get("FONE")),
         "celular": normalizar_texto(row.get("CELULAR")),
         "email": normalizar_texto(row.get("EMAIL")),

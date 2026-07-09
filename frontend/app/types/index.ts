@@ -22,6 +22,7 @@ export interface Paciente {
   alergias: string[]
   medicamentosEmUso: MedicamentoUso[]
   convenio: string
+  idConvenioSpdata?: number | null
   telefone: string
   email: string
   cpf: string
