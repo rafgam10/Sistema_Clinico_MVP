@@ -92,7 +92,8 @@ function escapeHtml(text: string): string {
 }
 
 async function convenioLogoHtml(convenio: string, idConvenioSpdata?: number | null) {
-  const fallback = escapeHtml(convenio)
+  const fallback = ''
+  const alt = escapeHtml(convenio)
   if (!idConvenioSpdata) return fallback
 
   try {
@@ -104,7 +105,7 @@ async function convenioLogoHtml(convenio: string, idConvenioSpdata?: number | nu
     if (!response.ok) return fallback
 
     const dataUrl = await blobToDataUrl(await response.blob())
-    return `<img src="${escapeHtml(dataUrl)}" alt="${fallback}">`
+    return `<img src="${escapeHtml(dataUrl)}" alt="${alt}">`
   } catch {
     return fallback
   }
