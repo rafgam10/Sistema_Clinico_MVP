@@ -39,7 +39,7 @@ function signatureBlock(medico?: string, crm?: string, especialidade?: string) {
       { text: '__________________________________________', alignment: 'center' as const },
       { text: medico ?? 'Médico Responsável', bold: true, fontSize: 10, alignment: 'center' as const },
       ...(especialidade ? [{ text: especialidade, fontSize: 9, alignment: 'center' as const, color: '#555555' }] : []),
-      ...(crm ? [{ text: crm, fontSize: 9, alignment: 'center' as const, color: '#555555' }] : [])
+      ...(crm ? [{ text: `CRM:${crm}`, fontSize: 9, alignment: 'center' as const, color: '#555555' }] : [])
     ],
     unbreakable: true
   }
