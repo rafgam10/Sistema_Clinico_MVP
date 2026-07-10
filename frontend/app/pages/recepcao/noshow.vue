@@ -730,7 +730,7 @@ onMounted(() => {
               <UDropdownMenu :items="itensMais">
                 <UButton
                   icon="lucide:menu"
-                  label="mais"
+                  label="Mais"
                   size="sm"
                   color="secondary"
                 />

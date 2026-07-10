@@ -36,7 +36,7 @@ async function falarChamado(pacienteNome: string, localAtendimento: string) {
 
   const abortController = new AbortController()
   ttsAbortController.value = abortController
-  const texto = `Chamando ${pacienteNome}, por favor dirija-se à ${localAtendimento}`
+  const texto = `${pacienteNome}, por favor dirija-se à ${localAtendimento}`
 
   limparAudioAtual()
   ttsLoading.value = true

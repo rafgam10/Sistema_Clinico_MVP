@@ -5,5 +5,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Campos obrigatórios: pacienteId, pacienteNome, localAtendimento, medicoResponsavel' })
   }
 
-  return flaskFetch(event, '/chamadas', { method: 'POST', body })
+  return criarChamado({
+    pacienteId: body.pacienteId,
+    pacienteNome: body.pacienteNome,
+    localAtendimento: body.localAtendimento,
+    medicoResponsavel: body.medicoResponsavel
+  })
 })

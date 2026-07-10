@@ -1,0 +1,62 @@
+import { broadcastSse } from './sse'
+
+type ChamadoStatus = 'chamando' | 'concluido' | 'cancelado'
+
+type Chamado = {
+  id: number
+  pacienteId: number
+  pacienteNome: string
+  dataChamada: string
+  status: ChamadoStatus
+  localAtendimento: string
+  medicoResponsavel: string
+}
+
+type CriarChamadoPayload = Pick<Chamado, 'pacienteId' | 'pacienteNome' | 'localAtendimento' | 'medicoResponsavel'>
+
+const chamados: Chamado[] = []
+
+export function getChamadoAtivo() {
+  return chamados.find(chamado => chamado.status === 'chamando') ?? null
+}
+
+export function getHistoricoChamados(limit = 10) {
+  const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(Math.trunc(limit), 1), 100) : 10
+
+  return chamados
+    .filter(chamado => chamado.status !== 'chamando')
+    .slice()
+    .reverse()
+    .slice(0, safeLimit)
+}
+
+export function criarChamado(data: CriarChamadoPayload) {
+  for (const chamado of chamados) {
+    if (chamado.status === 'chamando') {
+      chamado.status = 'concluido'
+      broadcastSse({ type: 'chamado:concluido', data: chamado })
+    }
+  }
+
+  const chamado: Chamado = {
+    id: Date.now(),
+    ...data,
+    dataChamada: new Date().toLocaleTimeString('pt-BR'),
+    status: 'chamando'
+  }
+
+  chamados.push(chamado)
+  broadcastSse({ type: 'chamado:novo', data: chamado })
+
+  return chamado
+}
+
+export function atualizarChamadoStatus(id: number, status: ChamadoStatus) {
+  const chamado = chamados.find(chamado => chamado.id === id)
+  if (!chamado) return null
+
+  chamado.status = status
+  broadcastSse({ type: 'chamado:concluido', data: chamado })
+
+  return chamado
+}
