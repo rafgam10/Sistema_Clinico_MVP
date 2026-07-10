@@ -1,5 +1,6 @@
 from flask import (
     Blueprint,
+    current_app,
     request,
     jsonify
 )
@@ -9,7 +10,7 @@ from src.security.decorators import roles_required
 
 from src.controllers.login_controller import LoginController
 
-from src.settings.extensions import db
+from src.settings.extensions import db, limiter
 from src.services.medicos_spdata_service import (
     buscar_medicos_spdata,
     normalizar_texto,
@@ -19,7 +20,28 @@ from src.services.medicos_spdata_service import (
 login_bp = Blueprint('login', __name__, url_prefix="/login")
 controller = LoginController()
 
+
+def _login_email_rate_limit_key():
+    data = request.get_json(silent=True) or {}
+    email = str(data.get("email") or "").strip().lower()
+
+    if email:
+        return f"login-email:{email[:255]}"
+
+    return f"login-email-ip:{request.remote_addr or 'unknown'}"
+
+
+def _login_ip_rate_limit():
+    return current_app.config.get("LOGIN_RATE_LIMIT_IP", "10 per minute")
+
+
+def _login_email_rate_limit():
+    return current_app.config.get("LOGIN_RATE_LIMIT_EMAIL", "5 per minute")
+
+
 @login_bp.route("/auth", methods=["POST"])
+@limiter.limit(_login_ip_rate_limit)
+@limiter.limit(_login_email_rate_limit, key_func=_login_email_rate_limit_key)
 def login():
     try:
         data = request.get_json(silent=True) or {}
@@ -36,8 +58,9 @@ def login():
 
         return jsonify(access_token=token), 200
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        current_app.logger.exception("Erro inesperado no login")
+        return jsonify({"error": "Erro interno ao realizar login"}), 500
 
 
 @login_bp.route("/register", methods=["POST"])

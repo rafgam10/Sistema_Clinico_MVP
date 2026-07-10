@@ -1,6 +1,7 @@
-from flask import Flask
+from flask import Flask, jsonify
+from flask_limiter.errors import RateLimitExceeded
 from .settings.config import Config
-from .settings.extensions import db, migrate, jwt, cors
+from .settings.extensions import db, migrate, jwt, cors, limiter
 
 from src.commands.exames_commands import importar_exames_spdata_command
 from src.commands.convenios_commands import (
@@ -19,7 +20,14 @@ def create_app():
     migrate.init_app(app, db)
     jwt.init_app(app)
     cors.init_app(app)
-    
+    limiter.init_app(app)
+
+    @app.errorhandler(RateLimitExceeded)
+    def handle_rate_limit(_error):
+        return jsonify({
+            "error": "Muitas tentativas de login. Aguarde alguns minutos e tente novamente."
+        }), 429
+
     app.cli.add_command(importar_exames_spdata_command)
     app.cli.add_command(importar_convenios_spdata_command)
     app.cli.add_command(exportar_logos_tiss_command)
