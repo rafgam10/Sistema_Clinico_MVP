@@ -6,7 +6,8 @@ export const useAuthStore = defineStore('auth', () => {
   const clinicas = ref<Clinica[]>([])
 
   const _token = useCookie('auth_token', {
-    maxAge: 60 * 60 * 24 * 7
+    maxAge: 60 * 60 * 24 * 7,
+    sameSite: 'lax'
   })
   const token = computed(() => _token.value)
 

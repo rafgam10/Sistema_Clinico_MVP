@@ -2,17 +2,8 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<{ pacienteId: number, pacienteNome: string, localAtendimento: string, medicoResponsavel: string }>(event)
 
   if (!body.pacienteId || !body.pacienteNome || !body.localAtendimento || !body.medicoResponsavel) {
-    throw createError({ statusCode: 400, statusMessage: 'Dados incompletos' })
+    throw createError({ statusCode: 400, statusMessage: 'Campos obrigatórios: pacienteId, pacienteNome, localAtendimento, medicoResponsavel' })
   }
 
-  const chamado = criarChamado({
-    pacienteId: body.pacienteId,
-    pacienteNome: body.pacienteNome,
-    localAtendimento: body.localAtendimento,
-    medicoResponsavel: body.medicoResponsavel,
-    dataChamada: new Date().toLocaleTimeString('pt-BR'),
-    status: 'chamando'
-  })
-
-  return chamado
+  return flaskFetch(event, '/chamadas', { method: 'POST', body })
 })

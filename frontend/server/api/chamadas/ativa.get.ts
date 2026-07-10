@@ -1,3 +1,3 @@
-export default defineEventHandler(() => {
-  return getChamadoAtivo()
+export default defineEventHandler((event) => {
+  return flaskFetch(event, '/chamadas/ativa')
 })

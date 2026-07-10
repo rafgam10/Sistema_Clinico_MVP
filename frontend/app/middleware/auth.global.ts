@@ -5,7 +5,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   // Páginas públicas que não precisam de autenticação
   if (to.path === '/painel-chamada') return
-  if (to.path === '/testes') return
   if (to.path === '/login') return
 
   // Garantir que os dados do usuário estejam carregados

@@ -644,7 +644,7 @@ async function finalizarConsulta() {
             color="neutral"
             variant="subtle"
           >
-            <p>`Tempo: {{ cronometro.formatted }}</p>
+            <p>Tempo: {{ cronometro.formatted }}</p>
             <UButton
               :key="cronometro.isRunning ? 'pause' : 'play'"
               :icon="cronometro.isRunning ? 'i-lucide-pause' : 'i-lucide-play'"

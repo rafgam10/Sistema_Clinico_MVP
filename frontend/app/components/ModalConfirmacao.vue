@@ -4,7 +4,7 @@ const props = defineProps<{
   titulo: string
   descricao: string
   textoConfirma?: string
-  corConfirma?: string
+  corConfirma?: 'error' | 'success' | 'warning' | 'info' | 'neutral'
 }>()
 
 const emit = defineEmits<{
@@ -43,7 +43,7 @@ const proxyOpen = computed({
           />
           <UButton
             :label="textoConfirma ?? 'Confirmar'"
-            :color="(corConfirma as any) ?? 'error'"
+            :color="corConfirma ?? 'error'"
             variant="solid"
             block
             size="lg"

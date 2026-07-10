@@ -39,6 +39,9 @@ function handleEvent(eventType: string, raw: string) {
   } catch { /* ignore malformed */ }
 }
 
+let reconnectAttempts = 0
+const MAX_RECONNECT_ATTEMPTS = 5
+
 function openConnection(url: string) {
   clearReconnectTimer()
 
@@ -48,9 +51,16 @@ function openConnection(url: string) {
     eventSource?.close()
     eventSource = null
     clearReconnectTimer()
+    reconnectAttempts++
+    if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) return
+    const delay = Math.min(3000 * Math.pow(2, reconnectAttempts - 1), 60000)
     reconnectTimer = setTimeout(() => {
       if (currentUrl === url) openConnection(url)
-    }, 3000)
+    }, delay)
+  }
+
+  eventSource.onopen = () => {
+    reconnectAttempts = 0
   }
 
   for (const eventName of SSE_EVENTS) {

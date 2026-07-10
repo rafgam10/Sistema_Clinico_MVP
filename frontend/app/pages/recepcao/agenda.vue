@@ -4,30 +4,9 @@ import type { AgendaSlot, AgendaStatus } from '~/types'
 
 const agendamentosStore = useAgendamentosStore()
 const auth = useAuthStore()
-const pacientesStore = usePacientesStore()
 
 const selectedDate = ref(new Date())
 const isPopoverOpen = ref(false)
-const showNovoAgendamento = ref(false)
-const submitting = ref(false)
-const successMsg = ref('')
-
-const horariosDisponiveis = [
-  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'
-]
-
-const novoAgendamento = ref({
-  paciente: undefined as { label: string, value: number } | undefined,
-  nome: '',
-  telefone: '',
-  medico: undefined as { label: string, value: number } | undefined,
-  horario: '',
-  descricao: ''
-})
-
-const pacientes = ref<{ label: string, value: number }[]>([])
-const medicos = ref<{ label: string, value: number }[]>([])
 
 const formattedDate = computed(() => {
   const d = selectedDate.value
@@ -69,14 +48,8 @@ function loadData() {
 
 watch(selectedDate, loadData)
 
-onMounted(async () => {
+onMounted(() => {
   loadData()
-  await pacientesStore.fetchPacientes()
-  pacientes.value = pacientesStore.pacientes.map(p => ({ label: p.nome, value: p.id }))
-
-  const params = auth.activeClinicaId ? `?clinicaId=${auth.activeClinicaId}` : ''
-  const meds = await $fetch<{ id: number, nome: string }[]>(`/api/medicos${params}`)
-  medicos.value = meds.map(m => ({ label: m.nome, value: m.id }))
 })
 
 function mapStatus(s: string): AgendaStatus {
@@ -123,59 +96,6 @@ const statuses: { id: AgendaStatus, name: string, color: 'primary' | 'success' |
 function statusColor(s: AgendaStatus) {
   return statuses.find(st => st.id === s)?.color ?? 'neutral'
 }
-
-function abrirFormulario() {
-  successMsg.value = 'Agendamentos serão importados do SPDATA nesta fase.'
-  showNovoAgendamento.value = false
-}
-
-async function criarAgendamento() {
-  if (!novoAgendamento.value.medico || !novoAgendamento.value.horario) return
-  if (!auth.activeClinicaId) return
-
-  submitting.value = true
-  successMsg.value = ''
-
-  try {
-    let pacienteId = novoAgendamento.value.paciente?.value
-
-    if (!pacienteId) {
-      if (!novoAgendamento.value.nome) {
-        successMsg.value = 'Informe o nome do paciente ou selecione um existente'
-        submitting.value = false
-        return
-      }
-      const novoPaciente = await $fetch<{ id: number }>('/api/pacientes', {
-        method: 'POST',
-        body: {
-          nome: novoAgendamento.value.nome,
-          telefone: novoAgendamento.value.telefone
-        }
-      })
-      pacienteId = novoPaciente.id
-    }
-
-    await $fetch('/api/agendamentos', {
-      method: 'POST',
-      body: {
-        pacienteId,
-        medicoId: novoAgendamento.value.medico.value,
-        clinicaId: auth.activeClinicaId,
-        data: formatarDataISO(selectedDate.value),
-        horario: novoAgendamento.value.horario,
-        descricao: novoAgendamento.value.descricao
-      }
-    })
-    successMsg.value = 'Consulta agendada com sucesso!'
-    showNovoAgendamento.value = false
-    novoAgendamento.value = { paciente: undefined, nome: '', telefone: '', medico: undefined, horario: '', descricao: '' }
-    loadData()
-  } catch {
-    successMsg.value = 'Erro ao criar agendamento'
-  } finally {
-    submitting.value = false
-  }
-}
 </script>
 
 <template>
@@ -196,7 +116,6 @@ async function criarAgendamento() {
           icon="i-lucide-lock"
           color="neutral"
           disabled
-          @click="abrirFormulario"
         />
         <UColorModeButton />
       </template>
@@ -300,106 +219,6 @@ async function criarAgendamento() {
               </UPageCard>
             </template>
           </UTable>
-        </UCard>
-      </div>
-
-      <div
-        v-if="showNovoAgendamento"
-        class="w-80 shrink-0"
-      >
-        <UCard>
-          <template #title>
-            <div class="flex items-center justify-between">
-              <span class="font-medium">Novo Agendamento</span>
-              <UButton
-                icon="i-lucide-x"
-                color="neutral"
-                variant="ghost"
-                size="sm"
-                @click="void (showNovoAgendamento = false)"
-              />
-            </div>
-          </template>
-
-          <UAlert
-            v-if="successMsg"
-            :title="successMsg"
-            :color="successMsg.includes('sucesso') ? 'success' : 'error'"
-            variant="subtle"
-            class="mb-4"
-          />
-
-          <div class="space-y-4">
-            <UFormField label="Paciente existente">
-              <UInputMenu
-                v-model="novoAgendamento.paciente"
-                :items="pacientes"
-                placeholder="Buscar paciente..."
-                searchable
-                class="w-full"
-              />
-            </UFormField>
-            <p class="text-xs text-muted -mt-2">
-              ou cadastre rápido abaixo
-            </p>
-            <UFormField label="Nome">
-              <UInput
-                v-model="novoAgendamento.nome"
-                placeholder="Nome completo"
-                class="w-full"
-              />
-            </UFormField>
-            <UFormField label="Telefone">
-              <UInput
-                v-model="novoAgendamento.telefone"
-                placeholder="(11) 99999-0000"
-                class="w-full"
-              />
-            </UFormField>
-            <UFormField
-              label="Médico"
-              required
-            >
-              <UInputMenu
-                v-model="novoAgendamento.medico"
-                :items="medicos"
-                placeholder="Selecione o médico"
-                class="w-full"
-              />
-            </UFormField>
-            <UFormField
-              label="Horário"
-              required
-            >
-              <USelect
-                v-model="novoAgendamento.horario"
-                :items="horariosDisponiveis"
-                placeholder="Selecione o horário"
-                class="w-full"
-              />
-            </UFormField>
-            <UFormField label="Descrição">
-              <UInput
-                v-model="novoAgendamento.descricao"
-                placeholder="Motivo da consulta"
-                class="w-full"
-              />
-            </UFormField>
-            <div class="flex justify-end gap-2 pt-2">
-              <UButton
-                label="Cancelar"
-                color="neutral"
-                variant="soft"
-                @click="void (showNovoAgendamento = false)"
-              />
-              <UButton
-                label="Agendar"
-                color="primary"
-                :loading="submitting"
-                @click="criarAgendamento"
-              />
-            </div>
-          </div>
         </UCard>
       </div>
     </div>

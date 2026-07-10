@@ -17,7 +17,7 @@ export const useChamadosStore = defineStore('chamados', () => {
   async function fetchChamados() {
     try {
       const [ativa, historico] = await Promise.all([
-        $fetch('/api/chamadas/ativa'),
+        $fetch<Chamado | null>('/api/chamadas/ativa'),
         $fetch<Chamado[]>('/api/chamadas/historico')
       ])
       chamados.value = []

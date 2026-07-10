@@ -17,10 +17,6 @@ export default defineEventHandler(async (event) => {
       body
     })
 
-    if (body.status === 'atendido' || body.status === 'faltou') {
-      concluirChamadoPorPaciente(Number(result.pacienteId) || 0)
-    }
-
     broadcastSse({
       type: 'agendamento:status',
       data: {

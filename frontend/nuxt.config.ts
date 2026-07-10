@@ -22,9 +22,9 @@ export default defineNuxtConfig({
     theme: {
       colors: ['tertiary', 'error', 'success', 'info', 'warning', 'secondary', 'quaternary', 'quinary']
     }
-  }, runtimeConfig: {
-    flaskBaseUrl: process.env.NUXT_FLASK_BASE_URL || 'http://localhost:5000',
-    enableMockAuth: process.env.NUXT_ENABLE_MOCK_AUTH === 'true'
+  },
+  runtimeConfig: {
+    flaskBaseUrl: process.env.NUXT_FLASK_BASE_URL || 'http://localhost:5000'
   },
 
   routeRules: {

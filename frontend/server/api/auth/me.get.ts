@@ -28,13 +28,6 @@ export default defineEventHandler(async (event) => {
 
     return { user, clinicas }
   } catch {
-    // Fallback: token fake (mock)
-    const mockUser = getUserByToken(token)
-    if (!mockUser) {
-      throw createError({ statusCode: 401, statusMessage: 'Não autorizado' })
-    }
-
-    const clinicas = mockUser.clinicaIds.map(id => getClinica(id)).filter(Boolean)
-    return { user: mockUser, clinicas }
+    throw createError({ statusCode: 401, statusMessage: 'Não autorizado' })
   }
 })
