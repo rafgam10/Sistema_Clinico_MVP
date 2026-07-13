@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgendaSlot, AgendaStatus } from '~/types'
+import type { AgendamentoComPaciente } from '~/types'
 import { CalendarDate } from '@internationalized/date'
 
 const agendamentosStore = useAgendamentosStore()
@@ -59,205 +59,262 @@ onMounted(() => {
   loadAgendamentos()
 })
 
-function mapStatus(agStatus: string): AgendaStatus {
-  switch (agStatus) {
-    case 'em-atendimento':
-    case 'atendido':
-      return 'presente'
-    case 'faltou':
-      return 'falta'
-    case 'em-espera':
-      return 'em-espera'
-    case 'agendado':
-    default:
-      return 'aguardando'
-  }
-}
-
-const slots = computed<AgendaSlot[]>(() => {
-  const result: AgendaSlot[] = []
-  for (let h = 8; h <= 17; h++) {
-    for (let m = 0; m < 60; m += 30) {
-      const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-
-      if (time === '12:00') {
-        result.push({ time, type: 'lunch' })
-        continue
-      }
-      if (time >= '12:30' && time < '13:00') continue
-
-      const ag = agendamentosStore.agendamentos.find(
-        a => a.horario === time
-      )
-
-      if (ag) {
-        result.push({
-          time,
-          type: 'appointment',
-          patient: {
-            id: ag.paciente.id,
-            name: ag.paciente.nome,
-            status: mapStatus(ag.status),
-            description: ag.descricao
-          }
-        })
-      } else {
-        result.push({ time, type: 'available' })
-      }
-    }
-  }
-  return result
+const atendimentosOrdenados = computed(() => {
+  return [...agendamentosStore.agendamentos].sort((a, b) => a.horario.localeCompare(b.horario))
 })
 
-const statuses: { id: AgendaStatus, name: string, color: 'primary' | 'warning' | 'info' | 'error' | 'neutral' }[] = [
-  { id: 'em-espera', name: 'Em espera', color: 'primary' },
-  { id: 'aguardando', name: 'Aguardando', color: 'warning' },
-  { id: 'presente', name: 'Presente', color: 'info' },
-  { id: 'falta', name: 'Falta', color: 'error' }
-]
+const resumo = computed(() => ({
+  agendados: agendamentosStore.agendamentos.filter(a => a.status === 'agendado').length,
+  emEspera: agendamentosStore.agendamentos.filter(a => a.status === 'em-espera').length,
+  emAtendimento: agendamentosStore.agendamentos.filter(a => a.status === 'em-atendimento').length,
+  atendidos: agendamentosStore.agendamentos.filter(a => a.status === 'atendido').length,
+  faltas: agendamentosStore.agendamentos.filter(a => a.status === 'faltou').length
+}))
 
-function statusColor(status: AgendaStatus) {
-  return statuses.find(s => s.id === status)?.color ?? 'neutral'
+function idadePaciente(dataNascimento: string | null | undefined) {
+  if (!dataNascimento) return ''
+  const data = new Date(dataNascimento)
+  if (Number.isNaN(data.getTime())) return ''
+  const hoje = new Date()
+  let idade = hoje.getFullYear() - data.getFullYear()
+  const aniversario = new Date(hoje.getFullYear(), data.getMonth(), data.getDate())
+  if (aniversario > hoje) idade -= 1
+  if (idade < 0) return ''
+  return idade === 1 ? '1 ano' : `${idade} anos`
 }
 
-const columns = [
-  { accessorKey: 'time', header: '', size: 100 },
-  { id: 'content', header: '' }
+function textoInformado(valor: string | number | null | undefined) {
+  const texto = String(valor ?? '').trim()
+  return texto && texto !== '0' ? texto : ''
+}
+
+function textoNaoInformado(valor: string | number | null | undefined, fallback = 'Não informado') {
+  return textoInformado(valor) || fallback
+}
+
+function contatoPrincipal(atendimento: AgendamentoComPaciente) {
+  const tel = textoInformado(atendimento.paciente.telefone)
+  const email = textoInformado(atendimento.paciente.email)
+  if (tel) return tel
+  if (email) return email
+  return 'Não informado'
+}
+
+function corStatus(s: string) {
+  switch (s) {
+    case 'agendado': return 'warning'
+    case 'em-espera': return 'primary'
+    case 'em-atendimento': return 'info'
+    case 'atendido': return 'success'
+    case 'faltou': return 'error'
+    default: return 'neutral'
+  }
+}
+
+function rotuloStatus(s: string) {
+  switch (s) {
+    case 'agendado': return 'Agendado'
+    case 'em-espera': return 'Em espera'
+    case 'em-atendimento': return 'Em atendimento'
+    case 'atendido': return 'Atendido'
+    case 'faltou': return 'Faltou'
+    default: return 'Desconhecido'
+  }
+}
+
+const colunas = [
+  { accessorKey: 'horario', header: 'Horário' },
+  { accessorKey: 'paciente', header: 'Paciente' },
+  { accessorKey: 'contato', header: 'Contato' },
+  { accessorKey: 'status', header: 'Status' }
+]
+
+const statuses: { id: string, name: string, color: string }[] = [
+  { id: 'agendado', name: 'Agendado', color: 'warning' },
+  { id: 'em-espera', name: 'Em espera', color: 'primary' },
+  { id: 'em-atendimento', name: 'Em atendimento', color: 'info' },
+  { id: 'atendido', name: 'Atendido', color: 'success' },
+  { id: 'faltou', name: 'Falta', color: 'error' }
 ]
 </script>
 
 <template>
-  <div class="h-screen flex flex-col">
-    <div class="flex-1 w-full flex flex-col">
-      <UHeader title="Agenda de Consultas">
-        <div class="flex gap-4">
-          <div
-            v-for="s in statuses"
-            :key="s.id"
-            class="flex items-center gap-1.5 text-sm"
-          >
-            <div :class="`size-2.5 rounded-full bg-${s.color}`" />
-            {{ s.name }}
-          </div>
-        </div>
-        <template #right>
-          <UColorModeButton />
-        </template>
-      </UHeader>
-
-      <div class="flex-1 w-full p-5 px-20 flex items-center justify-center bg-neutral-100 dark:bg-neutral-950">
-        <UCard
-          class="w-full h-full max-h-150"
-          :ui="{
-            root: 'flex flex-col overflow-hidden',
-            body: 'flex-1 overflow-y-auto p-0 sm:p-0'
-          }"
+  <div>
+    <UHeader title="Agenda de Consultas">
+      <div class="flex gap-4">
+        <div
+          v-for="s in statuses"
+          :key="s.id"
+          class="flex items-center gap-1.5 text-sm"
         >
-          <template #header>
-            <div class="flex items-center justify-between">
-              <UButton
-                icon="i-lucide-chevron-left"
-                color="neutral"
-                variant="ghost"
-                size="lg"
-                @click="prevDay"
-              />
+          <div :class="`size-2.5 rounded-full bg-${s.color}`" />
+          {{ s.name }}
+        </div>
+      </div>
+      <template #right>
+        <UColorModeButton />
+      </template>
+    </UHeader>
 
-              <UPopover v-model:open="isPopoverOpen">
+    <div class="min-h-screen space-y-4 bg-muted p-4 sm:space-y-6 sm:p-6">
+      <div class="flex items-center justify-between">
+        <UButton
+          icon="i-lucide-chevron-left"
+          color="neutral"
+          variant="ghost"
+          size="lg"
+          @click="prevDay"
+        />
+        <div class="flex items-center gap-4">
+          <UPopover v-model:open="isPopoverOpen">
+            <UButton
+              color="neutral"
+              variant="link"
+              class="text-lg font-semibold"
+            >
+              {{ formattedDate }} {{ isToday(selectedDate) ? '(Hoje)' : '' }}
+            </UButton>
+            <template #content>
+              <div class="p-2">
+                <UCalendar v-model="calendarDate" />
                 <UButton
-                  color="neutral"
-                  variant="link"
-                  class="text-lg font-semibold"
-                >
-                  {{ formattedDate }} {{ isToday(selectedDate) ? '(Hoje)' : '' }}
-                </UButton>
-                <template #content>
-                  <div class="p-2">
-                    <UCalendar v-model="calendarDate" />
-                    <UButton
-                      label="Hoje"
-                      color="primary"
-                      variant="soft"
-                      size="sm"
-                      class="mt-2 w-full"
-                      @click="goToToday"
-                    />
-                  </div>
-                </template>
-              </UPopover>
-
-              <div class="flex items-center gap-1">
-                <UButton
-                  icon="i-lucide-chevron-right"
-                  color="neutral"
-                  variant="ghost"
-                  size="lg"
-                  @click="nextDay"
+                  label="Hoje"
+                  color="primary"
+                  variant="soft"
+                  size="sm"
+                  class="mt-2 w-full"
+                  @click="goToToday"
                 />
               </div>
-            </div>
-          </template>
+            </template>
+          </UPopover>
+        </div>
+        <UButton
+          icon="i-lucide-chevron-right"
+          color="neutral"
+          variant="ghost"
+          size="lg"
+          @click="nextDay"
+        />
+      </div>
 
-          <UTable
-            :columns="columns"
-            :data="slots"
-            class="w-full"
-            :ui="{ thead: 'hidden' }"
+      <div class="flex flex-wrap gap-2">
+        <UBadge
+          :label="`${resumo.agendados} agendados`"
+          color="warning"
+          variant="subtle"
+        />
+        <UBadge
+          :label="`${resumo.emEspera} em espera`"
+          color="primary"
+          variant="subtle"
+        />
+        <UBadge
+          :label="`${resumo.emAtendimento} em atendimento`"
+          color="info"
+          variant="subtle"
+        />
+        <UBadge
+          :label="`${resumo.atendidos} atendidos`"
+          color="success"
+          variant="subtle"
+        />
+        <UBadge
+          :label="`${resumo.faltas} faltas`"
+          color="error"
+          variant="subtle"
+        />
+      </div>
+
+      <UCard>
+        <template #title>
+          <div class="flex items-center justify-between">
+            <p class="text-lg font-medium">
+              Pacientes do Dia
+            </p>
+            <p class="text-sm text-muted">
+              {{ agendamentosStore.agendamentos.length }} registro{{ agendamentosStore.agendamentos.length !== 1 ? 's' : '' }}
+            </p>
+          </div>
+        </template>
+
+        <div
+          v-if="agendamentosStore.loading"
+          class="space-y-3 py-4"
+        >
+          <div
+            v-for="linha in 5"
+            :key="linha"
+            class="grid grid-cols-1 gap-3 rounded-lg border border-muted p-3 md:grid-cols-[80px_1.5fr_1fr_120px]"
           >
-            <template #time-cell="{ row }">
-              <span
-                v-if="row.original.type !== 'lunch'"
-                class="font-mono text-sm whitespace-nowrap"
-              >
-                {{ row.original.time }}
-              </span>
+            <USkeleton class="h-5 w-16" />
+            <div class="space-y-2">
+              <USkeleton class="h-5 w-48 max-w-full" />
+              <USkeleton class="h-4 w-32 max-w-full" />
+            </div>
+            <USkeleton class="h-5 w-36 max-w-full" />
+            <USkeleton class="h-6 w-24 rounded-full" />
+          </div>
+        </div>
+
+        <p
+          v-else-if="!agendamentosStore.agendamentos.length"
+          class="text-sm text-muted py-4"
+        >
+          Nenhum paciente agendado para esta data.
+        </p>
+
+        <div
+          v-else
+          class="overflow-x-auto"
+        >
+          <UTable
+            :columns="colunas"
+            :data="atendimentosOrdenados"
+            class="min-w-[640px]"
+          >
+            <template #horario-cell="{ row }">
+              <span class="font-mono text-sm">{{ row.original.horario || '-' }}</span>
             </template>
 
-            <template #content-cell="{ row }">
-              <USeparator
-                v-if="row.original.type === 'lunch'"
-                label="Almoço"
-                class="my-2 w-full"
-              />
-
-              <p
-                v-else-if="row.original.type === 'available'"
-                class="text-muted text-sm italic py-2"
-              >
-                Horário Livre
-              </p>
-
-              <UPageCard
-                v-else
-                variant="subtle"
-                class="w-full"
-                :ui="{
-                  container: 'p-2 sm:p-2',
-                  root: `bg-${statusColor(row.original.patient!.status)}/10 ring-transparent border-l-4 border-${statusColor(row.original.patient!.status)}`,
-                  description: ''
-                }"
-              >
-                <template #title>
-                  <div class="flex items-center gap-2">
-                    <span class="font-medium">{{ row.original.patient!.name }}</span>
-                    <UBadge
-                      :label="row.original.patient!.status"
-                      :color="statusColor(row.original.patient!.status)"
-                      variant="subtle"
-                      size="sm"
-                    />
-                  </div>
-                </template>
-                <template #description>
-                  <p class="text-sm">
-                    {{ row.original.patient!.description }}
+            <template #paciente-cell="{ row }">
+              <div class="flex min-w-56 items-center gap-3">
+                <UAvatar
+                  :alt="row.original.paciente.nome"
+                  color="primary"
+                  size="sm"
+                />
+                <div>
+                  <p class="font-medium">
+                    {{ row.original.paciente.nome || 'Paciente não informado' }}
                   </p>
-                </template>
-              </UPageCard>
+                  <p class="text-xs text-muted">
+                    {{ textoInformado(idadePaciente(row.original.paciente.dataNascimento)) ? `${idadePaciente(row.original.paciente.dataNascimento)}` : '' }}
+                    {{ textoNaoInformado(row.original.paciente.convenio, '') ? `· ${row.original.paciente.convenio}` : '' }}
+                  </p>
+                </div>
+              </div>
+            </template>
+
+            <template #contato-cell="{ row }">
+              <div class="min-w-40 text-sm">
+                <p>{{ contatoPrincipal(row.original) }}</p>
+                <p class="text-xs text-muted">
+                  {{ textoNaoInformado(row.original.paciente.email, '') || '' }}
+                </p>
+              </div>
+            </template>
+
+            <template #status-cell="{ row }">
+              <UBadge
+                :label="rotuloStatus(row.original.status)"
+                :color="corStatus(row.original.status)"
+                variant="subtle"
+              />
             </template>
           </UTable>
-        </UCard>
-      </div>
+        </div>
+      </UCard>
     </div>
   </div>
 </template>
