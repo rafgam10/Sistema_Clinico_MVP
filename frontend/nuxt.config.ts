@@ -1,4 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+const DEFAULT_AUTH_MAX_AGE_SECONDS = 60 * 60 * 24 * 7
+const authCookieMaxAgeSeconds = Number(process.env.NUXT_PUBLIC_AUTH_COOKIE_MAX_AGE_SECONDS || DEFAULT_AUTH_MAX_AGE_SECONDS)
+
 export default defineNuxtConfig({
 
   modules: [
@@ -24,7 +27,12 @@ export default defineNuxtConfig({
     }
   },
   runtimeConfig: {
-    flaskBaseUrl: process.env.NUXT_FLASK_BASE_URL || 'http://localhost:5000'
+    flaskBaseUrl: process.env.NUXT_FLASK_BASE_URL || 'http://localhost:5000',
+    public: {
+      authCookieMaxAgeSeconds: Number.isFinite(authCookieMaxAgeSeconds)
+        ? authCookieMaxAgeSeconds
+        : DEFAULT_AUTH_MAX_AGE_SECONDS
+    }
   },
 
   routeRules: {

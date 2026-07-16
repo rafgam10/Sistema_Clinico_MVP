@@ -2,11 +2,13 @@ import { defineStore } from 'pinia'
 import type { AuthUser, Clinica } from '~/types'
 
 export const useAuthStore = defineStore('auth', () => {
+  const config = useRuntimeConfig()
+  const authCookieMaxAgeSeconds = Number(config.public.authCookieMaxAgeSeconds) || 60 * 60 * 24 * 7
   const user = ref<AuthUser | null>(null)
   const clinicas = ref<Clinica[]>([])
 
   const _token = useCookie('auth_token', {
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: authCookieMaxAgeSeconds,
     sameSite: 'lax'
   })
   const token = computed(() => _token.value)
@@ -14,7 +16,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => !!_token.value)
 
   const _activeClinicaCookie = useCookie('active_clinica_id', {
-    maxAge: 60 * 60 * 24 * 7
+    maxAge: authCookieMaxAgeSeconds
   })
   const activeClinicaId = ref<number | null>(
     _activeClinicaCookie.value ? Number(_activeClinicaCookie.value) : null
