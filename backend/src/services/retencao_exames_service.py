@@ -111,6 +111,14 @@ def ato_exame(exame):
     return texto(getattr(exame, "ato", None))
 
 
+def normalizar_nome_exame(valor):
+    return texto(valor).upper()
+
+
+def nome_exame_solicitacao(solicitacao, exame):
+    return texto(getattr(exame, "nome", None)) or texto(solicitacao.tipo_exame)
+
+
 def cpf_normalizado(*valores):
     for valor in valores:
         cpf = normalizar_cpf(valor)
@@ -155,6 +163,12 @@ def parametros_busca_spdata(registros_locais):
         for _, _, exame, _, _ in registros_locais
         if codigo_exame(exame)
     })
+    nomes_sem_codigo = sorted({
+        normalizar_nome_exame(nome_exame_solicitacao(solicitacao, exame))
+        for solicitacao, _, exame, _, _ in registros_locais
+        if not codigo_exame(exame)
+        and normalizar_nome_exame(nome_exame_solicitacao(solicitacao, exame))
+    })
     ids_pacientes = sorted({
         paciente_id
         for _, atendimento, _, spdata, _ in registros_locais
@@ -187,6 +201,7 @@ def parametros_busca_spdata(registros_locais):
 
     return {
         "codigos": codigos,
+        "nomes_sem_codigo": nomes_sem_codigo,
         "ids_pacientes": ids_pacientes,
         "cpfs": cpfs,
         "prontuarios": prontuarios,
@@ -198,11 +213,21 @@ def parametros_busca_spdata(registros_locais):
 def buscar_realizacoes_spdata(registros_locais):
     params = parametros_busca_spdata(registros_locais)
     codigos = params["codigos"]
+    nomes_sem_codigo = params["nomes_sem_codigo"]
+    filtros_exame = []
     filtros_paciente = []
-    valores = [params["data_ini"], params["data_fim"], *codigos]
+    valores = [params["data_ini"], params["data_fim"]]
 
-    if not registros_locais or not codigos or not params["data_ini"]:
+    if not registros_locais or not params["data_ini"] or not (codigos or nomes_sem_codigo):
         return []
+
+    if codigos:
+        filtros_exame.append(f"SIL.EXAME IN ({placeholders(codigos)})")
+        valores.extend(codigos)
+
+    if nomes_sem_codigo:
+        filtros_exame.append(f"UPPER(PROC.NOME) IN ({placeholders(nomes_sem_codigo)})")
+        valores.extend(nomes_sem_codigo)
 
     if params["ids_pacientes"]:
         filtros_paciente.append(
@@ -286,7 +311,7 @@ def buscar_realizacoes_spdata(registros_locais):
         LEFT JOIN PRSITEXAME ST
             ON ST.ID = SIL.ID_PRSITEXAME
         WHERE CAST(SIL.DATA AS DATE) BETWEEN ? AND ?
-          AND SIL.EXAME IN ({placeholders(codigos)})
+          AND ({' OR '.join(filtros_exame)})
           AND ({' OR '.join(filtros_paciente)})
         ORDER BY SIL.DATA ASC, SIL.ID ASC
     """
@@ -305,7 +330,12 @@ def indexar_realizacoes(realizacoes):
     for row in realizacoes:
         codigo = texto(row.get("EXAME")).upper()
         ato = texto(row.get("ATO"))
-        indice[(codigo, ato)].append(row)
+        if codigo:
+            indice[(codigo, ato)].append(row)
+
+        nome = normalizar_nome_exame(row.get("EXAME_NOME"))
+        if nome:
+            indice[("nome", nome)].append(row)
     return indice
 
 
@@ -342,10 +372,11 @@ def paciente_compativel(row, atendimento, spdata):
 def encontrar_realizacao(solicitacao, atendimento, exame, spdata, indice):
     codigo = codigo_exame(exame)
     ato = ato_exame(exame)
-    if not codigo:
-        return None
-
-    candidatos = indice.get((codigo, ato), []) or indice.get((codigo, ""), [])
+    if codigo:
+        candidatos = indice.get((codigo, ato), []) or indice.get((codigo, ""), [])
+    else:
+        nome = normalizar_nome_exame(nome_exame_solicitacao(solicitacao, exame))
+        candidatos = indice.get(("nome", nome), []) if nome else []
     data_solicitacao = solicitacao.created_at.date() if solicitacao.created_at else None
 
     for row in candidatos:
@@ -376,6 +407,8 @@ def solicitacao_para_item(solicitacao, atendimento, exame, spdata, convenio, rea
     status = status_solicitacao(solicitacao, realizacao, hoje)
     valor_estimado = numero(realizacao.get("VALOR_ESTIMADO")) if realizacao else 0
     codigo_tuss = ""
+    codigo_exame_local = codigo_exame(exame)
+    codigo_exame_spdata = texto(realizacao.get("EXAME")) if realizacao else ""
 
     if realizacao:
         codigo_tuss = texto(realizacao.get("CODAMB_CONVENIO")) or texto(realizacao.get("CODAMB_PROCEDIMENTO"))
@@ -399,8 +432,8 @@ def solicitacao_para_item(solicitacao, atendimento, exame, spdata, convenio, rea
         "crm": texto(getattr(spdata, "crm_medico", None)),
         "especialidade": "Especialidade não informada",
         "exame": texto(getattr(exame, "nome", None)) or texto(solicitacao.tipo_exame),
-        "codigoTuss": codigo_tuss or codigo_exame(exame),
-        "codigoExame": codigo_exame(exame),
+        "codigoTuss": codigo_tuss or codigo_exame_local or codigo_exame_spdata,
+        "codigoExame": codigo_exame_local or codigo_exame_spdata,
         "dataSolicitacao": data_iso(data_solicitacao),
         "dataRealizacao": data_iso(realizacao.get("DATA_EXAME")) if realizacao else None,
         "diasEmAberto": dias_desde(data_solicitacao, hoje),
@@ -415,7 +448,7 @@ def solicitacao_para_item(solicitacao, atendimento, exame, spdata, convenio, rea
         "senha": "",
         "dataColeta": data_iso(realizacao.get("COLETA") or realizacao.get("PREVISAOCOLETA")) if realizacao else "",
         "dataLiberacao": data_iso(realizacao.get("DATA_HORA_LIBERA_EXAME") or realizacao.get("DTEMIRES")) if realizacao else "",
-        "pendencia": "" if exame else "Solicitação local sem vínculo com catálogo de exames.",
+        "pendencia": "" if exame or realizacao else "Solicitação local sem vínculo com catálogo de exames.",
     }
 
 

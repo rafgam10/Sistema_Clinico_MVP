@@ -778,10 +778,12 @@ onMounted(() => {
           </template>
 
           <template #exame-cell="{ row }">
-            <div class="break-all">
-              <p class="text-sm font-medium break-words max-w-50">
-                {{ row.original.exame }}
-              </p>
+            <div>
+              <UTooltip :text="row.original.exame">
+                <p class="text-sm font-medium truncate max-w-70 cursor-default">
+                  {{ row.original.exame }}
+                </p>
+              </UTooltip>
               <p class="text-xs text-muted">
                 {{ row.original.codigoTuss }}
               </p>
