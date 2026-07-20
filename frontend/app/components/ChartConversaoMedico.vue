@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Chart } from 'vue-chartjs'
+import { Bar } from 'vue-chartjs'
 import { Chart as ChartJS, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
+import type { ChartOptions, TooltipItem } from 'chart.js'
 
 ChartJS.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
@@ -29,7 +30,7 @@ const data = computed(() => ({
   ]
 }))
 
-const options = {
+const options: ChartOptions<'bar'> = {
   responsive: true,
   maintainAspectRatio: false,
   indexAxis: 'y' as const,
@@ -37,7 +38,7 @@ const options = {
     legend: { display: false },
     tooltip: {
       callbacks: {
-        label: (ctx: { parsed: { x: number } }) => ` ${ctx.parsed.x}% de conversão`
+        label: (ctx: TooltipItem<'bar'>) => ` ${ctx.parsed.x || 0}% de conversão`
       }
     }
   },
@@ -45,7 +46,7 @@ const options = {
     x: {
       beginAtZero: true,
       max: 100,
-      ticks: { callback: (v: number) => `${v}%` }
+      ticks: { callback: value => `${value}%` }
     }
   }
 }
@@ -54,8 +55,7 @@ const options = {
 <template>
   <ClientOnly>
     <div class="relative h-64">
-      <Chart
-        type="bar"
+      <Bar
         :data="data"
         :options="options"
         class="h-full w-full"

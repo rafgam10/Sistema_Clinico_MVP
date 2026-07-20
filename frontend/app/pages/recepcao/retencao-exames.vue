@@ -4,6 +4,9 @@ import { getPaginationRowModel } from '@tanstack/vue-table'
 
 interface ExameRetencao {
   id: number
+  spdataExameId?: number
+  spdataContaId?: number
+  spdataAtendimentoId?: number | null
   paciente: string
   cpf: string
   prontuario: string
@@ -15,83 +18,37 @@ interface ExameRetencao {
   codigoTuss: string
   dataSolicitacao: string
   diasEmAberto: number
-  status: 'solicitado' | 'pendente-agendamento' | 'agendado-internamente' | 'realizado-internamente' | 'realizado-externamente' | 'sem-contato' | 'recusou' | 'expirado'
+  status: 'pendente' | 'realizado' | 'nao-convertido'
   valorEstimado: number
   valorRealizado: number | null
   ultimoContato: string | null
   responsavel: string | null
   telefone: string
+  guia?: string
+  senha?: string
+  dataColeta?: string
+  dataLiberacao?: string
+  pendencia?: string
+  statusSpdata?: string
 }
 
-const mockExames: ExameRetencao[] = [
-  { id: 1, paciente: 'João Carlos Silva', cpf: '123.456.789-00', prontuario: 'PRT-001', convenio: 'Unimed', medico: 'Dr. Carlos Almeida', crm: 'CRM-SP 12345', especialidade: 'Cardiologia', exame: 'Eletrocardiograma', codigoTuss: '40801010', dataSolicitacao: '2026-04-10', diasEmAberto: 95, status: 'expirado', valorEstimado: 120, valorRealizado: null, ultimoContato: '2026-05-15', responsavel: 'Ana Oliveira', telefone: '(11) 98765-4321' },
-  { id: 2, paciente: 'Maria Aparecida Santos', cpf: '987.654.321-00', prontuario: 'PRT-002', convenio: 'Bradesco Saúde', medico: 'Dra. Patricia Mendes', crm: 'CRM-SP 23456', especialidade: 'Ginecologia', exame: 'Ultrassom Transvaginal', codigoTuss: '40901111', dataSolicitacao: '2026-05-20', diasEmAberto: 55, status: 'pendente-agendamento', valorEstimado: 280, valorRealizado: null, ultimoContato: '2026-06-10', responsavel: 'Ana Oliveira', telefone: '(11) 97654-3210' },
-  { id: 3, paciente: 'Pedro Henrique Lima', cpf: '456.789.123-00', prontuario: 'PRT-003', convenio: 'Amil', medico: 'Dr. Roberto Fernandes', crm: 'CRM-SP 34567', especialidade: 'Ortopedia', exame: 'Ressonância Magnética Joelho', codigoTuss: '40903030', dataSolicitacao: '2026-06-01', diasEmAberto: 43, status: 'pendente-agendamento', valorEstimado: 850, valorRealizado: null, ultimoContato: '2026-06-20', responsavel: 'Carlos Santos', telefone: '(11) 96543-2109' },
-  { id: 4, paciente: 'Ana Beatriz Costa', cpf: '321.654.987-00', prontuario: 'PRT-004', convenio: 'SulAmérica', medico: 'Dra. Patricia Mendes', crm: 'CRM-SP 23456', especialidade: 'Ginecologia', exame: 'Papanicolau', codigoTuss: '40902020', dataSolicitacao: '2026-06-15', diasEmAberto: 29, status: 'agendado-internamente', valorEstimado: 90, valorRealizado: null, ultimoContato: '2026-07-01', responsavel: 'Ana Oliveira', telefone: '(11) 95555-1234' },
-  { id: 5, paciente: 'Carlos Eduardo Nunes', cpf: '159.753.486-00', prontuario: 'PRT-005', convenio: 'NotreDame Intermédica', medico: 'Dr. Roberto Fernandes', crm: 'CRM-SP 34567', especialidade: 'Ortopedia', exame: 'Raio-X Coluna Lombar', codigoTuss: '40802020', dataSolicitacao: '2026-06-10', diasEmAberto: 34, status: 'realizado-internamente', valorEstimado: 180, valorRealizado: 180, ultimoContato: '2026-06-25', responsavel: 'Ana Oliveira', telefone: '(11) 98888-7777' },
-  { id: 6, paciente: 'Fernanda Lima Rocha', cpf: '741.852.963-00', prontuario: 'PRT-006', convenio: 'Unimed', medico: 'Dr. Carlos Almeida', crm: 'CRM-SP 12345', especialidade: 'Cardiologia', exame: 'Teste Ergométrico', codigoTuss: '40803030', dataSolicitacao: '2026-06-25', diasEmAberto: 19, status: 'agendado-internamente', valorEstimado: 350, valorRealizado: null, ultimoContato: '2026-07-05', responsavel: 'Ana Oliveira', telefone: '(11) 93456-7890' },
-  { id: 7, paciente: 'Ricardo Barbosa', cpf: '852.963.741-00', prontuario: 'PRT-007', convenio: 'Hapvida', medico: 'Dr. Fernando Costa', crm: 'CRM-SP 45678', especialidade: 'Dermatologia', exame: 'Biópsia de Pele', codigoTuss: '40904040', dataSolicitacao: '2026-05-05', diasEmAberto: 70, status: 'sem-contato', valorEstimado: 450, valorRealizado: null, ultimoContato: '2026-05-20', responsavel: 'Carlos Santos', telefone: '(11) 91234-5678' },
-  { id: 8, paciente: 'Juliana Castro', cpf: '147.258.369-00', prontuario: 'PRT-008', convenio: 'Bradesco Saúde', medico: 'Dr. Carlos Almeida', crm: 'CRM-SP 12345', especialidade: 'Cardiologia', exame: 'Holter 24h', codigoTuss: '40805050', dataSolicitacao: '2026-06-20', diasEmAberto: 24, status: 'realizado-internamente', valorEstimado: 250, valorRealizado: 250, ultimoContato: '2026-07-01', responsavel: 'Ana Oliveira', telefone: '(11) 99887-6655' },
-  { id: 9, paciente: 'Luciana Pereira Martins', cpf: '369.258.147-00', prontuario: 'PRT-009', convenio: 'SulAmérica', medico: 'Dr. Roberto Fernandes', crm: 'CRM-SP 34567', especialidade: 'Ortopedia', exame: 'Ultrassom Ombro', codigoTuss: '40905050', dataSolicitacao: '2026-07-01', diasEmAberto: 13, status: 'solicitado', valorEstimado: 220, valorRealizado: null, ultimoContato: null, responsavel: null, telefone: '(11) 97777-8888' },
-  { id: 10, paciente: 'Rafael Torres', cpf: '753.951.852-00', prontuario: 'PRT-010', convenio: 'NotreDame Intermédica', medico: 'Dra. Juliana Costa', crm: 'CRM-SP 56789', especialidade: 'Dermatologia', exame: 'Exame Dermatopatológico', codigoTuss: '40906060', dataSolicitacao: '2026-05-15', diasEmAberto: 60, status: 'recusou', valorEstimado: 180, valorRealizado: null, ultimoContato: '2026-06-01', responsavel: 'Ana Oliveira', telefone: '(11) 96666-5555' },
-  { id: 11, paciente: 'Beatriz Almeida Santos', cpf: '951.753.852-00', prontuario: 'PRT-011', convenio: 'Unimed', medico: 'Dr. Carlos Almeida', crm: 'CRM-SP 12345', especialidade: 'Cardiologia', exame: 'Ecocardiograma', codigoTuss: '40804040', dataSolicitacao: '2026-07-05', diasEmAberto: 9, status: 'solicitado', valorEstimado: 380, valorRealizado: null, ultimoContato: null, responsavel: null, telefone: '(11) 94444-3333' },
-  { id: 12, paciente: 'Thiago Barbosa', cpf: '654.321.987-00', prontuario: 'PRT-012', convenio: 'Amil', medico: 'Dr. Roberto Fernandes', crm: 'CRM-SP 34567', especialidade: 'Ortopedia', exame: 'Densitometria Óssea', codigoTuss: '40806060', dataSolicitacao: '2026-04-20', diasEmAberto: 85, status: 'expirado', valorEstimado: 200, valorRealizado: null, ultimoContato: '2026-05-10', responsavel: 'Carlos Santos', telefone: '(11) 92222-1111' },
-  { id: 13, paciente: 'Camila Fernandes', cpf: '852.147.963-00', prontuario: 'PRT-013', convenio: 'Unimed', medico: 'Dra. Juliana Costa', crm: 'CRM-SP 56789', especialidade: 'Dermatologia', exame: 'Patch Teste (Alergia)', codigoTuss: '40907070', dataSolicitacao: '2026-06-28', diasEmAberto: 16, status: 'agendado-internamente', valorEstimado: 160, valorRealizado: null, ultimoContato: '2026-07-08', responsavel: 'Ana Oliveira', telefone: '(11) 95544-3322' },
-  { id: 14, paciente: 'Eduardo Gomes', cpf: '258.369.147-00', prontuario: 'PRT-014', convenio: 'Bradesco Saúde', medico: 'Dra. Patricia Mendes', crm: 'CRM-SP 23456', especialidade: 'Ginecologia', exame: 'Mamografia Digital', codigoTuss: '40908080', dataSolicitacao: '2026-05-10', diasEmAberto: 65, status: 'realizado-externamente', valorEstimado: 180, valorRealizado: null, ultimoContato: '2026-06-05', responsavel: 'Ana Oliveira', telefone: '(11) 93333-2222' },
-  { id: 15, paciente: 'Larissa Dias', cpf: '753.159.486-00', prontuario: 'PRT-015', convenio: 'Hapvida', medico: 'Dra. Juliana Costa', crm: 'CRM-SP 56789', especialidade: 'Dermatologia', exame: 'Crioterapia', codigoTuss: '40909090', dataSolicitacao: '2026-06-15', diasEmAberto: 29, status: 'realizado-internamente', valorEstimado: 150, valorRealizado: 150, ultimoContato: '2026-06-28', responsavel: 'Ana Oliveira', telefone: '(11) 91111-2222' },
-  { id: 16, paciente: 'Fábio Azevedo', cpf: '456.123.789-00', prontuario: 'PRT-016', convenio: 'SulAmérica', medico: 'Dr. Fernando Costa', crm: 'CRM-SP 45678', especialidade: 'Dermatologia', exame: 'Exame Micológico', codigoTuss: '40910010', dataSolicitacao: '2026-06-05', diasEmAberto: 39, status: 'sem-contato', valorEstimado: 130, valorRealizado: null, ultimoContato: '2026-06-18', responsavel: 'Carlos Santos', telefone: '(11) 98888-9999' },
-  { id: 17, paciente: 'Aline Cristina Souza', cpf: '159.486.753-00', prontuario: 'PRT-017', convenio: 'NotreDame Intermédica', medico: 'Dra. Patricia Mendes', crm: 'CRM-SP 23456', especialidade: 'Ginecologia', exame: 'Colposcopia', codigoTuss: '40911111', dataSolicitacao: '2026-07-08', diasEmAberto: 6, status: 'solicitado', valorEstimado: 200, valorRealizado: null, ultimoContato: null, responsavel: null, telefone: '(11) 95555-4444' },
-  { id: 18, paciente: 'Marcos Vinícius Teixeira', cpf: '852.963.741-00', prontuario: 'PRT-018', convenio: 'Unimed', medico: 'Dr. Carlos Almeida', crm: 'CRM-SP 12345', especialidade: 'Cardiologia', exame: 'MAPA 24h', codigoTuss: '40807070', dataSolicitacao: '2026-05-25', diasEmAberto: 50, status: 'realizado-internamente', valorEstimado: 300, valorRealizado: 300, ultimoContato: '2026-06-10', responsavel: 'Ana Oliveira', telefone: '(11) 94444-5555' },
-  { id: 19, paciente: 'Tatiane Oliveira', cpf: '357.159.486-00', prontuario: 'PRT-019', convenio: 'Amil', medico: 'Dr. Fernando Costa', crm: 'CRM-SP 45678', especialidade: 'Dermatologia', exame: 'Exame de Sangue (PSA)', codigoTuss: '40808080', dataSolicitacao: '2026-07-10', diasEmAberto: 4, status: 'solicitado', valorEstimado: 80, valorRealizado: null, ultimoContato: null, responsavel: null, telefone: '(11) 97777-6666' },
-  { id: 20, paciente: 'Gustavo Henrique Dias', cpf: '486.753.159-00', prontuario: 'PRT-020', convenio: 'Unimed', medico: 'Dr. Carlos Almeida', crm: 'CRM-SP 12345', especialidade: 'Cardiologia', exame: 'Ecocardiograma com Doppler', codigoTuss: '40809090', dataSolicitacao: '2026-06-12', diasEmAberto: 32, status: 'realizado-internamente', valorEstimado: 420, valorRealizado: 420, ultimoContato: '2026-06-28', responsavel: 'Ana Oliveira', telefone: '(11) 96666-7777' },
-  { id: 21, paciente: 'Aline Cristina Souza', cpf: '159.753.486-00', prontuario: 'PRT-021', convenio: 'NotreDame Intermédica', medico: 'Dra. Patricia Mendes', crm: 'CRM-SP 23456', especialidade: 'Ginecologia', exame: 'Ultrassom Transvaginal', codigoTuss: '40901111', dataSolicitacao: '2026-07-12', diasEmAberto: 2, status: 'solicitado', valorEstimado: 280, valorRealizado: null, ultimoContato: null, responsavel: null, telefone: '(11) 97788-6655' },
-  { id: 22, paciente: 'Sérgio Menezes', cpf: '357.951.486-00', prontuario: 'PRT-022', convenio: 'Bradesco Saúde', medico: 'Dr. Roberto Fernandes', crm: 'CRM-SP 34567', especialidade: 'Ortopedia', exame: 'Ressonância Magnética Ombro', codigoTuss: '40912121', dataSolicitacao: '2026-05-30', diasEmAberto: 45, status: 'agendado-internamente', valorEstimado: 780, valorRealizado: null, ultimoContato: '2026-06-15', responsavel: 'Ana Oliveira', telefone: '(11) 91122-3344' },
-  { id: 23, paciente: 'Vanessa Cristina Dias', cpf: '486.159.753-00', prontuario: 'PRT-023', convenio: 'Hapvida', medico: 'Dra. Patricia Mendes', crm: 'CRM-SP 23456', especialidade: 'Ginecologia', exame: 'Ultrassom Mama', codigoTuss: '40913131', dataSolicitacao: '2026-06-18', diasEmAberto: 26, status: 'realizado-internamente', valorEstimado: 240, valorRealizado: 240, ultimoContato: '2026-06-30', responsavel: 'Ana Oliveira', telefone: '(11) 97888-7766' },
-  { id: 24, paciente: 'Daniel Oliveira Santos', cpf: '951.357.852-00', prontuario: 'PRT-024', convenio: 'Bradesco Saúde', medico: 'Dr. Roberto Fernandes', crm: 'CRM-SP 34567', especialidade: 'Ortopedia', exame: 'Ultrassom Ombro', codigoTuss: '40905050', dataSolicitacao: '2026-04-05', diasEmAberto: 100, status: 'expirado', valorEstimado: 220, valorRealizado: null, ultimoContato: '2026-05-01', responsavel: 'Carlos Santos', telefone: '(11) 90000-1111' },
-  { id: 25, paciente: 'Priscila Andrade', cpf: '654.987.321-00', prontuario: 'PRT-025', convenio: 'Bradesco Saúde', medico: 'Dra. Patricia Mendes', crm: 'CRM-SP 23456', especialidade: 'Ginecologia', exame: 'Ultrassom Transvaginal', codigoTuss: '40901111', dataSolicitacao: '2026-07-14', diasEmAberto: 0, status: 'solicitado', valorEstimado: 280, valorRealizado: null, ultimoContato: null, responsavel: null, telefone: '(11) 92345-6789' },
-  { id: 26, paciente: 'Renato Augusto Lima', cpf: '357.159.852-00', prontuario: 'PRT-026', convenio: 'Bradesco Saúde', medico: 'Dr. Carlos Almeida', crm: 'CRM-SP 12345', especialidade: 'Cardiologia', exame: 'Eletrocardiograma', codigoTuss: '40801010', dataSolicitacao: '2026-06-22', diasEmAberto: 22, status: 'realizado-internamente', valorEstimado: 120, valorRealizado: 120, ultimoContato: '2026-07-05', responsavel: 'Ana Oliveira', telefone: '(11) 93456-7890' },
-  { id: 27, paciente: 'Jéssica Martins', cpf: '753.486.159-00', prontuario: 'PRT-027', convenio: 'SulAmérica', medico: 'Dra. Juliana Costa', crm: 'CRM-SP 56789', especialidade: 'Dermatologia', exame: 'Exame de Sangue (TSH)', codigoTuss: '40810010', dataSolicitacao: '2026-07-02', diasEmAberto: 12, status: 'pendente-agendamento', valorEstimado: 60, valorRealizado: null, ultimoContato: '2026-07-09', responsavel: 'Ana Oliveira', telefone: '(11) 97888-5544' },
-  { id: 28, paciente: 'Wagner Santos', cpf: '159.357.486-00', prontuario: 'PRT-028', convenio: 'NotreDame Intermédica', medico: 'Dr. Roberto Fernandes', crm: 'CRM-SP 34567', especialidade: 'Ortopedia', exame: 'Raio-X Quadril', codigoTuss: '40802020', dataSolicitacao: '2026-06-08', diasEmAberto: 36, status: 'realizado-internamente', valorEstimado: 150, valorRealizado: 150, ultimoContato: '2026-06-22', responsavel: 'Ana Oliveira', telefone: '(11) 98877-6655' },
-  { id: 29, paciente: 'Débora Cristina Faria', cpf: '357.486.159-00', prontuario: 'PRT-029', convenio: 'Unimed', medico: 'Dra. Patricia Mendes', crm: 'CRM-SP 23456', especialidade: 'Ginecologia', exame: 'Preventivo (Citopatológico)', codigoTuss: '40914141', dataSolicitacao: '2026-07-11', diasEmAberto: 3, status: 'solicitado', valorEstimado: 70, valorRealizado: null, ultimoContato: null, responsavel: null, telefone: '(11) 93444-5566' },
-  { id: 30, paciente: 'Márcio Roberto Lima', cpf: '486.951.357-00', prontuario: 'PRT-030', convenio: 'Bradesco Saúde', medico: 'Dr. Carlos Almeida', crm: 'CRM-SP 12345', especialidade: 'Cardiologia', exame: 'Eletrocardiograma', codigoTuss: '40801010', dataSolicitacao: '2026-05-18', diasEmAberto: 57, status: 'realizado-internamente', valorEstimado: 120, valorRealizado: 120, ultimoContato: '2026-06-05', responsavel: 'Ana Oliveira', telefone: '(11) 95566-7788' }
-]
-
-const graficosMock = {
-  conversaoPorMedico: [
-    { medico: 'Dr. Carlos Almeida', taxa: 45, realizados: 5, solicitados: 11 },
-    { medico: 'Dra. Patricia Mendes', taxa: 30, realizados: 3, solicitados: 10 },
-    { medico: 'Dr. Roberto Fernandes', taxa: 25, realizados: 2, solicitados: 8 },
-    { medico: 'Dr. Fernando Costa', taxa: 20, realizados: 1, solicitados: 5 },
-    { medico: 'Dra. Juliana Costa', taxa: 35, realizados: 2, solicitados: 6 }
-  ],
-  examesMaisSolicitados: [
-    { exame: 'Eletrocardiograma', total: 5 },
-    { exame: 'Ultrassom Transvaginal', total: 4 },
-    { exame: 'Ressonância Magnética', total: 3 },
-    { exame: 'Ultrassom Abdome', total: 3 },
-    { exame: 'Ecocardiograma', total: 2 },
-    { exame: 'Hemograma Completo', total: 2 },
-    { exame: 'Mamografia', total: 2 },
-    { exame: 'Densitometria Óssea', total: 2 },
-    { exame: 'Holter 24h', total: 2 },
-    { exame: 'Raio-X Coluna', total: 2 }
-  ],
-  oportunidadeFinanceira: [
-    { convenio: 'Unimed', valor: 1520 },
-    { convenio: 'Bradesco Saúde', valor: 1280 },
-    { convenio: 'Amil', valor: 850 },
-    { convenio: 'SulAmérica', valor: 620 },
-    { convenio: 'NotreDame Intermédica', valor: 450 },
-    { convenio: 'Hapvida', valor: 300 }
-  ],
-  porEspecialidade: [
-    { label: 'Cardiologia', total: 11 },
-    { label: 'Ginecologia', total: 10 },
-    { label: 'Ortopedia', total: 8 },
-    { label: 'Dermatologia', total: 6 },
-    { label: 'Clínica Geral', total: 5 }
-  ]
+interface RetencaoExamesResponse {
+  items: ExameRetencao[]
+  dataIni: string
+  dataFim: string
 }
+
+interface ContatoRetencao {
+  data: string
+  canal: string
+  usuario: string
+  resultado: string
+  observacao: string
+}
+
+const examesRetencao = ref<ExameRetencao[]>([])
+const loading = ref(false)
+const errorMsg = ref('')
 
 const hoje = new Date()
 const anoAtual = String(hoje.getFullYear())
@@ -125,6 +82,38 @@ const filtroStatusActive = ref('Todos')
 const filtroPeriodoInicioActive = computed(() => `${filtroAnoActive.value}-${MES_PARA_NUMERO[filtroMesInicioActive.value]}`)
 const filtroPeriodoFimActive = computed(() => `${filtroAnoActive.value}-${MES_PARA_NUMERO[filtroMesFimActive.value]}`)
 
+function ultimoDiaMes(ano: string, mes: string) {
+  return new Date(Number(ano), Number(MES_PARA_NUMERO[mes] || '01'), 0).getDate()
+}
+
+function dataInicioFiltro() {
+  return `${filtroAnoActive.value}-${MES_PARA_NUMERO[filtroMesInicioActive.value] || '01'}-01`
+}
+
+function dataFimFiltro() {
+  const mes = MES_PARA_NUMERO[filtroMesFimActive.value] || '01'
+  return `${filtroAnoActive.value}-${mes}-${String(ultimoDiaMes(filtroAnoActive.value, filtroMesFimActive.value)).padStart(2, '0')}`
+}
+
+async function carregarRetencao() {
+  loading.value = true
+  errorMsg.value = ''
+
+  const params = new URLSearchParams()
+  params.set('dataIni', dataInicioFiltro())
+  params.set('dataFim', dataFimFiltro())
+
+  try {
+    const response = await $fetch<RetencaoExamesResponse>(`/api/retencao-exames?${params.toString()}`)
+    examesRetencao.value = response.items
+  } catch {
+    examesRetencao.value = []
+    errorMsg.value = 'Erro ao carregar retenção de exames'
+  } finally {
+    loading.value = false
+  }
+}
+
 function aplicarFiltros() {
   filtroAnoActive.value = filtroAno.value
   filtroMesInicioActive.value = filtroMesInicio.value
@@ -134,39 +123,44 @@ function aplicarFiltros() {
   filtroConvenioActive.value = filtroConvenio.value
   filtroStatusActive.value = filtroStatus.value
   pagination.value.pageIndex = 0
+  carregarRetencao()
+}
+
+function opcaoFiltro(valor: string | null | undefined) {
+  const texto = String(valor ?? '').trim()
+  if (!texto || texto === '0') return ''
+  return texto
+}
+
+function montarOpcoesFiltro(opcoes: string[]) {
+  const itens = [...new Set(opcoes.map(opcaoFiltro).filter(Boolean))]
+  return ['Todos', ...itens.sort((a, b) => a.localeCompare(b, 'pt-BR'))]
 }
 
 const medicosDisponiveis = computed(() => {
-  const medicos = [...new Set(mockExames.map(e => e.medico))].sort()
-  return ['Todos', ...medicos]
+  return montarOpcoesFiltro(examesRetencao.value.map(e => e.medico))
 })
 
 const especialidadesDisponiveis = computed(() => {
-  const especialidades = [...new Set(mockExames.map(e => e.especialidade))].sort()
-  return ['Todos', ...especialidades]
+  return montarOpcoesFiltro(examesRetencao.value.map(e => e.especialidade))
 })
 
 const conveniosDisponiveis = computed(() => {
-  const convenios = [...new Set(mockExames.map(e => e.convenio))].sort()
-  return ['Todos', ...convenios]
+  return montarOpcoesFiltro(examesRetencao.value.map(e => e.convenio))
 })
 
 const STATUS_VALUE_MAP: Record<string, string> = {
   'Todos': 'Todos',
-  'Solicitado': 'solicitado',
-  'Pendente de Agendamento': 'pendente-agendamento',
-  'Agendado Internamente': 'agendado-internamente',
-  'Realizado Internamente': 'realizado-internamente',
-  'Realizado Externamente': 'realizado-externamente',
-  'Sem Contato': 'sem-contato',
-  'Recusou': 'recusou',
-  'Expirado': 'expirado'
+  'Pendente': 'pendente',
+  'Realizado': 'realizado',
+  'Não Convertido': 'nao-convertido'
 }
 
-const statusDisponiveis = ['Todos', 'Solicitado', 'Pendente de Agendamento', 'Agendado Internamente', 'Realizado Internamente', 'Realizado Externamente', 'Sem Contato', 'Recusou', 'Expirado']
+const statusDisponiveis = ['Todos', 'Pendente', 'Realizado', 'Não Convertido']
+const STATUS_EM_ABERTO = new Set<ExameRetencao['status']>(['pendente'])
 
 const dadosFiltrados = computed(() => {
-  return mockExames.filter((e) => {
+  return examesRetencao.value.filter((e) => {
     if (filtroMedicoActive.value !== 'Todos' && e.medico !== filtroMedicoActive.value) return false
     if (filtroEspecialidadeActive.value !== 'Todos' && e.especialidade !== filtroEspecialidadeActive.value) return false
     if (filtroConvenioActive.value !== 'Todos' && e.convenio !== filtroConvenioActive.value) return false
@@ -191,24 +185,19 @@ const pacientesVisiveis = computed(() => {
 })
 
 const totalExamesSolicitados = computed(() => dadosFiltrados.value.length)
-const totalRealizadosInternamente = computed(() => dadosFiltrados.value.filter(e => e.status === 'realizado-internamente').length)
-const totalPendentes = computed(() => dadosFiltrados.value.filter(e => ['solicitado', 'pendente-agendamento', 'sem-contato'].includes(e.status)).length)
+const totalRealizadosInternamente = computed(() => dadosFiltrados.value.filter(e => e.status === 'realizado').length)
+const totalPendentes = computed(() => dadosFiltrados.value.filter(e => STATUS_EM_ABERTO.has(e.status)).length)
+const totalNaoConvertidos = computed(() => dadosFiltrados.value.filter(e => e.status === 'nao-convertido').length)
 const taxaConversao = computed(() => {
   const total = dadosFiltrados.value.length
-  const realizados = dadosFiltrados.value.filter(e => e.status === 'realizado-internamente').length
+  const realizados = dadosFiltrados.value.filter(e => e.status === 'realizado').length
   return total > 0 ? Math.round((realizados / total) * 100) : 0
 })
 const faturamentoRealizado = computed(() => {
   return dadosFiltrados.value
-    .filter(e => e.status === 'realizado-internamente' && e.valorRealizado)
+    .filter(e => e.status === 'realizado' && e.valorRealizado)
     .reduce((acc, e) => acc + (e.valorRealizado || 0), 0)
 })
-const oportunidadeAberto = computed(() => {
-  return dadosFiltrados.value
-    .filter(e => ['solicitado', 'pendente-agendamento', 'sem-contato'].includes(e.status))
-    .reduce((acc, e) => acc + e.valorEstimado, 0)
-})
-
 const table = useTemplateRef('table')
 
 const pagination = ref({
@@ -228,34 +217,26 @@ const colunas = [
 
 function corStatus(status: string) {
   switch (status) {
-    case 'solicitado': return 'info'
-    case 'pendente-agendamento': return 'warning'
-    case 'agendado-internamente': return 'success'
-    case 'realizado-internamente': return 'success'
-    case 'realizado-externamente': return 'neutral'
-    case 'sem-contato': return 'warning'
-    case 'recusou': return 'error'
-    case 'expirado': return 'neutral'
+    case 'pendente': return 'warning'
+    case 'realizado': return 'success'
+    case 'nao-convertido': return 'error'
     default: return 'neutral'
   }
 }
 
 function rotuloStatus(status: string) {
   switch (status) {
-    case 'solicitado': return 'Solicitado'
-    case 'pendente-agendamento': return 'Pendente'
-    case 'agendado-internamente': return 'Agendado'
-    case 'realizado-internamente': return 'Realizado Interno'
-    case 'realizado-externamente': return 'Realizado Externo'
-    case 'sem-contato': return 'Sem Contato'
-    case 'recusou': return 'Recusou'
-    case 'expirado': return 'Expirado'
+    case 'pendente': return 'Pendente'
+    case 'realizado': return 'Realizado'
+    case 'nao-convertido': return 'Não Convertido'
     default: return status
   }
 }
 
-function formatarData(iso: string) {
+function formatarData(iso: string | null | undefined) {
+  if (!iso) return '-'
   const [ano, mes, dia] = iso.split('-')
+  if (!ano || !mes || !dia) return iso
   return `${dia}/${mes}/${ano}`
 }
 
@@ -267,16 +248,36 @@ function formatarMoeda(valor: number | null) {
 const pacienteSelecionado = ref<ExameRetencao | null>(null)
 const slideoverAberto = ref(false)
 
-const historicoContatoMock = [
-  { data: '2026-07-10 14:30', canal: 'Telefone', usuario: 'Ana Oliveira', resultado: 'Paciente informou que vai agendar', observacao: 'Cliente receptivo, disse que liga amanhã' },
-  { data: '2026-07-05 10:15', canal: 'WhatsApp', usuario: 'Ana Oliveira', resultado: 'Mensagem enviada', observacao: 'Enviado link de agendamento' },
-  { data: '2026-06-28 16:45', canal: 'Telefone', usuario: 'Carlos Santos', resultado: 'Sem contato - caixa postal', observacao: 'Tentativa 3 - sem resposta' }
-]
+const examesPacienteSelecionado = computed(() => {
+  const paciente = pacienteSelecionado.value
+  if (!paciente) return []
 
-const examesSolicitadosMock = [
-  { exame: 'Eletrocardiograma', codigoTuss: '40801010', quantidade: 1, valorEstimado: 120, status: 'solicitado' },
-  { exame: 'Ecocardiograma', codigoTuss: '40804040', quantidade: 1, valorEstimado: 380, status: 'pendente-agendamento' }
-]
+  return examesRetencao.value.filter((exame) => {
+    if (paciente.prontuario && exame.prontuario === paciente.prontuario) return true
+    if (paciente.cpf && exame.cpf === paciente.cpf) return true
+    return exame.id === paciente.id
+  })
+})
+
+const historicoContato = computed<ContatoRetencao[]>(() => {
+  const paciente = pacienteSelecionado.value
+  if (!paciente?.ultimoContato) return []
+
+  return [
+    {
+      data: paciente.ultimoContato,
+      canal: 'Contato',
+      usuario: paciente.responsavel || 'Responsável não informado',
+      resultado: rotuloStatus(paciente.status),
+      observacao: paciente.telefone ? `Telefone: ${paciente.telefone}` : ''
+    }
+  ]
+})
+
+function _abrirPaciente(item: ExameRetencao) {
+  pacienteSelecionado.value = item
+  slideoverAberto.value = true
+}
 
 function ligar(item: ExameRetencao) {
   console.log('Ligar para', item.paciente, item.telefone)
@@ -284,6 +285,7 @@ function ligar(item: ExameRetencao) {
 
 function whatsapp(item: ExameRetencao) {
   const tel = item.telefone.replace(/\D/g, '')
+  if (!tel) return
   window.open(`https://wa.me/55${tel}`, '_blank')
 }
 
@@ -292,9 +294,10 @@ function agendar(item: ExameRetencao) {
 }
 
 function atualizarStatus(item: ExameRetencao, novoStatus: string) {
-  const idx = mockExames.findIndex(e => e.id === item.id)
+  const idx = examesRetencao.value.findIndex(e => e.id === item.id)
   if (idx >= 0) {
-    mockExames[idx] = { ...mockExames[idx], status: novoStatus as ExameRetencao['status'] } as ExameRetencao
+    examesRetencao.value[idx] = { ...examesRetencao.value[idx]!, status: novoStatus as ExameRetencao['status'] }
+    pacienteSelecionado.value = examesRetencao.value[idx]!
   }
 }
 
@@ -320,24 +323,19 @@ const itensAcoes = computed<DropdownMenuItem[][]>(() => {
     ],
     [
       {
-        label: 'Marcar como Realizado Interno',
+        label: 'Marcar como Realizado',
         icon: 'i-lucide-check-circle',
-        onSelect: () => atualizarStatus(pacienteSelecionado.value!, 'realizado-internamente')
+        onSelect: () => atualizarStatus(pacienteSelecionado.value!, 'realizado')
       },
       {
-        label: 'Marcar como Realizado Externo',
-        icon: 'i-lucide-external-link',
-        onSelect: () => atualizarStatus(pacienteSelecionado.value!, 'realizado-externamente')
-      },
-      {
-        label: 'Marcar como Recusou',
-        icon: 'i-lucide-x-circle',
-        onSelect: () => atualizarStatus(pacienteSelecionado.value!, 'recusou')
-      },
-      {
-        label: 'Marcar como Sem Contato',
+        label: 'Marcar como Pendente',
         icon: 'i-lucide-phone-off',
-        onSelect: () => atualizarStatus(pacienteSelecionado.value!, 'sem-contato')
+        onSelect: () => atualizarStatus(pacienteSelecionado.value!, 'pendente')
+      },
+      {
+        label: 'Marcar como Não Convertido',
+        icon: 'i-lucide-x-circle',
+        onSelect: () => atualizarStatus(pacienteSelecionado.value!, 'nao-convertido')
       }
     ],
     [
@@ -349,17 +347,84 @@ const itensAcoes = computed<DropdownMenuItem[][]>(() => {
   ]
 })
 
-const chartExamesLabels = computed(() => graficosMock.examesMaisSolicitados.map(e => e.exame))
-const chartExamesDados = computed(() => graficosMock.examesMaisSolicitados.map(e => e.total))
+const rankingExames = computed(() => {
+  const totais = new Map<string, number>()
 
-const chartOportunidadeLabels = computed(() => graficosMock.oportunidadeFinanceira.map(o => o.convenio))
-const chartOportunidadeDados = computed(() => graficosMock.oportunidadeFinanceira.map(o => o.valor))
+  for (const exame of dadosFiltrados.value) {
+    const label = exame.exame || 'Exame não informado'
+    totais.set(label, (totais.get(label) || 0) + 1)
+  }
 
-const chartConversaoMedicos = computed(() => graficosMock.conversaoPorMedico.map(m => m.medico))
-const chartConversaoTaxas = computed(() => graficosMock.conversaoPorMedico.map(m => m.taxa))
+  return [...totais.entries()]
+    .map(([exame, total]) => ({ exame, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10)
+})
 
-const chartEspecialidadeLabels = computed(() => graficosMock.porEspecialidade.map(e => e.label))
-const chartEspecialidadeDados = computed(() => graficosMock.porEspecialidade.map(e => e.total))
+const rankingOportunidade = computed(() => {
+  const totais = new Map<string, number>()
+
+  for (const exame of dadosFiltrados.value) {
+    if (!STATUS_EM_ABERTO.has(exame.status)) continue
+    const label = exame.convenio || 'Convênio não informado'
+    totais.set(label, (totais.get(label) || 0) + exame.valorEstimado)
+  }
+
+  return [...totais.entries()]
+    .map(([convenio, valor]) => ({ convenio, valor }))
+    .sort((a, b) => b.valor - a.valor)
+    .slice(0, 10)
+})
+
+const rankingConversao = computed(() => {
+  const totais = new Map<string, { medico: string, solicitados: number, realizados: number }>()
+
+  for (const exame of dadosFiltrados.value) {
+    const medico = exame.medico || 'Médico não informado'
+    const atual = totais.get(medico) || { medico, solicitados: 0, realizados: 0 }
+    atual.solicitados += 1
+    if (exame.status === 'realizado') atual.realizados += 1
+    totais.set(medico, atual)
+  }
+
+  return [...totais.values()]
+    .map(item => ({
+      medico: item.medico,
+      taxa: item.solicitados ? Math.round((item.realizados / item.solicitados) * 100) : 0
+    }))
+    .sort((a, b) => b.taxa - a.taxa)
+    .slice(0, 10)
+})
+
+const rankingEspecialidade = computed(() => {
+  const totais = new Map<string, number>()
+
+  for (const exame of dadosFiltrados.value) {
+    const label = exame.especialidade || 'Especialidade não informada'
+    totais.set(label, (totais.get(label) || 0) + 1)
+  }
+
+  return [...totais.entries()]
+    .map(([label, total]) => ({ label, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10)
+})
+
+const chartExamesLabels = computed(() => rankingExames.value.map(e => e.exame))
+const chartExamesDados = computed(() => rankingExames.value.map(e => e.total))
+
+const chartOportunidadeLabels = computed(() => rankingOportunidade.value.map(o => o.convenio))
+const chartOportunidadeDados = computed(() => rankingOportunidade.value.map(o => o.valor))
+
+const chartConversaoMedicos = computed(() => rankingConversao.value.map(m => m.medico))
+const chartConversaoTaxas = computed(() => rankingConversao.value.map(m => m.taxa))
+
+const chartEspecialidadeLabels = computed(() => rankingEspecialidade.value.map(e => e.label))
+const chartEspecialidadeDados = computed(() => rankingEspecialidade.value.map(e => e.total))
+
+onMounted(() => {
+  carregarRetencao()
+})
 </script>
 
 <template>
@@ -368,8 +433,8 @@ const chartEspecialidadeDados = computed(() => graficosMock.porEspecialidade.map
       <template #right>
         <div class="flex items-center gap-2">
           <UBadge
-            label="Protótipo - Dados Mockados"
-            color="warning"
+            label="Dados SPDATA"
+            color="success"
             variant="soft"
           />
           <UColorModeButton />
@@ -480,6 +545,14 @@ const chartEspecialidadeDados = computed(() => graficosMock.porEspecialidade.map
         </div>
       </UCard>
 
+      <UAlert
+        v-if="errorMsg"
+        :title="errorMsg"
+        color="error"
+        variant="subtle"
+        icon="i-lucide-circle-alert"
+      />
+
       <div class="w-full grid grid-cols-3 items-center gap-4">
         <CardRetencao
           titulo="Exames Solicitados"
@@ -488,16 +561,22 @@ const chartEspecialidadeDados = computed(() => graficosMock.porEspecialidade.map
           icone="i-lucide-flask-conical"
         />
         <CardRetencao
-          titulo="Realizados Internamente"
+          titulo="Realizados"
           :valor="totalRealizadosInternamente"
           cor="success"
           icone="i-lucide-check-circle"
         />
         <CardRetencao
-          titulo="Pendentes de Retenção"
+          titulo="Pendentes"
           :valor="totalPendentes"
           cor="warning"
           icone="i-lucide-clock"
+        />
+        <CardRetencao
+          titulo="Não Convertidos"
+          :valor="totalNaoConvertidos"
+          cor="error"
+          icone="i-lucide-x-circle"
         />
         <CardRetencao
           titulo="Taxa de Conversão"
@@ -511,12 +590,6 @@ const chartEspecialidadeDados = computed(() => graficosMock.porEspecialidade.map
           :valor="`R$ ${faturamentoRealizado.toLocaleString('pt-BR')}`"
           cor="success"
           icone="i-lucide-coins"
-        />
-        <CardRetencao
-          titulo="Oportunidade em Aberto"
-          :valor="`R$ ${oportunidadeAberto.toLocaleString('pt-BR')}`"
-          cor="tertiary"
-          icone="i-lucide-trending-up"
         />
       </div>
 
@@ -654,7 +727,14 @@ const chartEspecialidadeDados = computed(() => graficosMock.porEspecialidade.map
         </template>
 
         <p
-          v-if="!pacientesVisiveis.length"
+          v-if="loading"
+          class="py-4 text-sm text-muted"
+        >
+          Carregando exames do SPDATA...
+        </p>
+
+        <p
+          v-else-if="!pacientesVisiveis.length"
           class="py-4 text-sm text-muted"
         >
           Nenhum exame encontrado para retenção.
@@ -698,8 +778,8 @@ const chartEspecialidadeDados = computed(() => graficosMock.porEspecialidade.map
           </template>
 
           <template #exame-cell="{ row }">
-            <div>
-              <p class="text-sm font-medium">
+            <div class="break-all">
+              <p class="text-sm font-medium break-words max-w-50">
                 {{ row.original.exame }}
               </p>
               <p class="text-xs text-muted">
@@ -735,7 +815,7 @@ const chartEspecialidadeDados = computed(() => graficosMock.porEspecialidade.map
         </UTable>
 
         <div
-          v-if="pacientesVisiveis.length"
+          v-if="pacientesVisiveis.length && !loading"
           class="flex justify-center pt-4"
         >
           <UPagination
@@ -905,8 +985,8 @@ const chartEspecialidadeDados = computed(() => graficosMock.porEspecialidade.map
               </thead>
               <tbody>
                 <tr
-                  v-for="(exame, idx) in examesSolicitadosMock"
-                  :key="idx"
+                  v-for="exame in examesPacienteSelecionado"
+                  :key="exame.id"
                   class="border-t border-neutral-200 dark:border-neutral-800"
                 >
                   <td class="py-2">
@@ -938,15 +1018,22 @@ const chartEspecialidadeDados = computed(() => graficosMock.porEspecialidade.map
               </p>
             </template>
             <div class="space-y-4">
+              <p
+                v-if="!historicoContato.length"
+                class="text-sm text-muted"
+              >
+                Nenhum histórico de contato registrado para este exame.
+              </p>
+
               <div
-                v-for="(contato, idx) in historicoContatoMock"
+                v-for="(contato, idx) in historicoContato"
                 :key="idx"
                 class="flex gap-3 pb-4 border-b border-neutral-200 dark:border-neutral-800 last:border-0"
               >
                 <div class="flex flex-col items-center">
                   <div class="size-2 rounded-full bg-primary mt-2" />
                   <div
-                    v-if="idx < historicoContatoMock.length - 1"
+                    v-if="idx < historicoContato.length - 1"
                     class="w-px flex-1 bg-neutral-200 dark:bg-neutral-800"
                   />
                 </div>

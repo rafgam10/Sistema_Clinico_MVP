@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Doughnut } from 'vue-chartjs'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, DoughnutController } from 'chart.js'
+import type { ChartOptions, TooltipItem } from 'chart.js'
 
 ChartJS.register(ArcElement, Tooltip, Legend, DoughnutController)
 
@@ -20,7 +21,7 @@ const data = computed(() => ({
   }]
 }))
 
-const options = {
+const options: ChartOptions<'doughnut'> = {
   responsive: true,
   maintainAspectRatio: false,
   cutout: '50%',
@@ -31,10 +32,12 @@ const options = {
     },
     tooltip: {
       callbacks: {
-        label: (ctx: { parsed: number, label: string }) => {
-          const total = ctx.dataset.data.reduce((a: number, b: number) => a + b, 0)
-          const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : '0'
-          return ` ${ctx.label}: R$ ${ctx.parsed.toLocaleString('pt-BR')} (${pct}%)`
+        label: (ctx: TooltipItem<'doughnut'>) => {
+          const valores = ctx.dataset.data.map(valor => Number(valor || 0))
+          const total = valores.reduce((acc, valor) => acc + valor, 0)
+          const valor = Number(ctx.parsed || 0)
+          const pct = total > 0 ? ((valor / total) * 100).toFixed(1) : '0'
+          return ` ${ctx.label}: R$ ${valor.toLocaleString('pt-BR')} (${pct}%)`
         }
       }
     }

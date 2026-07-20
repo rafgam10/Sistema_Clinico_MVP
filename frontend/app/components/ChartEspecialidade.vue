@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Doughnut } from 'vue-chartjs'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, DoughnutController } from 'chart.js'
+import type { ChartOptions, TooltipItem } from 'chart.js'
 
 ChartJS.register(ArcElement, Tooltip, Legend, DoughnutController)
 
@@ -20,7 +21,7 @@ const data = computed(() => ({
   }]
 }))
 
-const options = {
+const options: ChartOptions<'doughnut'> = {
   responsive: true,
   maintainAspectRatio: false,
   cutout: '50%',
@@ -31,8 +32,10 @@ const options = {
     },
     tooltip: {
       callbacks: {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        label: (ctx: any) => ` ${ctx.parsed} paciente${ctx.parsed !== 1 ? 's' : ''}`
+        label: (ctx: TooltipItem<'doughnut'>) => {
+          const total = Number(ctx.parsed || 0)
+          return ` ${total} paciente${total !== 1 ? 's' : ''}`
+        }
       }
     }
   }
