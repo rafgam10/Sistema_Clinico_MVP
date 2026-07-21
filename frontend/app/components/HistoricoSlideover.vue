@@ -1,10 +1,11 @@
 <!-- eslint-disable vue/no-v-html -->
 <script setup lang="ts">
-import type { Paciente, HistoricoRecord, HistoricoResponse, HistoricoLocalRecord } from '~/types'
+import type { Paciente, AgendamentoComPaciente, HistoricoRecord, HistoricoResponse, HistoricoLocalRecord } from '~/types'
 import { formatarDataHistorico } from '~/utils/time'
 
 const props = defineProps<{
   paciente?: Paciente | null
+  agendamento?: AgendamentoComPaciente | null
 }>()
 
 const open = defineModel<boolean>('open', { default: false })
@@ -13,21 +14,11 @@ const { sanitizeHtml } = useSanitize()
 
 const expandedContent = ref<Record<string, boolean>>({})
 
+const pacienteAtual = computed(() => props.agendamento?.paciente ?? props.paciente ?? null)
+
 function toggleContent(id: string) {
   expandedContent.value[id] = !expandedContent.value[id]
 }
-
-watch(open, (val) => {
-  if (val && props.paciente) {
-    fetchHistorico()
-  } else {
-    historicoItems.value = []
-    biodataHistorico.value = []
-    localHistorico.value = []
-    biodataOffset.value = 0
-    biodataHasMore.value = false
-  }
-})
 
 type HistoricoCardType = 'Anamnese' | 'diagnostico' | 'receita' | 'exames'
 
@@ -60,6 +51,16 @@ const biodataHasMore = ref(false)
 
 const HISTORICO_BIODATA_LIMIT = 10
 
+type HistoricoCacheEntry = {
+  biodata: HistoricoRecord[]
+  local: HistoricoLocalRecord[]
+  offset: number
+  hasMore: boolean
+}
+
+const historicoCache = new Map<string, HistoricoCacheEntry>()
+let historicoRequestId = 0
+
 useInfiniteScroll(
   historicoScrollRef,
   () => {
@@ -73,9 +74,18 @@ useInfiniteScroll(
 function temConteudoUtil(descricao: string): boolean {
   const texto = descricao?.trim() || ''
   if (!texto) return false
-  const lower = texto.toLowerCase()
+
+  const textoVisivel = texto
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;|&#160;|&#xA0;/gi, ' ')
+    .replace(/[\u00A0\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+
+  if (!textoVisivel) return false
+
+  const lower = textoVisivel.toLowerCase()
   if (lower === 'não informado' || lower === 'nao informado') return false
-  if (/^[\s—–-]+$/.test(texto)) return false
+  if (/^[\s—–-]+$/.test(textoVisivel)) return false
   return true
 }
 
@@ -105,10 +115,72 @@ function cpfHistorico(valor?: string | null): string | undefined {
   return cpf
 }
 
+const historicoCacheKey = computed(() => {
+  const paciente = pacienteAtual.value
+  if (!paciente?.id) return ''
+
+  return [
+    paciente.id,
+    cpfHistorico(paciente.cpf) || '',
+    paciente.nome || '',
+    props.agendamento?.spdataAtendimentoId || ''
+  ].join(':')
+})
+
+watch([open, historicoCacheKey], ([val]) => {
+  if (val && pacienteAtual.value) {
+    void fetchHistorico()
+  } else if (!val) {
+    resetHistoricoState()
+  }
+})
+
+function resetHistoricoState() {
+  historicoItems.value = []
+  biodataHistorico.value = []
+  localHistorico.value = []
+  biodataOffset.value = 0
+  biodataHasMore.value = false
+  isLoadingHistorico.value = false
+  isLoadingMaisHistorico.value = false
+}
+
+function restaurarHistoricoCache(cache: HistoricoCacheEntry) {
+  biodataHistorico.value = [...cache.biodata]
+  localHistorico.value = [...cache.local]
+  biodataOffset.value = cache.offset
+  biodataHasMore.value = cache.hasMore
+  remontarHistoricoItems()
+}
+
+function salvarHistoricoCache(cacheKey: string) {
+  if (!cacheKey) return
+
+  historicoCache.set(cacheKey, {
+    biodata: [...biodataHistorico.value],
+    local: [...localHistorico.value],
+    offset: biodataOffset.value,
+    hasMore: biodataHasMore.value
+  })
+}
+
+function isHistoricoAtual(requestId: number, cacheKey: string) {
+  return open.value && requestId === historicoRequestId && cacheKey === historicoCacheKey.value
+}
+
 async function fetchHistorico() {
-  const paciente = props.paciente
+  const paciente = pacienteAtual.value
   const pacienteId = paciente?.id
   if (!pacienteId) return
+
+  const cacheKey = historicoCacheKey.value
+  const cache = historicoCache.get(cacheKey)
+  if (cache) {
+    restaurarHistoricoCache(cache)
+    return
+  }
+
+  const requestId = ++historicoRequestId
 
   isLoadingHistorico.value = true
   biodataHistorico.value = []
@@ -118,30 +190,53 @@ async function fetchHistorico() {
   biodataHasMore.value = false
 
   try {
-    const [biodataResult, localResult] = await Promise.allSettled([
-      buscarHistoricoBiodata(0),
-      $fetch<HistoricoLocalRecord[]>(`/api/historico-local/${pacienteId}`)
-    ])
+    const localPromise = buscarHistoricoLocal(pacienteId)
+      .then((local) => {
+        if (!isHistoricoAtual(requestId, cacheKey)) return
+        localHistorico.value = local
+        remontarHistoricoItems()
+        if (historicoItemsVisiveis.value.length > 0) isLoadingHistorico.value = false
+      })
+      .catch((error) => {
+        if (isHistoricoAtual(requestId, cacheKey)) console.error('Erro ao buscar histórico local:', error)
+      })
 
-    const biodataResponse = biodataResult.status === 'fulfilled' ? biodataResult.value : null
-    localHistorico.value = localResult.status === 'fulfilled' ? localResult.value : []
+    const biodataPromise = buscarHistoricoBiodata(0)
+      .then((biodataResponse) => {
+        if (!isHistoricoAtual(requestId, cacheKey)) return
+        adicionarRegistrosBiodata(biodataResponse.items)
+        biodataOffset.value = biodataResponse.offset + biodataResponse.items.length
+        biodataHasMore.value = biodataResponse.has_more
+        remontarHistoricoItems()
+      })
+      .catch((error) => {
+        if (isHistoricoAtual(requestId, cacheKey)) console.error('Erro ao buscar histórico BioData:', error)
+      })
 
-    if (biodataResponse) {
-      adicionarRegistrosBiodata(biodataResponse.items)
-      biodataOffset.value = biodataResponse.offset + biodataResponse.items.length
-      biodataHasMore.value = biodataResponse.has_more
-    }
+    await Promise.allSettled([localPromise, biodataPromise])
 
-    remontarHistoricoItems()
+    if (isHistoricoAtual(requestId, cacheKey)) salvarHistoricoCache(cacheKey)
   } catch {
     historicoItems.value = []
   } finally {
-    isLoadingHistorico.value = false
+    if (isHistoricoAtual(requestId, cacheKey)) isLoadingHistorico.value = false
   }
 }
 
+async function buscarHistoricoLocal(pacienteId: number): Promise<HistoricoLocalRecord[]> {
+  const paciente = pacienteAtual.value
+
+  return await $fetch<HistoricoLocalRecord[]>(`/api/historico-local/${pacienteId}`, {
+    query: {
+      cpf: cpfHistorico(paciente?.cpf),
+      nome: paciente?.nome || undefined,
+      spdataAtendimentoId: props.agendamento?.spdataAtendimentoId || undefined
+    }
+  })
+}
+
 async function buscarHistoricoBiodata(offset: number): Promise<HistoricoResponse> {
-  const paciente = props.paciente
+  const paciente = pacienteAtual.value
   const pacienteId = paciente?.id
   if (!pacienteId) {
     return { items: [], limit: HISTORICO_BIODATA_LIMIT, offset, has_more: false }
@@ -167,6 +262,7 @@ async function carregarMaisHistoricoBiodata() {
     biodataOffset.value = response.offset + response.items.length
     biodataHasMore.value = response.has_more
     remontarHistoricoItems()
+    salvarHistoricoCache(historicoCacheKey.value)
   } finally {
     isLoadingMaisHistorico.value = false
   }
@@ -326,13 +422,17 @@ function montarExames(exames?: HistoricoLocalRecord['exames']): string {
 <template>
   <USlideover
     v-model:open="open"
-    :ui="{ content: 'w-[35rem]' }"
+    side="left"
+    :ui="{ content: 'w-[35rem] max-w-full' }"
   >
     <template #header>
-      <div class="flex items-center justify-between">
-        <div v-if="paciente" class="flex items-center gap-3">
+      <div class="flex items-center justify-between w-full">
+        <div
+          v-if="pacienteAtual"
+          class="flex items-center gap-3"
+        >
           <UAvatar
-            :alt="paciente.nome"
+            :alt="pacienteAtual.nome"
             color="primary"
             size="sm"
           />
@@ -341,11 +441,14 @@ function montarExames(exames?: HistoricoLocalRecord['exames']): string {
               Histórico
             </h2>
             <p class="text-sm text-muted">
-              {{ paciente.nome }}
+              {{ pacienteAtual.nome }}
             </p>
           </div>
         </div>
-        <h2 v-else class="text-lg font-semibold">
+        <h2
+          v-else
+          class="text-lg font-semibold"
+        >
           Histórico do Paciente
         </h2>
         <UButton
@@ -360,7 +463,7 @@ function montarExames(exames?: HistoricoLocalRecord['exames']): string {
     <template #body>
       <div
         ref="historicoScrollRef"
-        class="overflow-y-auto max-h-[calc(100vh-8rem)]"
+        class="overflow-y-none max-h-[calc(100vh-8rem)]"
       >
         <div
           v-if="isLoadingHistorico"

@@ -28,10 +28,18 @@ def listar_agenda():
     try:
         usuario_id = int(get_jwt_identity())
         data = request.args.get("data")
-        data_ini = _parse_data(request.args.get("dataIni") or data)
-        data_fim = _parse_data(request.args.get("dataFim") or data, data_ini)
+        search = (request.args.get("search") or request.args.get("q") or "").strip() or None
+        status = request.args.get("status")
+        tem_filtro_data = any(request.args.get(nome) for nome in ("data", "dataIni", "dataFim"))
 
-        return jsonify(listar_agenda_medica(usuario_id, data_ini, data_fim)), 200
+        if search and not tem_filtro_data:
+            data_ini = None
+            data_fim = None
+        else:
+            data_ini = _parse_data(request.args.get("dataIni") or data)
+            data_fim = _parse_data(request.args.get("dataFim") or data, data_ini)
+
+        return jsonify(listar_agenda_medica(usuario_id, data_ini, data_fim, status=status, search=search)), 200
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400

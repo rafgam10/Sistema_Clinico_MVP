@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import type { PadraoReceita, PadraoExame, PadraoAnamnese, ExameCatalogo, ExameSelecionado } from '~/types'
+import type {
+  DocumentoMedico,
+  DocumentoMedicoTipo,
+  ExameCatalogo,
+  ExameSelecionado,
+  PadraoAnamnese,
+  PadraoExame,
+  PadraoReceita
+} from '~/types'
 import { usePdfMake } from '~/utils/pdf'
 import { buildSolicitacaoExames, buildReceita, buildAtestadoComparecimento } from '~/utils/pdf-documents'
 import { gerarHtmlGuiaTiss, imprimirGuiaTiss } from '~/utils/guia-tiss'
@@ -22,6 +30,57 @@ onBeforeRouteLeave(() => {
 })
 
 const agendamento = computed(() => agendamentosStore.emAtendimento)
+const documentosMedicos = shallowRef<Partial<Record<DocumentoMedicoTipo, DocumentoMedico>>>({})
+let documentosMedicosRequestId = 0
+
+function documentoMedico(tipo: DocumentoMedicoTipo) {
+  return documentosMedicos.value[tipo] ?? null
+}
+
+const documentoAtestado = computed(() => documentoMedico('ATESTADO'))
+const documentoEncaminhamento = computed(() => documentoMedico('ENCAMINHAMENTO'))
+const documentoProcedimento = computed(() => documentoMedico('SOLICITACAO_PROCEDIMENTO'))
+
+function atualizarDocumentoMedico(documento: DocumentoMedico) {
+  documentosMedicos.value = {
+    ...documentosMedicos.value,
+    [documento.tipoDocumento]: documento
+  }
+}
+
+async function carregarDocumentosMedicosDoAtendimento() {
+  const requestId = ++documentosMedicosRequestId
+  const ag = agendamento.value
+
+  if (!ag) {
+    documentosMedicos.value = {}
+    return
+  }
+
+  try {
+    const documentos = await $fetch<DocumentoMedico[]>(`/api/documentos-medicos/${ag.id}`)
+
+    if (requestId !== documentosMedicosRequestId) return
+
+    const porTipo: Partial<Record<DocumentoMedicoTipo, DocumentoMedico>> = {}
+    for (const documento of documentos) {
+      porTipo[documento.tipoDocumento] = documento
+    }
+
+    documentosMedicos.value = porTipo
+  } catch {
+    if (requestId === documentosMedicosRequestId) documentosMedicos.value = {}
+    console.error('Erro ao carregar documentos médicos')
+  }
+}
+
+watch(
+  () => agendamento.value?.id,
+  () => {
+    if (import.meta.client) void carregarDocumentosMedicosDoAtendimento()
+  },
+  { immediate: true }
+)
 
 const tabAtiva = ref('0')
 const tabItems = [
@@ -1221,12 +1280,24 @@ async function finalizarConsulta() {
 
     <AtestadoGerarModal
       v-model:open="showAtestadoModal"
+      :agendamento="agendamento"
+      :data-atendimento="agendamento?.data"
+      :documento="documentoAtestado"
+      @saved="atualizarDocumentoMedico"
     />
     <EncaminhamentoGerarModal
       v-model:open="showEncaminhamentoModal"
+      :agendamento="agendamento"
+      :data-atendimento="agendamento?.data"
+      :documento="documentoEncaminhamento"
+      @saved="atualizarDocumentoMedico"
     />
     <ProcedimentoGerarModal
       v-model:open="showProcedimentoModal"
+      :agendamento="agendamento"
+      :data-atendimento="agendamento?.data"
+      :documento="documentoProcedimento"
+      @saved="atualizarDocumentoMedico"
     />
   </div>
 </template>

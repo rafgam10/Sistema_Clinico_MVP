@@ -44,6 +44,12 @@ STATUS_ALIASES = {
     "faltou": "faltou",
 }
 
+STATUS_MEDSYSTEM_VALUES = {
+    "em-atendimento": {StatusAtendimentoMedSystem.EM_ATENDIMENTO.value, "em-atendimento"},
+    "atendido": {StatusAtendimentoMedSystem.ATENDIDO.value, "atendido"},
+    "faltou": {StatusAtendimentoMedSystem.FALTOU.value, "faltou"},
+}
+
 
 def normalizar_valor(valor):
     if valor is None:
@@ -143,6 +149,35 @@ def normalizar_status(status):
         return None
 
     return STATUS_ALIASES.get(str(status), str(status))
+
+
+def valores_status_medsystem(status):
+    status = normalizar_status(status)
+    if status is None:
+        return []
+    if status not in STATUS_VALIDOS:
+        raise ValueError("Status inválido")
+    return list(STATUS_MEDSYSTEM_VALUES[status])
+
+
+def filtrar_agenda_frontend(items, status=None, search=None):
+    status = normalizar_status(status)
+    if status and status not in STATUS_VALIDOS:
+        raise ValueError("Status inválido")
+
+    termo = normalizar_texto(search, 255)
+    termo_casefold = termo.casefold() if termo else None
+
+    filtrados = items
+    if status:
+        filtrados = [item for item in filtrados if item.get("status") == status]
+    if termo_casefold:
+        filtrados = [
+            item for item in filtrados
+            if termo_casefold in str(item.get("paciente", {}).get("nome") or "").casefold()
+        ]
+
+    return filtrados
 
 
 def row_para_dict(row, nomes_colunas):
@@ -640,8 +675,66 @@ def agenda_spdata_para_frontend(agenda, spdata_ref, atendimento=None, convenios_
     }
 
 
-def listar_agenda_medica(usuario_id, data_ini, data_fim):
+def listar_atendimentos_medsystem_para_frontend(crm_medico, data_ini=None, data_fim=None, status=None, search=None):
+    filtros = [
+        MedSpdataAtendimento.crm_medico == crm_medico,
+        or_(
+            MedSpdataAtendimento.id_centro_custo_spdata == UNIDADE_PADRAO_SPDATA,
+            MedSpdataAtendimento.id_centro_custo_spdata.is_(None),
+        ),
+    ]
+
+    if data_ini:
+        filtros.append(MedAtendimentos.data_agenda >= data_ini)
+    if data_fim:
+        filtros.append(MedAtendimentos.data_agenda <= data_fim)
+    if status:
+        filtros.append(MedAtendimentos.status.in_(valores_status_medsystem(status)))
+
+    termo = normalizar_texto(search, 255)
+    if termo:
+        like = f"%{termo}%"
+        filtros.append(or_(
+            MedAtendimentos.paciente.ilike(like),
+            MedSpdataAtendimento.paciente.ilike(like),
+        ))
+
+    registros = (
+        db.session.query(MedSpdataAtendimento, MedAtendimentos)
+        .join(
+            MedAtendimentos,
+            MedAtendimentos.med_spdata_atendimento_id == MedSpdataAtendimento.id,
+        )
+        .filter(*filtros)
+        .order_by(MedAtendimentos.data_agenda.desc(), MedAtendimentos.hora_agenda.desc(), MedAtendimentos.paciente)
+        .all()
+    )
+
+    convenios_por_codigo = buscar_convenios_locais(
+        spdata.id_convenio_spdata for spdata, _ in registros
+    )
+
+    return [
+        agenda_para_frontend(spdata, atendimento, convenios_por_codigo)
+        for spdata, atendimento in registros
+    ]
+
+
+def listar_agenda_medica(usuario_id, data_ini, data_fim, status=None, search=None):
     crm_medico = get_crm_medico_usuario(usuario_id)
+    status = normalizar_status(status)
+    if status and status not in STATUS_VALIDOS:
+        raise ValueError("Status inválido")
+
+    search = normalizar_texto(search, 255)
+
+    if data_ini is None and data_fim is None:
+        return listar_atendimentos_medsystem_para_frontend(
+            crm_medico,
+            status=status,
+            search=search,
+        )
+
     if data_fim < data_ini:
         raise ValueError("dataFim não pode ser menor que dataIni.")
 
@@ -725,6 +818,8 @@ def listar_agenda_medica(usuario_id, data_ini, data_fim):
         items.append(agenda_para_frontend(spdata, atendimento, convenios_atendimento))
 
     db.session.commit()
+
+    items = filtrar_agenda_frontend(items, status=status, search=search)
 
     return sorted(items, key=lambda item: (item.get("data") or "", item.get("horario") or "", item["paciente"]["nome"] or ""))
 

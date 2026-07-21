@@ -1,40 +1,122 @@
 <script setup lang="ts">
-import type { Paciente } from '~/types'
+import type { AgendamentoComPaciente, DocumentoMedico, Paciente, SolicitacaoProcedimentoDocumentoDados } from '~/types'
 import { usePdfMake } from '~/utils/pdf'
 import { buildSolicitacaoProcedimento } from '~/utils/pdf-documents'
 
 const props = defineProps<{
   paciente?: Paciente
+  agendamento?: AgendamentoComPaciente | null
   dataAtendimento?: string
+  documento?: DocumentoMedico | null
 }>()
 
-const auth = useAuthStore()
+const emit = defineEmits<{
+  saved: [documento: DocumentoMedico]
+}>()
+
 const open = defineModel<boolean>('open', { default: false })
 
 const agendamentosStore = useAgendamentosStore()
+const toast = useToast()
 
-const paciente = computed(() => props.paciente ?? agendamentosStore.emAtendimento?.paciente ?? null)
+const paciente = computed(() => props.paciente ?? props.agendamento?.paciente ?? agendamentosStore.emAtendimento?.paciente ?? null)
+const medSpdataAtendimentoId = computed(() => props.agendamento?.id ?? agendamentosStore.emAtendimento?.id ?? null)
+const podeEditar = computed(() => props.documento?.podeEditar ?? true)
 
-const data = ref(props.dataAtendimento ?? new Date().toISOString().split('T')[0])
+function hojeIso() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
-watch(() => props.dataAtendimento, (val) => {
-  if (val) data.value = val
-})
+const dataAtendimentoPadrao = computed(() => props.dataAtendimento ?? props.agendamento?.data ?? hojeIso())
+
+const data = ref(dataAtendimentoPadrao.value)
 const descricao = ref('')
+const salvando = ref(false)
 
-async function gerarPdf() {
-  if (!descricao.value.trim()) return
+function preencherFormulario() {
+  const dados = props.documento?.tipoDocumento === 'SOLICITACAO_PROCEDIMENTO'
+    ? props.documento.dados as SolicitacaoProcedimentoDocumentoDados
+    : null
+
+  data.value = dados?.data ?? dataAtendimentoPadrao.value
+  descricao.value = dados?.descricao ?? ''
+}
+
+watch(
+  () => [open.value, props.documento?.id, props.documento?.updatedAt, dataAtendimentoPadrao.value] as const,
+  ([isOpen]) => {
+    if (isOpen) preencherFormulario()
+  },
+  { immediate: true }
+)
+
+function formatarDataPdf(dataISO: string) {
+  if (!dataISO) return ''
+  return new Date(dataISO + 'T12:00:00').toLocaleDateString('pt-BR')
+}
+
+const podeEnviar = computed(() => {
+  if (!podeEditar.value) return Boolean(props.documento)
+  return Boolean(medSpdataAtendimentoId.value && data.value && descricao.value.trim())
+})
+
+const botaoLabel = computed(() => podeEditar.value ? 'Salvar e Imprimir' : 'Imprimir')
+
+async function gerarPdf(documento: DocumentoMedico) {
+  if (documento.tipoDocumento !== 'SOLICITACAO_PROCEDIMENTO') return
+
+  const dados = documento.dados as SolicitacaoProcedimentoDocumentoDados
   const pdfMake = await usePdfMake()
   const doc = await buildSolicitacaoProcedimento({
     paciente: paciente.value?.nome ?? 'Paciente',
-    data: data.value ? new Date(data.value + 'T12:00:00').toLocaleDateString('pt-BR') : '',
-    descricao: descricao.value.trim(),
-    medico: auth.user?.nome,
-    crm: auth.user?.crm,
-    especialidade: auth.user?.especialidades?.join(', ')
+    data: formatarDataPdf(dados.data),
+    descricao: dados.descricao,
+    medico: dados.medico ?? undefined,
+    crm: dados.crm ?? undefined,
+    especialidade: dados.especialidade ?? undefined
   })
   pdfMake.createPdf(doc).open()
+}
+
+async function fecharEAbrirPdf(documento: DocumentoMedico) {
   open.value = false
+  await nextTick()
+  await gerarPdf(documento)
+}
+
+async function salvarEImprimir() {
+  if (!podeEnviar.value) return
+
+  if (!podeEditar.value && props.documento) {
+    await fecharEAbrirPdf(props.documento)
+    return
+  }
+
+  salvando.value = true
+  try {
+    const documento = await $fetch<DocumentoMedico>(`/api/documentos-medicos/${medSpdataAtendimentoId.value}/SOLICITACAO_PROCEDIMENTO`, {
+      method: 'PUT',
+      body: {
+        dados: {
+          data: data.value,
+          descricao: descricao.value.trim()
+        }
+      }
+    })
+
+    emit('saved', documento)
+    await fecharEAbrirPdf(documento)
+  } catch {
+    toast.add({
+      title: 'Erro ao salvar solicitação',
+      description: 'Não foi possível salvar o documento médico.',
+      color: 'error',
+      icon: 'i-lucide-alert-circle'
+    })
+  } finally {
+    salvando.value = false
+  }
 }
 </script>
 
@@ -68,6 +150,7 @@ async function gerarPdf() {
           <UInput
             v-model="data"
             type="date"
+            :disabled="!podeEditar"
             class="w-full"
           />
         </UFormField>
@@ -77,6 +160,7 @@ async function gerarPdf() {
             v-model="descricao"
             placeholder="Descreva o procedimento solicitado..."
             class="w-full"
+            :disabled="!podeEditar"
             :rows="6"
           />
         </UFormField>
@@ -93,9 +177,10 @@ async function gerarPdf() {
         />
         <UButton
           icon="i-lucide-printer"
-          label="Visualizar / Imprimir"
-          :disabled="!descricao.trim()"
-          @click="gerarPdf"
+          :label="botaoLabel"
+          :disabled="!podeEnviar"
+          :loading="salvando"
+          @click="salvarEImprimir"
         />
       </div>
     </template>

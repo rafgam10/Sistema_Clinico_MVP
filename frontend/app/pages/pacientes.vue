@@ -1,11 +1,22 @@
 <script setup lang="ts">
-import type { AgendamentoComPaciente, HistoricoLocalRecord } from '~/types'
+import type {
+  AgendamentoComPaciente,
+  AtestadoDocumentoDados,
+  DocumentoMedico,
+  DocumentoMedicoTipo,
+  EncaminhamentoDocumentoDados,
+  HistoricoLocalRecord,
+  SolicitacaoProcedimentoDocumentoDados
+} from '~/types'
 import { CalendarDate, DateFormatter, getLocalTimeZone } from '@internationalized/date'
 import { usePdfMake } from '~/utils/pdf'
 import {
+  buildAtestado,
   buildAtestadoComparecimento,
+  buildEncaminhamento,
   buildReceita,
-  buildSolicitacaoExames
+  buildSolicitacaoExames,
+  buildSolicitacaoProcedimento
 } from '~/utils/pdf-documents'
 
 const auth = useAuthStore()
@@ -24,16 +35,22 @@ const filtroData = shallowRef(hojeComoCalendarDate())
 const isLoading = ref(false)
 
 const todosAgendamentos = ref<AgendamentoComPaciente[]>([])
+const historicoLocalPorAgendamento = shallowRef<Record<string, HistoricoLocalRecord[]>>({})
+const documentosDisponiveisPorAgendamento = ref<Record<string, { exames: boolean, receita: boolean }>>({})
+const documentosMedicosPorAgendamento = shallowRef<Record<string, Partial<Record<DocumentoMedicoTipo, DocumentoMedico>>>>({})
 
 const showAtestadoModal = ref(false)
 const showEncaminhamentoModal = ref(false)
 const showProcedimentoModal = ref(false)
 const showHistoricoSlideover = ref(false)
+const dropdownAcoesAbertoId = ref<number | null>(null)
 
 const agendamentoSelecionado = ref<AgendamentoComPaciente | null>(null)
 const pacienteSelecionado = computed(() => agendamentoSelecionado.value?.paciente ?? undefined)
 
 const temBuscaNome = computed(() => buscaNome.value.trim().length > 0)
+let disponibilidadeRequestId = 0
+let documentosMedicosRequestId = 0
 
 const agendamentosFiltrados = computed(() => {
   let lista = todosAgendamentos.value.filter(a => a.status === 'atendido')
@@ -58,25 +75,21 @@ async function carregarAgendamentos() {
   isLoading.value = true
   try {
     const params = new URLSearchParams()
-    if (filtroData.value) params.set('data', filtroData.value.toString())
+    params.set('status', 'atendido')
+    if (temBuscaNome.value) {
+      params.set('search', buscaNome.value.trim())
+    } else if (filtroData.value) {
+      params.set('data', filtroData.value.toString())
+    }
     const qs = params.toString()
 
     const raw = await $fetch<(AgendamentoComPaciente | Record<string, unknown>)[]>(`/api/agendamentos${qs ? `?${qs}` : ''}`)
 
-    const comPaciente = (raw as AgendamentoComPaciente[]).filter(
-      a => 'paciente' in a && a.medicoId === auth.user?.id
-    )
+    const comPaciente = (raw as AgendamentoComPaciente[]).filter(a => 'paciente' in a)
 
-    if (!temBuscaNome.value) {
-      todosAgendamentos.value = comPaciente
-    } else {
-      const idsExistentes = new Set(todosAgendamentos.value.map(a => a.id))
-      for (const ag of comPaciente) {
-        if (!idsExistentes.has(ag.id)) {
-          todosAgendamentos.value.push(ag)
-        }
-      }
-    }
+    todosAgendamentos.value = comPaciente
+    void carregarDisponibilidadeDocumentos(comPaciente)
+    void carregarDocumentosMedicos(comPaciente)
   } catch {
     console.error('Erro ao carregar agendamentos')
   } finally {
@@ -116,19 +129,58 @@ function abrirHistorico(ag: AgendamentoComPaciente) {
   showHistoricoSlideover.value = true
 }
 
-function abrirAtestado(ag: AgendamentoComPaciente) {
-  agendamentoSelecionado.value = ag
-  showAtestadoModal.value = true
+function setDropdownAcoesAberto(agendamentoId: number, aberto: boolean) {
+  dropdownAcoesAbertoId.value = aberto ? agendamentoId : null
 }
 
-function abrirEncaminhamento(ag: AgendamentoComPaciente) {
-  agendamentoSelecionado.value = ag
-  showEncaminhamentoModal.value = true
+function executarAcaoDropdown(acao: () => void | Promise<void>) {
+  dropdownAcoesAbertoId.value = null
+  void nextTick().then(() => {
+    void acao()
+  })
 }
 
-function abrirProcedimento(ag: AgendamentoComPaciente) {
+function hojeIso() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function atendimentoEhHoje(ag: AgendamentoComPaciente) {
+  return ag.data === hojeIso()
+}
+
+function documentoMedico(ag: AgendamentoComPaciente | null, tipo: DocumentoMedicoTipo) {
+  if (!ag) return null
+  return documentosMedicosPorAgendamento.value[String(ag.id)]?.[tipo] ?? null
+}
+
+const documentoAtestadoSelecionado = computed(() => documentoMedico(agendamentoSelecionado.value, 'ATESTADO'))
+const documentoEncaminhamentoSelecionado = computed(() => documentoMedico(agendamentoSelecionado.value, 'ENCAMINHAMENTO'))
+const documentoProcedimentoSelecionado = computed(() => documentoMedico(agendamentoSelecionado.value, 'SOLICITACAO_PROCEDIMENTO'))
+
+function atualizarDocumentoMedico(documento: DocumentoMedico) {
+  const chave = String(documento.medSpdataAtendimentoId)
+  documentosMedicosPorAgendamento.value = {
+    ...documentosMedicosPorAgendamento.value,
+    [chave]: {
+      ...documentosMedicosPorAgendamento.value[chave],
+      [documento.tipoDocumento]: documento
+    }
+  }
+}
+
+async function abrirDocumentoMedico(ag: AgendamentoComPaciente, tipo: DocumentoMedicoTipo) {
   agendamentoSelecionado.value = ag
-  showProcedimentoModal.value = true
+  const documento = documentoMedico(ag, tipo)
+
+  if (!atendimentoEhHoje(ag)) {
+    if (documento) await imprimirDocumentoMedico(ag, documento)
+    return
+  }
+
+  if (tipo === 'ATESTADO') showAtestadoModal.value = true
+  if (tipo === 'ENCAMINHAMENTO') showEncaminhamentoModal.value = true
+  if (tipo === 'SOLICITACAO_PROCEDIMENTO') showProcedimentoModal.value = true
 }
 
 function formatarDataParaPdf(dataISO: string) {
@@ -136,9 +188,29 @@ function formatarDataParaPdf(dataISO: string) {
   return new Date(dataISO + 'T12:00:00').toLocaleDateString('pt-BR')
 }
 
-async function buscarHistoricoLocal(pacienteId: number): Promise<HistoricoLocalRecord[]> {
+function chaveAgendamento(ag: AgendamentoComPaciente) {
+  return [ag.spdataAtendimentoId || ag.id, ag.paciente.id, ag.data].join(':')
+}
+
+async function buscarHistoricoLocal(ag: AgendamentoComPaciente): Promise<HistoricoLocalRecord[]> {
+  const chave = chaveAgendamento(ag)
+  const cached = historicoLocalPorAgendamento.value[chave]
+  if (cached) return cached
+
   try {
-    return await $fetch<HistoricoLocalRecord[]>(`/api/historico-local/${pacienteId}`)
+    const historico = await $fetch<HistoricoLocalRecord[]>(`/api/historico-local/${ag.paciente.id}`, {
+      query: {
+        cpf: ag.paciente.cpf || undefined,
+        nome: ag.paciente.nome || undefined,
+        spdataAtendimentoId: ag.spdataAtendimentoId || undefined,
+        data: ag.data
+      }
+    })
+    historicoLocalPorAgendamento.value = {
+      ...historicoLocalPorAgendamento.value,
+      [chave]: historico
+    }
+    return historico
   } catch {
     return []
   }
@@ -151,8 +223,127 @@ function encontrarRegistroPorData(historico: HistoricoLocalRecord[], dataISO: st
     return dataHist === dataISO
   })
   if (registro) return registro
-  if (historico.length > 0) return historico[0]!
   return null
+}
+
+function registroTemExames(registro: HistoricoLocalRecord | null) {
+  return Boolean(registro?.exames?.some((e) => {
+    if (typeof e === 'string') return e.trim().length > 0
+    return Boolean(e.nome || e.descricao || e.tipo_exame)
+  }))
+}
+
+function registroTemReceita(registro: HistoricoLocalRecord | null) {
+  return Boolean(registro?.medicamentos?.some(m => m.trim().length > 0))
+}
+
+function calcularDocumentosDisponiveis(ag: AgendamentoComPaciente, historico: HistoricoLocalRecord[]) {
+  const registro = encontrarRegistroPorData(historico, ag.data)
+  return {
+    exames: registroTemExames(registro),
+    receita: registroTemReceita(registro)
+  }
+}
+
+function documentosDisponiveis(ag: AgendamentoComPaciente) {
+  return documentosDisponiveisPorAgendamento.value[chaveAgendamento(ag)] ?? { exames: false, receita: false }
+}
+
+async function carregarDisponibilidadeDocumentos(agendamentos: AgendamentoComPaciente[]) {
+  const requestId = ++disponibilidadeRequestId
+
+  await Promise.all(agendamentos.map(async (ag) => {
+    const historico = await buscarHistoricoLocal(ag)
+    if (requestId !== disponibilidadeRequestId) return
+
+    const chave = chaveAgendamento(ag)
+    documentosDisponiveisPorAgendamento.value = {
+      ...documentosDisponiveisPorAgendamento.value,
+      [chave]: calcularDocumentosDisponiveis(ag, historico)
+    }
+  }))
+}
+
+async function carregarDocumentosMedicos(agendamentos: AgendamentoComPaciente[]) {
+  const requestId = ++documentosMedicosRequestId
+  const ids = Array.from(new Set(agendamentos.map(a => a.id).filter(id => Number.isFinite(id))))
+
+  if (!ids.length) return
+
+  try {
+    const documentos = await $fetch<DocumentoMedico[]>('/api/documentos-medicos', {
+      query: { ids: ids.join(',') }
+    })
+
+    if (requestId !== documentosMedicosRequestId) return
+
+    const porAgendamento = { ...documentosMedicosPorAgendamento.value }
+    for (const id of ids) porAgendamento[String(id)] = {}
+
+    for (const documento of documentos) {
+      const chave = String(documento.medSpdataAtendimentoId)
+      porAgendamento[chave] = {
+        ...porAgendamento[chave],
+        [documento.tipoDocumento]: documento
+      }
+    }
+
+    documentosMedicosPorAgendamento.value = porAgendamento
+  } catch {
+    console.error('Erro ao carregar documentos médicos')
+  }
+}
+
+const TEXTO_ATESTADO = `Atesto que o(a) paciente {nome} esteve sob meus cuidados médicos, necessitando de {dias} dias de repouso/afastamento a partir de {data}.`
+
+function textoAtestado(paciente: string, dados: AtestadoDocumentoDados) {
+  return TEXTO_ATESTADO
+    .replace('{nome}', paciente)
+    .replace('{dias}', String(dados.dias_afastamento))
+    .replace('{data}', formatarDataParaPdf(dados.data_inicio))
+}
+
+async function imprimirDocumentoMedico(ag: AgendamentoComPaciente, documento: DocumentoMedico) {
+  const pdfMake = await usePdfMake()
+
+  if (documento.tipoDocumento === 'ATESTADO') {
+    const dados = documento.dados as AtestadoDocumentoDados
+    const doc = await buildAtestado({
+      paciente: ag.paciente.nome,
+      conteudoHtml: `<p>${textoAtestado(ag.paciente.nome, dados)}</p>`,
+      medico: dados.medico ?? undefined,
+      crm: dados.crm ?? undefined,
+      especialidade: dados.especialidade ?? undefined
+    })
+    pdfMake.createPdf(doc).open()
+    return
+  }
+
+  if (documento.tipoDocumento === 'ENCAMINHAMENTO') {
+    const dados = documento.dados as EncaminhamentoDocumentoDados
+    const doc = await buildEncaminhamento({
+      paciente: ag.paciente.nome,
+      data: formatarDataParaPdf(dados.data),
+      encaminharPara: dados.encaminhar_para,
+      profissionalExterno: dados.profissional_externo,
+      medico: dados.medico ?? undefined,
+      crm: dados.crm ?? undefined,
+      especialidade: dados.especialidade ?? undefined
+    })
+    pdfMake.createPdf(doc).open()
+    return
+  }
+
+  const dados = documento.dados as SolicitacaoProcedimentoDocumentoDados
+  const doc = await buildSolicitacaoProcedimento({
+    paciente: ag.paciente.nome,
+    data: formatarDataParaPdf(dados.data),
+    descricao: dados.descricao,
+    medico: dados.medico ?? undefined,
+    crm: dados.crm ?? undefined,
+    especialidade: dados.especialidade ?? undefined
+  })
+  pdfMake.createPdf(doc).open()
 }
 
 async function gerarAtestadoComparecimento(ag: AgendamentoComPaciente) {
@@ -169,7 +360,7 @@ async function gerarAtestadoComparecimento(ag: AgendamentoComPaciente) {
 }
 
 async function gerarSolicitacaoExames(ag: AgendamentoComPaciente) {
-  const historico = await buscarHistoricoLocal(ag.paciente.id)
+  const historico = await buscarHistoricoLocal(ag)
   const registro = encontrarRegistroPorData(historico, ag.data)
 
   const exames = registro?.exames?.map((e) => {
@@ -195,7 +386,7 @@ async function gerarSolicitacaoExames(ag: AgendamentoComPaciente) {
 }
 
 async function gerarReceita(ag: AgendamentoComPaciente) {
-  const historico = await buscarHistoricoLocal(ag.paciente.id)
+  const historico = await buscarHistoricoLocal(ag)
   const registro = encontrarRegistroPorData(historico, ag.data)
 
   const medicamentos = registro?.medicamentos?.join('\n') ?? ''
@@ -218,15 +409,41 @@ async function gerarReceita(ag: AgendamentoComPaciente) {
   pdfMake.createPdf(doc).open()
 }
 
+type DropdownItem = {
+  label: string
+  icon: string
+  onSelect: () => void
+}
+
+function itemDocumentoMedico(ag: AgendamentoComPaciente, tipo: DocumentoMedicoTipo, label: string, icon: string): DropdownItem | null {
+  const documento = documentoMedico(ag, tipo)
+  const podeCriarOuEditar = atendimentoEhHoje(ag)
+
+  if (!podeCriarOuEditar && !documento) return null
+
+  return {
+    label: podeCriarOuEditar ? label : `Imprimir ${label}`,
+    icon,
+    onSelect: () => {
+      executarAcaoDropdown(() => abrirDocumentoMedico(ag, tipo))
+    }
+  }
+}
+
 function dropdownItems(ag: AgendamentoComPaciente) {
+  const docs = documentosDisponiveis(ag)
+  const documentosMedicos = [
+    itemDocumentoMedico(ag, 'ATESTADO', 'Atestado Médico', 'i-lucide-file-text'),
+    itemDocumentoMedico(ag, 'SOLICITACAO_PROCEDIMENTO', 'Solicitação de Procedimento', 'i-lucide-clipboard-list'),
+    itemDocumentoMedico(ag, 'ENCAMINHAMENTO', 'Encaminhamento Médico', 'i-lucide-arrow-right-circle')
+  ].filter((item): item is DropdownItem => Boolean(item))
+
   return [
     [
-      { label: 'Atestado Médico', icon: 'i-lucide-file-text', onSelect: () => abrirAtestado(ag) },
-      { label: 'Solicitação de Procedimento', icon: 'i-lucide-clipboard-list', onSelect: () => abrirProcedimento(ag) },
-      { label: 'Encaminhamento Médico', icon: 'i-lucide-arrow-right-circle', onSelect: () => abrirEncaminhamento(ag) },
-      { label: 'Atestado de Comparecimento', icon: 'i-lucide-calendar-check', onSelect: () => gerarAtestadoComparecimento(ag) },
-      { label: 'Solicitação de Exames', icon: 'i-lucide-flask-conical', onSelect: () => gerarSolicitacaoExames(ag) },
-      { label: 'Receita Médica', icon: 'i-lucide-pill', onSelect: () => gerarReceita(ag) }
+      ...documentosMedicos,
+      { label: 'Atestado de Comparecimento', icon: 'i-lucide-calendar-check', onSelect: () => executarAcaoDropdown(() => gerarAtestadoComparecimento(ag)) },
+      ...(docs.exames ? [{ label: 'Solicitação de Exames', icon: 'i-lucide-flask-conical', onSelect: () => executarAcaoDropdown(() => gerarSolicitacaoExames(ag)) }] : []),
+      ...(docs.receita ? [{ label: 'Receita Médica', icon: 'i-lucide-pill', onSelect: () => executarAcaoDropdown(() => gerarReceita(ag)) }] : [])
     ]
   ]
 }
@@ -286,81 +503,92 @@ function dropdownItems(ag: AgendamentoComPaciente) {
 
       <div
         v-else
-        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+        class="space-y-3"
       >
         <UCard
           v-for="ag in agendamentosFiltrados"
           :key="ag.id"
-          class="flex flex-col items-center text-center"
+          class="border border-muted"
+          :ui="{ body: 'p-4 sm:p-4' }"
         >
-          <UAvatar
-            :alt="ag.paciente.nome"
-            color="primary"
-            size="xl"
-          />
-
-          <p class="mt-3 font-semibold text-base">
-            {{ ag.paciente.nome }}
-          </p>
-          <p class="text-sm text-muted">
-            {{ calcularIdade(ag.paciente.dataNascimento) }} anos · {{ ag.paciente.convenio }}
-          </p>
-
-          <div class="mt-2 space-y-0.5 text-xs text-muted">
-            <p v-if="ag.paciente.telefone">
-              <span class="inline-flex items-center gap-1">
-                <UIcon
-                  name="i-lucide-phone"
-                  class="size-3"
-                />
-                {{ ag.paciente.telefone }}
-              </span>
-            </p>
-            <p v-if="ag.paciente.email">
-              <span class="inline-flex items-center gap-1">
-                <UIcon
-                  name="i-lucide-mail"
-                  class="size-3"
-                />
-                {{ ag.paciente.email }}
-              </span>
-            </p>
-          </div>
-
-          <p
-            v-if="temBuscaNome"
-            class="mt-2 text-xs text-muted"
-          >
-            <span class="inline-flex items-center gap-1">
-              <UIcon
-                name="i-lucide-calendar"
-                class="size-3"
-              />
-              {{ formatarDataPtBR(ag.data) }} · {{ ag.horario }}
-            </span>
-          </p>
-
-          <div class="mt-3 flex items-center gap-2 w-full justify-center">
-            <UButton
-              icon="i-lucide-clock"
-              color="neutral"
-              variant="outline"
-              size="sm"
-              aria-label="Histórico"
-              @click="abrirHistorico(ag)"
-            />
-            <UDropdownMenu
-              :items="dropdownItems(ag)"
-              :ui="{ content: 'w-56' }"
-            >
-              <UButton
-                label="Ações"
-                icon="i-lucide-chevron-down"
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex min-w-0 items-center w-full gap-4">
+              <UAvatar
+                :alt="ag.paciente.nome"
                 color="primary"
+                size="lg"
+                class="shrink-0"
+              />
+
+              <div class="min-w-0 w-full ">
+                <div class="flex justify-between w-full items-center gap-2">
+                  <p class="font-semibold text-base text-default truncate">
+                    {{ ag.paciente.nome }}
+                  </p>
+
+                  <span class="flex items-center font-semibold gap-1">
+                    <UIcon
+                      name="i-lucide-calendar"
+                      class="size-4"
+                    />
+                    {{ formatarDataPtBR(ag.data) }} · {{ ag.horario }}
+                  </span>
+                </div>
+
+                <p class="text-sm text-muted">
+                  {{ calcularIdade(ag.paciente.dataNascimento) }} anos · {{ ag.paciente.convenio }}
+                </p>
+
+                <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+                  <span
+                    v-if="ag.paciente.telefone"
+                    class="inline-flex items-center gap-1"
+                  >
+                    <UIcon
+                      name="i-lucide-phone"
+                      class="size-3"
+                    />
+                    {{ ag.paciente.telefone }}
+                  </span>
+                  <span
+                    v-if="ag.paciente.email"
+                    class="inline-flex items-center gap-1"
+                  >
+                    <UIcon
+                      name="i-lucide-mail"
+                      class="size-3"
+                    />
+                    {{ ag.paciente.email }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 sm:justify-end">
+              <UButton
+                icon="i-lucide-clock"
+                label="Histórico"
+                color="neutral"
                 variant="outline"
                 size="sm"
+                @click="abrirHistorico(ag)"
               />
-            </UDropdownMenu>
+              <UDropdownMenu
+                :items="dropdownItems(ag)"
+                :open="dropdownAcoesAbertoId === ag.id"
+                :modal="false"
+                :ui="{ content: 'w-56' }"
+                @update:open="setDropdownAcoesAberto(ag.id, $event)"
+              >
+                <UButton
+                  label="Ações"
+                  icon="i-lucide-chevron-down"
+                  color="primary"
+                  variant="outline"
+                  size="sm"
+                />
+              </UDropdownMenu>
+            </div>
           </div>
         </UCard>
       </div>
@@ -369,21 +597,31 @@ function dropdownItems(ag: AgendamentoComPaciente) {
     <AtestadoGerarModal
       v-model:open="showAtestadoModal"
       :paciente="pacienteSelecionado"
+      :agendamento="agendamentoSelecionado"
       :data-atendimento="agendamentoSelecionado?.data"
+      :documento="documentoAtestadoSelecionado"
+      @saved="atualizarDocumentoMedico"
     />
     <EncaminhamentoGerarModal
       v-model:open="showEncaminhamentoModal"
       :paciente="pacienteSelecionado"
+      :agendamento="agendamentoSelecionado"
       :data-atendimento="agendamentoSelecionado?.data"
+      :documento="documentoEncaminhamentoSelecionado"
+      @saved="atualizarDocumentoMedico"
     />
     <ProcedimentoGerarModal
       v-model:open="showProcedimentoModal"
       :paciente="pacienteSelecionado"
+      :agendamento="agendamentoSelecionado"
       :data-atendimento="agendamentoSelecionado?.data"
+      :documento="documentoProcedimentoSelecionado"
+      @saved="atualizarDocumentoMedico"
     />
     <HistoricoSlideover
       v-model:open="showHistoricoSlideover"
       :paciente="pacienteSelecionado"
+      :agendamento="agendamentoSelecionado"
     />
   </div>
 </template>

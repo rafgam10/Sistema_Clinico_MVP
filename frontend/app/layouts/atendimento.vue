@@ -67,9 +67,18 @@ useInfiniteScroll(
 function temConteudoUtil(descricao: string): boolean {
   const texto = descricao?.trim() || ''
   if (!texto) return false
-  const lower = texto.toLowerCase()
+
+  const textoVisivel = texto
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;|&#160;|&#xA0;/gi, ' ')
+    .replace(/[\u00A0\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+
+  if (!textoVisivel) return false
+
+  const lower = textoVisivel.toLowerCase()
   if (lower === 'não informado' || lower === 'nao informado') return false
-  if (/^[\s—–-]+$/.test(texto)) return false
+  if (/^[\s—–-]+$/.test(textoVisivel)) return false
   return true
 }
 
