@@ -5,6 +5,7 @@ const navItems = [
   { label: 'Dashboard', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
   { label: 'Agenda', icon: 'i-lucide-calendar', to: '/agenda' },
   { label: 'Atendimento Médico', icon: 'i-lucide-stethoscope', to: '/atendimento-medico' },
+  { label: 'Meus Pacientes', icon: 'i-lucide-users', to: '/pacientes' },
   { label: 'Padrões', icon: 'i-lucide-file-text', to: '/padroes-solicitacoes' }
 ]
 </script>

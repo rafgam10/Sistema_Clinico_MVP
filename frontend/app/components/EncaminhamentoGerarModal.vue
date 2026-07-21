@@ -1,15 +1,25 @@
 <script setup lang="ts">
+import type { Paciente } from '~/types'
 import { usePdfMake } from '~/utils/pdf'
 import { buildEncaminhamento } from '~/utils/pdf-documents'
+
+const props = defineProps<{
+  paciente?: Paciente
+  dataAtendimento?: string
+}>()
 
 const auth = useAuthStore()
 const open = defineModel<boolean>('open', { default: false })
 
 const agendamentosStore = useAgendamentosStore()
 
-const paciente = computed(() => agendamentosStore.emAtendimento?.paciente ?? null)
+const paciente = computed(() => props.paciente ?? agendamentosStore.emAtendimento?.paciente ?? null)
 
-const data = ref(new Date().toISOString().split('T')[0])
+const data = ref(props.dataAtendimento ?? new Date().toISOString().split('T')[0])
+
+watch(() => props.dataAtendimento, (val) => {
+  if (val) data.value = val
+})
 const encaminharPara = ref('')
 const profissionalExterno = ref('')
 
