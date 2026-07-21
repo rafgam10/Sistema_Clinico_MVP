@@ -1,27 +1,24 @@
 <!-- eslint-disable vue/no-v-html -->
 <script setup lang="ts">
-import type { HistoricoRecord, HistoricoResponse, HistoricoLocalRecord } from '~/types'
+import type { Paciente, AgendamentoComPaciente, HistoricoRecord, HistoricoResponse, HistoricoLocalRecord } from '~/types'
 import { formatarDataHistorico } from '~/utils/time'
+
+const props = defineProps<{
+  paciente?: Paciente | null
+  agendamento?: AgendamentoComPaciente | null
+}>()
+
+const open = defineModel<boolean>('open', { default: false })
 
 const { sanitizeHtml } = useSanitize()
 
-const agendamentosStore = useAgendamentosStore()
-
 const expandedContent = ref<Record<string, boolean>>({})
+
+const pacienteAtual = computed(() => props.agendamento?.paciente ?? props.paciente ?? null)
 
 function toggleContent(id: string) {
   expandedContent.value[id] = !expandedContent.value[id]
 }
-
-onMounted(() => {
-  if (!agendamentosStore.emAtendimento) {
-    navigateTo('/dashboard')
-    return
-  }
-  fetchHistorico()
-})
-
-const agendamento = computed(() => agendamentosStore.emAtendimento)
 
 type HistoricoCardType = 'Anamnese' | 'diagnostico' | 'receita' | 'exames'
 
@@ -53,6 +50,16 @@ const biodataOffset = ref(0)
 const biodataHasMore = ref(false)
 
 const HISTORICO_BIODATA_LIMIT = 10
+
+type HistoricoCacheEntry = {
+  biodata: HistoricoRecord[]
+  local: HistoricoLocalRecord[]
+  offset: number
+  hasMore: boolean
+}
+
+const historicoCache = new Map<string, HistoricoCacheEntry>()
+let historicoRequestId = 0
 
 useInfiniteScroll(
   historicoScrollRef,
@@ -108,10 +115,72 @@ function cpfHistorico(valor?: string | null): string | undefined {
   return cpf
 }
 
+const historicoCacheKey = computed(() => {
+  const paciente = pacienteAtual.value
+  if (!paciente?.id) return ''
+
+  return [
+    paciente.id,
+    cpfHistorico(paciente.cpf) || '',
+    paciente.nome || '',
+    props.agendamento?.spdataAtendimentoId || ''
+  ].join(':')
+})
+
+watch([open, historicoCacheKey], ([val]) => {
+  if (val && pacienteAtual.value) {
+    void fetchHistorico()
+  } else if (!val) {
+    resetHistoricoState()
+  }
+})
+
+function resetHistoricoState() {
+  historicoItems.value = []
+  biodataHistorico.value = []
+  localHistorico.value = []
+  biodataOffset.value = 0
+  biodataHasMore.value = false
+  isLoadingHistorico.value = false
+  isLoadingMaisHistorico.value = false
+}
+
+function restaurarHistoricoCache(cache: HistoricoCacheEntry) {
+  biodataHistorico.value = [...cache.biodata]
+  localHistorico.value = [...cache.local]
+  biodataOffset.value = cache.offset
+  biodataHasMore.value = cache.hasMore
+  remontarHistoricoItems()
+}
+
+function salvarHistoricoCache(cacheKey: string) {
+  if (!cacheKey) return
+
+  historicoCache.set(cacheKey, {
+    biodata: [...biodataHistorico.value],
+    local: [...localHistorico.value],
+    offset: biodataOffset.value,
+    hasMore: biodataHasMore.value
+  })
+}
+
+function isHistoricoAtual(requestId: number, cacheKey: string) {
+  return open.value && requestId === historicoRequestId && cacheKey === historicoCacheKey.value
+}
+
 async function fetchHistorico() {
-  const paciente = agendamento.value?.paciente
+  const paciente = pacienteAtual.value
   const pacienteId = paciente?.id
   if (!pacienteId) return
+
+  const cacheKey = historicoCacheKey.value
+  const cache = historicoCache.get(cacheKey)
+  if (cache) {
+    restaurarHistoricoCache(cache)
+    return
+  }
+
+  const requestId = ++historicoRequestId
 
   isLoadingHistorico.value = true
   biodataHistorico.value = []
@@ -121,38 +190,53 @@ async function fetchHistorico() {
   biodataHasMore.value = false
 
   try {
-    const [biodataResult, localResult] = await Promise.allSettled([
-      buscarHistoricoBiodata(0),
-      $fetch<HistoricoLocalRecord[]>(`/api/historico-local/${pacienteId}`)
-    ])
+    const localPromise = buscarHistoricoLocal(pacienteId)
+      .then((local) => {
+        if (!isHistoricoAtual(requestId, cacheKey)) return
+        localHistorico.value = local
+        remontarHistoricoItems()
+        if (historicoItemsVisiveis.value.length > 0) isLoadingHistorico.value = false
+      })
+      .catch((error) => {
+        if (isHistoricoAtual(requestId, cacheKey)) console.error('Erro ao buscar histórico local:', error)
+      })
 
-    const biodataResponse = biodataResult.status === 'fulfilled' ? biodataResult.value : null
-    localHistorico.value = localResult.status === 'fulfilled' ? localResult.value : []
+    const biodataPromise = buscarHistoricoBiodata(0)
+      .then((biodataResponse) => {
+        if (!isHistoricoAtual(requestId, cacheKey)) return
+        adicionarRegistrosBiodata(biodataResponse.items)
+        biodataOffset.value = biodataResponse.offset + biodataResponse.items.length
+        biodataHasMore.value = biodataResponse.has_more
+        remontarHistoricoItems()
+      })
+      .catch((error) => {
+        if (isHistoricoAtual(requestId, cacheKey)) console.error('Erro ao buscar histórico BioData:', error)
+      })
 
-    if (biodataResponse) {
-      adicionarRegistrosBiodata(biodataResponse.items)
-      biodataOffset.value = biodataResponse.offset + biodataResponse.items.length
-      biodataHasMore.value = biodataResponse.has_more
-    }
+    await Promise.allSettled([localPromise, biodataPromise])
 
-    if (biodataResult.status === 'rejected') {
-      console.error('Erro ao buscar histórico BioData:', biodataResult.reason)
-    }
-    if (localResult.status === 'rejected') {
-      console.error('Erro ao buscar histórico local:', localResult.reason)
-    }
-
-    remontarHistoricoItems()
-  } catch (err) {
-    console.error('Erro ao buscar histórico:', err)
+    if (isHistoricoAtual(requestId, cacheKey)) salvarHistoricoCache(cacheKey)
+  } catch {
     historicoItems.value = []
   } finally {
-    isLoadingHistorico.value = false
+    if (isHistoricoAtual(requestId, cacheKey)) isLoadingHistorico.value = false
   }
 }
 
+async function buscarHistoricoLocal(pacienteId: number): Promise<HistoricoLocalRecord[]> {
+  const paciente = pacienteAtual.value
+
+  return await $fetch<HistoricoLocalRecord[]>(`/api/historico-local/${pacienteId}`, {
+    query: {
+      cpf: cpfHistorico(paciente?.cpf),
+      nome: paciente?.nome || undefined,
+      spdataAtendimentoId: props.agendamento?.spdataAtendimentoId || undefined
+    }
+  })
+}
+
 async function buscarHistoricoBiodata(offset: number): Promise<HistoricoResponse> {
-  const paciente = agendamento.value?.paciente
+  const paciente = pacienteAtual.value
   const pacienteId = paciente?.id
   if (!pacienteId) {
     return { items: [], limit: HISTORICO_BIODATA_LIMIT, offset, has_more: false }
@@ -178,8 +262,7 @@ async function carregarMaisHistoricoBiodata() {
     biodataOffset.value = response.offset + response.items.length
     biodataHasMore.value = response.has_more
     remontarHistoricoItems()
-  } catch (err) {
-    console.error('Erro ao carregar mais histórico BioData:', err)
+    salvarHistoricoCache(historicoCacheKey.value)
   } finally {
     isLoadingMaisHistorico.value = false
   }
@@ -313,7 +396,6 @@ function montarDiagnosticosBiodata(item: HistoricoRecord): string {
 }
 
 function montarDiagnosticos(item: HistoricoLocalRecord): string {
-  // Formata CID principal + secundários para exibição no card de diagnóstico
   const partes: string[] = []
   if (item.cid_principal) {
     partes.push(`${item.cid_principal} — ${item.cid_principal_descricao || ''} (principal)`)
@@ -335,233 +417,162 @@ function montarExames(exames?: HistoricoLocalRecord['exames']): string {
     .filter(Boolean)
     .join('\n')
 }
-
-function calcularIdade(dataNascimento: string) {
-  const hoje = new Date()
-  const nasc = new Date(dataNascimento)
-  let idade = hoje.getFullYear() - nasc.getFullYear()
-  const mes = hoje.getMonth() - nasc.getMonth()
-  if (mes < 0 || (mes === 0 && hoje.getDate() < nasc.getDate())) idade--
-  return idade
-}
-
-function voltarDashboard() {
-  navigateTo('/dashboard')
-}
 </script>
 
 <template>
-  <div
-    v-if="agendamento"
-    class="h-screen flex overflow-hidden"
+  <USlideover
+    v-model:open="open"
+    side="left"
+    :ui="{ content: 'w-[35rem] max-w-full' }"
   >
-    <USidebar
-      collapsible="icon"
-      :style="{ '--sidebar-width': '35rem' }"
-    >
-      <template #header>
-        <UButton
-          icon="i-lucide-arrow-left"
-          label="Voltar pro Dashboard"
-          variant="ghost"
-          color="neutral"
-          @click="voltarDashboard"
-        />
-      </template>
-      <div class="flex justify-center items-center py-2 gap-2">
-        <UAvatar
-          size="3xl"
-          color="primary"
-          :alt="agendamento.paciente.nome"
-        />
-        <div>
-          <p class="text-md font-semibold">
-            {{ agendamento.paciente.nome }}
-          </p>
-          <p class="text-sm text-muted">
-            {{ calcularIdade(agendamento.paciente.dataNascimento) }} anos
-            · {{ agendamento.paciente.sexo === 'masculino' ? 'Masculino' : 'Feminino' }}
-            · Tipo Sanguíneo: {{ agendamento.paciente.tipoSanguineo }}
-            · Convênio: {{ agendamento.paciente.convenio }}
-          </p>
-        </div>
-      </div>
-      <div class="space-y-2 flex flex-col gap-1 justify-center items-center overflow-y-hidden">
-        <USeparator />
-        <div class="flex flex-col items-center justify-center gap-2">
-          <div class="flex items-center gap-1">
-            <UIcon
-              name="i-lucide-shield-alert"
-              class="text-error mt-0.5 shrink-0"
-            />
-            <p class="text-xs text-error font-bold uppercase tracking-wider">
-              Alergias
-            </p>
-          </div>
-
-          <div class="flex flex-wrap gap-1 mt-1">
-            <template v-if="agendamento.paciente.alergias.length">
-              <UBadge
-                v-for="(alergia, i) in agendamento.paciente.alergias"
-                :key="i"
-                :label="alergia"
-                color="error"
-                variant="subtle"
-              />
-            </template>
-            <UBadge
-              v-else
-              label="Nenhuma"
-              color="success"
-              variant="subtle"
-            />
-          </div>
-        </div>
-        <USeparator />
-        <div class="flex flex-col items-center justify-center gap-2">
-          <div class="flex items-center gap-1">
-            <UIcon
-              name="i-lucide-pill"
-              class="text-tertiary mt-0.5 shrink-0"
-            />
-            <p class="text-xs text-tertiary font-bold uppercase tracking-wider">
-              Medicação em Uso
-            </p>
-          </div>
-          <div class="flex flex-wrap gap-1 mt-1">
-            <template v-if="agendamento.paciente.medicamentosEmUso.length">
-              <UBadge
-                v-for="(med, i) in agendamento.paciente.medicamentosEmUso"
-                :key="i"
-                :label="med.nome"
-                color="tertiary"
-                variant="subtle"
-              />
-            </template>
-            <UBadge
-              v-else
-              label="Nenhuma"
-              color="success"
-              variant="subtle"
-            />
-          </div>
-        </div>
-        <USeparator />
+    <template #header>
+      <div class="flex items-center justify-between w-full">
         <div
-          ref="historicoScrollRef"
-          class="overflow-y-auto max-h-[calc(100vh-18rem)] w-full px-2"
+          v-if="pacienteAtual"
+          class="flex items-center gap-3"
         >
-          <UTimeline
-            :items="historicoItemsVisiveis"
+          <UAvatar
+            :alt="pacienteAtual.nome"
             color="primary"
-            :default-value="historicoItemsVisiveis.length"
-            size="xs"
-          >
-            <template #title="{ item }">
-              <div class="flex items-start justify-between w-full gap-2">
-                <div class="leading-tight">
-                  <span>{{ item.title }}</span>
-                  <span
-                    v-if="item.time"
-                    class="block text-xs text-muted"
-                  >{{ item.time }}</span>
-                </div>
-                <span
-                  v-if="item.subtitle"
-                  class="text-xs text-muted truncate ml-2"
-                >{{ item.subtitle }}</span>
-              </div>
-            </template>
-            <template #description="{ item }">
-              <div class="space-y-2 py-2">
-                <template
-                  v-for="card in item.cards"
-                  :key="card.id"
-                >
-                  <UCard
-                    v-if="temConteudoUtil(card.description)"
-                    class="rounded-lg border border-muted hover:bg-muted/50"
-                    :ui="{
-                      header: `p-0.5 sm:px-2 ${cardHeaderColors[card.type]}`,
-                      body: 'p-2 sm:p-2'
-                    }"
-                  >
-                    <template #title>
-                      <div class="flex items-center gap-2">
-                        <UIcon
-                          :name="card.icon"
-                          class="text-white"
-                        />
-                        <p class="font-semibold text-sm text-white capitalize">
-                          {{ card.title }}
-                        </p>
-                      </div>
-                    </template>
-                    <div class="relative">
-                      <!-- eslint-disable vue/no-v-html -->
-                      <div
-                        class="text-sm cursor-pointer whitespace-pre-line"
-                        :class="expandedContent[item.id + '-' + card.id] ? '' : 'line-clamp-3'"
-                        @click="toggleContent(item.id + '-' + card.id)"
-                        v-html="sanitizeHtml(card.description)"
-                      />
-                      <!-- eslint-enable vue/no-v-html -->
-                      <UIcon
-                        v-if="card.description.length > 100"
-                        :name="expandedContent[item.id + '-' + card.id] ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                        class="absolute bottom-0 right-0 dark:bg-neutral-900 px-1 cursor-pointer text-muted"
-                        @click.stop="toggleContent(item.id + '-' + card.id)"
-                      />
-                    </div>
-                  </UCard>
-                </template>
-              </div>
-            </template>
-          </UTimeline>
-
-          <div class="flex justify-center py-3">
-            <UIcon
-              v-if="isLoadingMaisHistorico"
-              name="i-lucide-loader-circle"
-              class="size-5 animate-spin text-muted"
-            />
-            <UButton
-              v-else-if="biodataHasMore"
-              label="Carregar mais histórico"
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              @click="void carregarMaisHistoricoBiodata()"
-            />
+            size="sm"
+          />
+          <div>
+            <h2 class="text-lg font-semibold">
+              Histórico
+            </h2>
+            <p class="text-sm text-muted">
+              {{ pacienteAtual.nome }}
+            </p>
           </div>
         </div>
-      </div>
-    </USidebar>
-    <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-neutral-950">
-      <slot />
-    </main>
-  </div>
-  <div
-    v-else
-    class="h-screen flex items-center justify-center bg-neutral-100 dark:bg-neutral-950"
-  >
-    <UCard>
-      <div class="flex flex-col items-center py-12 gap-4">
-        <div class="text-muted">
-          <div class="i-lucide-stethoscope text-6xl mx-auto" />
-        </div>
-        <p class="text-xl font-medium">
-          Nenhum paciente em atendimento
-        </p>
-        <p class="text-sm text-muted">
-          Selecione um paciente no Dashboard e clique em "Atender" para iniciar o atendimento.
-        </p>
+        <h2
+          v-else
+          class="text-lg font-semibold"
+        >
+          Histórico do Paciente
+        </h2>
         <UButton
-          label="Ir para o Dashboard"
-          color="primary"
-          @click="voltarDashboard"
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          @click="void (open = false)"
         />
       </div>
-    </UCard>
-  </div>
+    </template>
+
+    <template #body>
+      <div
+        ref="historicoScrollRef"
+        class="overflow-y-none max-h-[calc(100vh-8rem)]"
+      >
+        <div
+          v-if="isLoadingHistorico"
+          class="flex justify-center py-8"
+        >
+          <UIcon
+            name="i-lucide-loader-circle"
+            class="size-6 animate-spin text-muted"
+          />
+        </div>
+
+        <div
+          v-else-if="historicoItemsVisiveis.length === 0"
+          class="flex flex-col items-center py-12 gap-2 text-center"
+        >
+          <UIcon
+            name="i-lucide-folder-open"
+            class="size-8 text-muted"
+          />
+          <p class="text-sm text-muted">
+            Nenhum registro encontrado.
+          </p>
+        </div>
+
+        <UTimeline
+          v-else
+          :items="historicoItemsVisiveis"
+          color="primary"
+          :default-value="historicoItemsVisiveis.length"
+          size="xs"
+        >
+          <template #title="{ item }">
+            <div class="flex items-start justify-between w-full gap-2">
+              <div class="leading-tight">
+                <span>{{ item.title }}</span>
+                <span
+                  v-if="item.time"
+                  class="block text-xs text-muted"
+                >{{ item.time }}</span>
+              </div>
+              <span
+                v-if="item.subtitle"
+                class="text-xs text-muted truncate ml-2"
+              >{{ item.subtitle }}</span>
+            </div>
+          </template>
+          <template #description="{ item }">
+            <div class="space-y-2 py-2">
+              <template
+                v-for="card in item.cards"
+                :key="card.id"
+              >
+                <UCard
+                  v-if="temConteudoUtil(card.description)"
+                  class="rounded-lg border border-muted hover:bg-muted/50"
+                  :ui="{
+                    header: `p-0.5 sm:px-2 ${cardHeaderColors[card.type]}`,
+                    body: 'p-2 sm:p-2'
+                  }"
+                >
+                  <template #title>
+                    <div class="flex items-center gap-2">
+                      <UIcon
+                        :name="card.icon"
+                        class="text-white"
+                      />
+                      <p class="font-semibold text-sm text-white capitalize">
+                        {{ card.title }}
+                      </p>
+                    </div>
+                  </template>
+                  <div class="relative">
+                    <!-- eslint-disable vue/no-v-html -->
+                    <div
+                      class="text-sm cursor-pointer whitespace-pre-line"
+                      :class="expandedContent[item.id + '-' + card.id] ? '' : 'line-clamp-3'"
+                      @click="toggleContent(item.id + '-' + card.id)"
+                      v-html="sanitizeHtml(card.description)"
+                    />
+                    <!-- eslint-enable vue/no-v-html -->
+                    <UIcon
+                      v-if="card.description.length > 100"
+                      :name="expandedContent[item.id + '-' + card.id] ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                      class="absolute bottom-0 right-0 dark:bg-neutral-900 px-1 cursor-pointer text-muted"
+                      @click.stop="toggleContent(item.id + '-' + card.id)"
+                    />
+                  </div>
+                </UCard>
+              </template>
+            </div>
+          </template>
+        </UTimeline>
+
+        <div class="flex justify-center py-3">
+          <UIcon
+            v-if="isLoadingMaisHistorico"
+            name="i-lucide-loader-circle"
+            class="size-5 animate-spin text-muted"
+          />
+          <UButton
+            v-else-if="biodataHasMore"
+            label="Carregar mais histórico"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            @click="void carregarMaisHistoricoBiodata()"
+          />
+        </div>
+      </div>
+    </template>
+  </USlideover>
 </template>

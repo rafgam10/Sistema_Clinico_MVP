@@ -44,6 +44,10 @@ export type AgendamentoStatus = 'agendado' | 'em-espera' | 'em-atendimento' | 'a
 
 export interface Agendamento {
   id: number
+  spdataAtendimentoId?: number | null
+  spdataAgendaId?: number | null
+  medsystemAtendimentoId?: number | null
+  codAtendimento?: string | number | null
   pacienteId: number
   medicoId: number
   clinicaId: number
@@ -172,6 +176,43 @@ export interface Atendimento {
   dataInicio: string
   dataFim?: string
   observacoes?: string
+}
+
+export type DocumentoMedicoTipo = 'ATESTADO' | 'ENCAMINHAMENTO' | 'SOLICITACAO_PROCEDIMENTO'
+
+export interface DocumentoMedicoDadosBase {
+  medico?: string | null
+  crm?: string | null
+  especialidade?: string | null
+}
+
+export interface AtestadoDocumentoDados extends DocumentoMedicoDadosBase {
+  data_inicio: string
+  dias_afastamento: number
+}
+
+export interface EncaminhamentoDocumentoDados extends DocumentoMedicoDadosBase {
+  data: string
+  encaminhar_para: string
+  profissional_externo: string
+}
+
+export interface SolicitacaoProcedimentoDocumentoDados extends DocumentoMedicoDadosBase {
+  data: string
+  descricao: string
+}
+
+export type DocumentoMedicoDados = AtestadoDocumentoDados | EncaminhamentoDocumentoDados | SolicitacaoProcedimentoDocumentoDados
+
+export interface DocumentoMedico {
+  id: number
+  atendimentoId: number
+  medSpdataAtendimentoId: number
+  tipoDocumento: DocumentoMedicoTipo
+  dados: DocumentoMedicoDados
+  createdAt: string | null
+  updatedAt: string | null
+  podeEditar: boolean
 }
 
 export interface ItemMedicamento {

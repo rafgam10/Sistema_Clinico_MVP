@@ -98,6 +98,8 @@ const itensMais = ref<DropdownMenuItem[][]>([
 
 const pacientesNoShow = ref<PacienteNoShow[]>([])
 const loading = ref(false)
+const modalRecusouAberto = ref(false)
+const pacienteRecusouSelecionado = ref<PacienteNoShow | null>(null)
 const errorMsg = ref('')
 const totalNoShow = ref(0)
 const resumoNoShow = ref<NoShowResumo>({
@@ -725,7 +727,7 @@ onMounted(() => {
                 size="sm"
                 color="error"
 
-                @click="recusou(row.original)"
+                @click="pacienteRecusouSelecionado = row.original; modalRecusouAberto = true"
               />
               <UDropdownMenu :items="itensMais">
                 <UButton
@@ -751,6 +753,16 @@ onMounted(() => {
           />
         </div>
       </UCard>
+
+      <ModalConfirmacao
+        :abrir="modalRecusouAberto"
+        titulo="Marcar como Recusado?"
+        descricao="Tem certeza que deseja marcar que esse paciente recusou?"
+        texto-confirma="Confirmar"
+        cor-confirma="error"
+        @fechar="modalRecusouAberto = false; pacienteRecusouSelecionado = null"
+        @confirmar="recusou(pacienteRecusouSelecionado!); modalRecusouAberto = false; pacienteRecusouSelecionado = null"
+      />
     </div>
   </div>
 </template>

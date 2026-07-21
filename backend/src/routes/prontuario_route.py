@@ -1,10 +1,11 @@
 import json
 import re
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 from flask import Blueprint, current_app, request, jsonify
 from flask_jwt_extended import jwt_required
-from sqlalchemy import select
+from sqlalchemy import or_, select
+from sqlalchemy.orm import selectinload
 
 from src.security.decorators import roles_required
 from src.models.db.handler_fb_db import ConnectionDBFireBird
@@ -448,11 +449,57 @@ def historico_paciente_local(paciente_id):
     # Busca no banco LOCAL os atendimentos finalizados deste paciente,
     # incluindo dados completos de anamnese, CIDs, medicamentos e exames.
     try:
+        spdata_atendimento_id = (
+            request.args.get("spdataAtendimentoId", type=int)
+            or request.args.get("spdata_atendimento_id", type=int)
+        )
+        cpf = _cpf_valido(request.args.get("cpf"))
+        nome = _texto_ou_none(request.args.get("nome"))
+        data = request.args.get("data")
+        data_ref = None
+
+        if data:
+            try:
+                data_ref = datetime.fromisoformat(str(data)[:10]).date()
+            except ValueError:
+                return jsonify({"error": "Data inválida"}), 400
+
+        identificadores = []
+        if spdata_atendimento_id:
+            identificadores.append(Atendimento.spdata_atendimento_id == spdata_atendimento_id)
+        if paciente_id:
+            identificadores.append(Atendimento.spdata_paciente_id == paciente_id)
+        if cpf:
+            identificadores.append(Atendimento.paciente_cpf == cpf)
+        if nome:
+            identificadores.append(Atendimento.paciente_nome.ilike(nome))
+
+        if not identificadores:
+            return jsonify([]), 200
+
+        filtros = [
+            Atendimento.status == "finalizado",
+            or_(*identificadores),
+        ]
+        if data_ref:
+            inicio = datetime.combine(data_ref, time.min)
+            fim = datetime.combine(data_ref + timedelta(days=1), time.min)
+            filtros.extend([
+                Atendimento.data_atendimento >= inicio,
+                Atendimento.data_atendimento < fim,
+            ])
+
         atendimentos = db.session.execute(
-            select(Atendimento).where(
-                Atendimento.spdata_paciente_id == paciente_id,
-                Atendimento.status == "finalizado"
-            ).order_by(Atendimento.data_atendimento.desc())
+            select(Atendimento)
+            .options(
+                selectinload(Atendimento.anamnese),
+                selectinload(Atendimento.diagnosticos),
+                selectinload(Atendimento.prescricoes),
+                selectinload(Atendimento.solicitacoes_exames).selectinload(SolicitacaoExame.exame),
+                selectinload(Atendimento.evolucoes_medicas).selectinload(EvolucaoMedica.medico),
+            )
+            .where(*filtros)
+            .order_by(Atendimento.data_atendimento.desc())
         ).scalars().all()
 
         result = []

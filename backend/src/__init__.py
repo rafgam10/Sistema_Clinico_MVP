@@ -83,6 +83,7 @@ def create_app():
     from src.routes.no_show_route import no_show_bp
     from src.routes.retencao_exames_route import retencao_exames_bp
     from src.routes.tts_route import tts_bp
+    from src.routes.documentos_medicos_route import documentos_medicos_bp
 
     app.register_blueprint(login_bp)
     app.register_blueprint(dashboard_bp)
@@ -96,5 +97,6 @@ def create_app():
     app.register_blueprint(no_show_bp)
     app.register_blueprint(retencao_exames_bp)
     app.register_blueprint(tts_bp)
+    app.register_blueprint(documentos_medicos_bp)
 
     return app

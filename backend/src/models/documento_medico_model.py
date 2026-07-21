@@ -1,22 +1,27 @@
 from datetime import datetime
-from enum import Enum
 
 from src.settings.extensions import db
 
-""" 
-    Para atestados, declarações, encaminhamentos e outros documentos.
-"""
+TIPO_ATESTADO = "ATESTADO"
+TIPO_ENCAMINHAMENTO = "ENCAMINHAMENTO"
+TIPO_SOLICITACAO_PROCEDIMENTO = "SOLICITACAO_PROCEDIMENTO"
 
-class TipoDocumentoMedico(Enum):
-    ATESTADO = "ATESTADO"
-    DECLARACAO = "DECLARACAO"
-    ENCAMINHAMENTO = "ENCAMINHAMENTO"
-    RELATORIO = "RELATORIO"
-    RECEITA = "RECEITA"
+TIPOS_DOCUMENTO_VALIDOS = {
+    TIPO_ATESTADO,
+    TIPO_ENCAMINHAMENTO,
+    TIPO_SOLICITACAO_PROCEDIMENTO,
+}
 
 
 class DocumentoMedico(db.Model):
     __tablename__ = "documentos_medicos"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "atendimento_id",
+            "tipo_documento",
+            name="uq_documentos_medicos_atendimento_tipo",
+        ),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
 
@@ -27,30 +32,26 @@ class DocumentoMedico(db.Model):
     )
 
     tipo_documento = db.Column(
-        db.Enum(TipoDocumentoMedico),
+        db.String(50),
         nullable=False
     )
 
-    conteudo = db.Column(
-        db.Text,
+    dados = db.Column(
+        db.JSON,
         nullable=False
-    )
-
-    arquivo_pdf = db.Column(
-        db.String(255),
-        nullable=True
-    )
-
-    assinado = db.Column(
-        db.Boolean,
-        nullable=False,
-        default=False
     )
 
     created_at = db.Column(
         db.DateTime,
         nullable=False,
         default=datetime.utcnow
+    )
+
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
     )
 
     atendimento = db.relationship(
@@ -61,6 +62,5 @@ class DocumentoMedico(db.Model):
     def __repr__(self):
         return (
             f"<DocumentoMedico atendimento_id={self.atendimento_id} "
-            f"tipo_documento={self.tipo_documento.value} "
-            f"assinado={self.assinado}>"
+            f"tipo_documento={self.tipo_documento}>"
         )
