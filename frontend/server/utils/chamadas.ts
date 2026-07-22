@@ -31,6 +31,18 @@ export function getHistoricoChamados(limit = 10) {
 }
 
 export function criarChamado(data: CriarChamadoPayload) {
+  const chamadoAtivo = chamados.find(chamado => chamado.status === 'chamando')
+
+  if (chamadoAtivo?.pacienteId === data.pacienteId) {
+    chamadoAtivo.pacienteNome = data.pacienteNome
+    chamadoAtivo.localAtendimento = data.localAtendimento
+    chamadoAtivo.medicoResponsavel = data.medicoResponsavel
+    chamadoAtivo.dataChamada = new Date().toLocaleTimeString('pt-BR')
+    broadcastSse({ type: 'chamado:novo', data: chamadoAtivo })
+
+    return chamadoAtivo
+  }
+
   for (const chamado of chamados) {
     if (chamado.status === 'chamando') {
       chamado.status = 'concluido'

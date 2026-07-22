@@ -36,7 +36,15 @@ export const useChamadosStore = defineStore('chamados', () => {
     sse.on('chamado:novo', (data: unknown) => {
       const chamado = data as Chamado
       const existingActive = chamados.value.findIndex(c => c.status === 'chamando')
-      if (existingActive >= 0) chamados.value[existingActive]!.status = 'concluido'
+      if (existingActive >= 0) {
+        const active = chamados.value[existingActive]!
+        if (active.id === chamado.id || active.pacienteId === chamado.pacienteId) {
+          chamados.value[existingActive] = chamado
+          return
+        }
+
+        active.status = 'concluido'
+      }
       chamados.value.unshift(chamado)
     })
     sse.on('chamado:concluido', (data: unknown) => {

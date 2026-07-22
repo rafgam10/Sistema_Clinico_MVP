@@ -6,7 +6,7 @@ const agendamentosStore = useAgendamentosStore()
 
 const audioRef = ref<HTMLAudioElement | null>(null)
 const audioUrl = ref<string | null>(null)
-const audioAtivo = ref(false)
+const audioAtivo = ref(true)
 const ttsLoading = ref(false)
 const ttsError = ref(false)
 const ttsRequestId = ref(0)
@@ -78,6 +78,14 @@ async function falarChamado(pacienteNome: string, localAtendimento: string) {
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return
     if (requestId !== ttsRequestId.value) return
+
+    if (error instanceof DOMException && error.name === 'NotAllowedError') {
+      audioAtivo.value = false
+      ttsLoading.value = false
+      ttsError.value = false
+      limparAudioAtual()
+      return
+    }
 
     ttsLoading.value = false
     ttsError.value = true
