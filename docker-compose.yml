@@ -40,6 +40,7 @@ services:
       GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
       SECRET_KEY: ${SECRET_KEY}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ACCESS_TOKEN_EXPIRES_SECONDS: ${JWT_ACCESS_TOKEN_EXPIRES_SECONDS:-604800}
       SQLALCHEMY_DATABASE_URI: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -89,11 +90,12 @@ services:
       NITRO_PORT: 3000
       NUXT_FLASK_BASE_URL: http://backend:5000
       NUXT_ENABLE_MOCK_AUTH: ${NUXT_ENABLE_MOCK_AUTH:-false}
+      NUXT_PUBLIC_AUTH_COOKIE_MAX_AGE_SECONDS: ${NUXT_PUBLIC_AUTH_COOKIE_MAX_AGE_SECONDS:-604800}
     depends_on:
       backend:
         condition: service_healthy
     ports:
-      - "${FRONTEND_PORT:-80}:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/login').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 30s
