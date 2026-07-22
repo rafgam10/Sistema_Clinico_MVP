@@ -26,7 +26,7 @@ from src.settings.extensions import db
 from src.utils.normalizar import normalizar_cpf
 
 
-UNIDADE_PADRAO_SPDATA = 203
+UNIDADE_PADRAO_SPDATA = 340
 
 STATUS_VALIDOS = {
     "em-atendimento",

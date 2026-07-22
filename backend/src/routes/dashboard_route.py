@@ -66,7 +66,7 @@ def dashboard_paciente_lista():
                     ON a.ID_TBCBOPRO_ATENDIMENTO = tb.ID
                 INNER JOIN TBPROFIS medico
                     ON tb.ID_TBPROFIS = medico.ID
-                WHERE a.ID_TBCENCUS = 203
+                WHERE a.ID_TBCENCUS = 340
                 AND tb.COD = 10460
                 AND CAST(a.DATA_HORA_ENTRADA AS DATE) = CURRENT_DATE - 3
                 ORDER BY a.DATA_HORA_ENTRADA DESC;

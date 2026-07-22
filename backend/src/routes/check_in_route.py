@@ -285,7 +285,7 @@ def buscar_atendimentos_firebird(data_ref):
             )
         LEFT JOIN TBESPEC esp_princ
             ON esp_princ.COD = medico.ESP_PRINC
-        WHERE a.ID_TBCENCUS = 203
+        WHERE a.ID_TBCENCUS = 340
           AND CAST(a.DATA_HORA_ENTRADA AS DATE) = ?
         ORDER BY a.DATA_HORA_ENTRADA, paciente.NOME
     """
