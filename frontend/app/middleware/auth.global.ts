@@ -27,7 +27,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   // Se tem múltiplas clínicas mas nenhuma selecionada, forçar seleção
   if (auth.clinicas.length > 1 && !auth.activeClinicaId) {
-    return navigateTo('/selecionar-clinica')
+    navigateTo(auth.isRecepcao ? '/recepcao' : '/dashboard')
   }
 
   // Role-based routing

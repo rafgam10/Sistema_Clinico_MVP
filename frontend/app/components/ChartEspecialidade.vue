@@ -27,7 +27,7 @@ const options: ChartOptions<'doughnut'> = {
   cutout: '50%',
   plugins: {
     legend: {
-      position: 'bottom' as const,
+      position: 'right' as const,
       labels: { padding: 16, usePointStyle: true, font: { size: 12 } }
     },
     tooltip: {

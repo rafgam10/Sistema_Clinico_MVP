@@ -303,7 +303,7 @@ onUnmounted(() => {
         icon="i-lucide-circle-alert"
       />
 
-      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+      <div class="grid grid-cols-1 gap-4  lg:grid-cols-2 lg:gap-6">
         <ChartResumo
           :total="resumoTotal"
           :agendados="dados.resumo.agendados"
@@ -313,7 +313,10 @@ onUnmounted(() => {
           :faltas="dados.resumo.faltas"
         />
 
-        <UCard>
+        <UCard
+          class=""
+          :ui="{ body: '' }"
+        >
           <template #title>
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p class="text-lg font-medium">
@@ -330,11 +333,11 @@ onUnmounted(() => {
             </div>
           </template>
 
-          <div class="overflow-x-auto">
+          <div class="overflow-x-auto max-h-55 overflow-y-auto">
             <UTable
               :columns="medicosColunas"
               :data="medicosDoDia"
-              class="min-w-[360px]"
+              class="min-w-90 overflow-auto"
             >
               <template #nome-cell="{ row }">
                 <div
