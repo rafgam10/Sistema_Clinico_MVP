@@ -28,7 +28,7 @@ export const useAgendamentosStore = defineStore('agendamentos', () => {
   )
 
   const fila = computed(() =>
-    agendamentos.value.filter(a => a.status === 'agendado' || a.status === 'em-espera')
+    agendamentos.value.filter(a => a.status === 'em-espera')
   )
 
   const totalAgendamentos = computed(() => agendamentos.value.length)

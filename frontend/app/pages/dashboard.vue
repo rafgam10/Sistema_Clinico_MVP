@@ -137,6 +137,10 @@ const pacientesFinalizados = computed(() =>
   )
 )
 
+const totalPacientesDashboard = computed(() =>
+  pacientesNaFila.value.length + pacientesFinalizados.value.length
+)
+
 function statusLabel(status: AgendamentoStatus) {
   switch (status) {
     case 'em-atendimento': return 'Em Atendimento'
@@ -166,7 +170,7 @@ function atendimentoDisabled(status: AgendamentoStatus) {
 }
 
 const tempoMedioEspera = computed(() => {
-  const lista = agendamentosStore.agendamentos
+  const lista = agendamentosStore.fila
   const tempos = lista.map(a => calcularMinutosDesde(a.horario, agora.value))
   return tempos.length ? Math.round(tempos.reduce((a, b) => a + b, 0) / tempos.length) : 0
 })
@@ -223,7 +227,7 @@ const tempoMedioEspera = computed(() => {
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ChartResumo
-          :total="agendamentosStore.totalAgendamentos"
+          :total="totalPacientesDashboard"
           :fila="agendamentosStore.fila.length"
           :em-atendimento="agendamentosStore.emAtendimento ? 1 : 0"
           :atendidos="agendamentosStore.totalAtendidos"

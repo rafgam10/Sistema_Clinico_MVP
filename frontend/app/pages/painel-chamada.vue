@@ -2,15 +2,59 @@
 import { useSse } from '~/composables/useSse'
 
 const chamadosStore = useChamadosStore()
-const agendamentosStore = useAgendamentosStore()
 
 const audioRef = ref<HTMLAudioElement | null>(null)
 const audioUrl = ref<string | null>(null)
-const audioAtivo = ref(true)
+const audioAtivo = ref(false)
 const ttsLoading = ref(false)
 const ttsError = ref(false)
 const ttsRequestId = ref(0)
 const ttsAbortController = ref<AbortController | null>(null)
+
+function criarAudioSilenciosoUrl() {
+  const sampleRate = 8000
+  const sampleCount = sampleRate / 20
+  const dataSize = sampleCount * 2
+  const buffer = new ArrayBuffer(44 + dataSize)
+  const view = new DataView(buffer)
+
+  function writeString(offset: number, value: string) {
+    for (let i = 0; i < value.length; i++) {
+      view.setUint8(offset + i, value.charCodeAt(i))
+    }
+  }
+
+  writeString(0, 'RIFF')
+  view.setUint32(4, 36 + dataSize, true)
+  writeString(8, 'WAVE')
+  writeString(12, 'fmt ')
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true)
+  view.setUint16(22, 1, true)
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, sampleRate * 2, true)
+  view.setUint16(32, 2, true)
+  view.setUint16(34, 16, true)
+  writeString(36, 'data')
+  view.setUint32(40, dataSize, true)
+
+  return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }))
+}
+
+async function testarAudioPermitido() {
+  const url = criarAudioSilenciosoUrl()
+  const audio = new Audio(url)
+
+  try {
+    await audio.play()
+    return true
+  } catch {
+    return false
+  } finally {
+    audio.pause()
+    URL.revokeObjectURL(url)
+  }
+}
 
 function limparAudioAtual() {
   audioRef.value?.pause()
@@ -22,9 +66,9 @@ function limparAudioAtual() {
   }
 }
 
-function ativarAudio() {
-  audioAtivo.value = true
+async function ativarAudio() {
   ttsError.value = false
+  audioAtivo.value = await testarAudioPermitido()
 }
 
 async function falarChamado(pacienteNome: string, localAtendimento: string) {
@@ -94,8 +138,8 @@ async function falarChamado(pacienteNome: string, localAtendimento: string) {
 }
 
 onMounted(async () => {
-  const hoje = formatarDataISO(new Date())
-  await agendamentosStore.fetchAgendamentos(undefined, hoje)
+  audioAtivo.value = await testarAudioPermitido()
+
   chamadosStore.init()
 
   const sse = useSse()
@@ -113,20 +157,10 @@ onBeforeUnmount(() => {
   limparAudioAtual()
 })
 
-const { agora, horaFormatada, dataFormatada } = useRelogio()
+const { horaFormatada, dataFormatada } = useRelogio()
 
 const ultimoChamado = computed(() => chamadosStore.ultimoChamado)
 const ultimasChamadas = computed(() => chamadosStore.historicoChamados.slice(0, 4))
-
-const emEspera = computed(() => agendamentosStore.fila.length)
-
-const esperaMedia = computed(() => {
-  const ags = agendamentosStore.agendamentos
-  const tempos = ags.map(a => calcularMinutosDesde(a.horario, agora.value))
-  const total = tempos.length
-  if (!total) return 0
-  return Math.round(tempos.reduce((a, b) => a + b, 0) / total)
-})
 </script>
 
 <template>
@@ -228,37 +262,6 @@ const esperaMedia = computed(() => {
               </p>
             </div>
           </UCard>
-
-          <div class="flex gap-4 shrink-0">
-            <UCard class="flex-1 flex items-center gap-4 p-4!">
-              <UIcon
-                name="i-lucide-clock"
-                class="text-3xl text-primary shrink-0"
-              />
-              <div>
-                <p class="text-sm text-muted uppercase tracking-wider">
-                  Espera Média
-                </p>
-                <p class="text-2xl font-bold tabular-nums text-foreground">
-                  {{ esperaMedia }}<span class="text-base font-normal text-muted"> min</span>
-                </p>
-              </div>
-            </UCard>
-            <UCard class="flex-1 flex items-center gap-4 p-4!">
-              <UIcon
-                name="i-lucide-users"
-                class="text-3xl text-primary shrink-0"
-              />
-              <div>
-                <p class="text-sm text-muted uppercase tracking-wider">
-                  Em Espera
-                </p>
-                <p class="text-2xl font-bold tabular-nums text-foreground">
-                  {{ emEspera }}<span class="text-base font-normal text-muted"> paciente{{ emEspera !== 1 ? 's' : '' }}</span>
-                </p>
-              </div>
-            </UCard>
-          </div>
         </template>
 
         <template v-else>
@@ -274,37 +277,6 @@ const esperaMedia = computed(() => {
               A lista de chamadas aparecerá aqui automaticamente.
             </p>
           </UCard>
-
-          <div class="flex gap-4 shrink-0">
-            <UCard class="flex-1 flex items-center gap-4 p-4!">
-              <UIcon
-                name="i-lucide-clock"
-                class="text-3xl text-muted shrink-0"
-              />
-              <div>
-                <p class="text-sm text-muted uppercase tracking-wider">
-                  Espera Média
-                </p>
-                <p class="text-2xl font-bold tabular-nums text-foreground">
-                  {{ esperaMedia }}<span class="text-base font-normal text-muted"> min</span>
-                </p>
-              </div>
-            </UCard>
-            <UCard class="flex-1 flex items-center gap-4 p-4!">
-              <UIcon
-                name="i-lucide-users"
-                class="text-3xl text-muted shrink-0"
-              />
-              <div>
-                <p class="text-sm text-muted uppercase tracking-wider">
-                  Em Espera
-                </p>
-                <p class="text-2xl font-bold tabular-nums text-foreground">
-                  {{ emEspera }}<span class="text-base font-normal text-muted"> paciente{{ emEspera !== 1 ? 's' : '' }}</span>
-                </p>
-              </div>
-            </UCard>
-          </div>
         </template>
       </div>
 
