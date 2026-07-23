@@ -227,26 +227,28 @@ const ultimasChamadas = computed(() => chamadosStore.historicoChamados.slice(0, 
               </p>
             </div>
 
-            <div class="flex gap-4 w-full mb-6 justify-center items-center">
+            <div class="flex flex-col gap-4 w-full mb-6 justify-center items-center">
               <UPageCard
-                class="flex-1 bg-white/20 text-center p-2! min-w-max"
+                class="flex-1 bg-white/20 text-center p-2! w-full"
                 variant="subtle"
+                :ui="{ container: 'p-0 sm:p-0' }"
               >
-                <p class="text-sm text-white uppercase tracking-wider mb-1">
+                <p class="text-lg text-white uppercase tracking-wider">
                   Local de Atendimento
                 </p>
-                <p class="text-xl font-semibold text-foreground text-white">
+                <p class="text-4xl font-semibold text-foreground text-white">
                   {{ ultimoChamado.localAtendimento }}
                 </p>
               </UPageCard>
               <UPageCard
-                class="flex-1 bg-white/20 text-center p-2! min-w-max"
+                class="flex-1 bg-white/20 text-center p-2! w-full"
                 variant="subtle"
+                :ui="{ container: 'p-0 sm:p-0' }"
               >
-                <p class="text-sm text-white uppercase tracking-wider mb-1">
+                <p class="text-lg text-white uppercase tracking-wider">
                   Médico Responsável
                 </p>
-                <p class="text-xl font-semibold text-foreground text-white">
+                <p class="text-4xl font-semibold text-foreground text-white">
                   {{ ultimoChamado.medicoResponsavel }}
                 </p>
               </UPageCard>
@@ -257,7 +259,7 @@ const ultimasChamadas = computed(() => chamadosStore.historicoChamados.slice(0, 
                 name="i-lucide-arrow-right"
                 class="text-white animate-pulse"
               />
-              <p class="text-lg text-center text-white font-medium animate-pulse">
+              <p class="text-3xl text-center text-white font-medium animate-pulse">
                 Por favor, dirija-se à sala indicada.
               </p>
             </div>
