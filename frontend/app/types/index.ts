@@ -101,6 +101,7 @@ export interface ExameSelecionado {
   exameId: number | null
   codigo_amb?: string | null
   codigo_alfanumerico?: string | null
+  orientacao?: string | null
 }
 
 export interface ExameConsultaPayload {
@@ -108,6 +109,7 @@ export interface ExameConsultaPayload {
   exame_id: number | null
   codigo_amb?: string | null
   codigo_alfanumerico?: string | null
+  orientacao?: string | null
 }
 
 export interface HistoricoExame {
@@ -115,6 +117,7 @@ export interface HistoricoExame {
   exame_id: number | null
   descricao: string | null
   tipo_exame: string | null
+  orientacao?: string | null
   codigo_alfanumerico: string | null
   codigo_amb: string | null
 }
@@ -242,6 +245,15 @@ export interface PadraoExame {
 }
 
 export interface PadraoAnamnese {
+  id: string
+  medicoId: number
+  nome: string
+  conteudo: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PadraoOrientacaoExame {
   id: string
   medicoId: number
   nome: string

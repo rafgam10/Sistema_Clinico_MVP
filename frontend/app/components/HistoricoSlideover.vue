@@ -406,13 +406,24 @@ function montarDiagnosticos(item: HistoricoLocalRecord): string {
   return partes.join('\n')
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+}
+
 function montarExames(exames?: HistoricoLocalRecord['exames']): string {
   if (!exames?.length) return ''
 
   return exames
     .map((exame) => {
       if (typeof exame === 'string') return exame
-      return exame.nome || exame.descricao || exame.tipo_exame || ''
+      const nome = exame.nome || exame.descricao || exame.tipo_exame || ''
+      if (!temConteudoUtil(exame.orientacao || '')) return nome
+
+      return `${escapeHtml(nome)}\n<strong>Orientação:</strong>\n${exame.orientacao}`
     })
     .filter(Boolean)
     .join('\n')

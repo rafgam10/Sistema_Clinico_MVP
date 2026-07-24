@@ -15,13 +15,22 @@ function toggleContent(id: string) {
 
 onMounted(() => {
   if (!agendamentosStore.emAtendimento) {
-    navigateTo('/dashboard')
+    navigateTo('/dashboard', { replace: true })
     return
   }
   fetchHistorico()
 })
 
 const agendamento = computed(() => agendamentosStore.emAtendimento)
+
+watch(
+  () => agendamentosStore.emAtendimento,
+  (atendimento, anterior) => {
+    if (anterior && !atendimento) {
+      void navigateTo('/dashboard', { replace: true })
+    }
+  }
+)
 
 type HistoricoCardType = 'Anamnese' | 'diagnostico' | 'receita' | 'exames'
 
@@ -324,13 +333,24 @@ function montarDiagnosticos(item: HistoricoLocalRecord): string {
   return partes.join('\n')
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+}
+
 function montarExames(exames?: HistoricoLocalRecord['exames']): string {
   if (!exames?.length) return ''
 
   return exames
     .map((exame) => {
       if (typeof exame === 'string') return exame
-      return exame.nome || exame.descricao || exame.tipo_exame || ''
+      const nome = exame.nome || exame.descricao || exame.tipo_exame || ''
+      if (!temConteudoUtil(exame.orientacao || '')) return nome
+
+      return `${escapeHtml(nome)}\n<strong>Orientação:</strong>\n${exame.orientacao}`
     })
     .filter(Boolean)
     .join('\n')
@@ -346,7 +366,7 @@ function calcularIdade(dataNascimento: string) {
 }
 
 function voltarDashboard() {
-  navigateTo('/dashboard')
+  navigateTo('/dashboard', { replace: true })
 }
 </script>
 
@@ -381,7 +401,6 @@ function voltarDashboard() {
           <p class="text-sm text-muted">
             {{ calcularIdade(agendamento.paciente.dataNascimento) }} anos
             · {{ agendamento.paciente.sexo === 'masculino' ? 'Masculino' : 'Feminino' }}
-            · Tipo Sanguíneo: {{ agendamento.paciente.tipoSanguineo }}
             · Convênio: {{ agendamento.paciente.convenio }}
           </p>
         </div>

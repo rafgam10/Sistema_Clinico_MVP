@@ -891,11 +891,13 @@ def normalizar_exames_consulta(valor):
                 or item.get("label")
             )
             justificativa = normalizar_texto(item.get("justificativa"))
+            orientacao = normalizar_texto(item.get("orientacao") or item.get("orientacoes"))
         else:
             exame_id = None
             nome = normalizar_texto(item, 255)
             descricao = normalizar_texto(item)
             justificativa = None
+            orientacao = None
 
         if not nome and not exame_id:
             continue
@@ -908,6 +910,7 @@ def normalizar_exames_consulta(valor):
             "exame_id": exame_id,
             "descricao": descricao,
             "justificativa": justificativa,
+            "orientacao": orientacao,
         })
 
     exames_por_id = {}
@@ -936,6 +939,7 @@ def normalizar_exames_consulta(valor):
             "exame_id": item["exame_id"],
             "descricao": item["descricao"] or nome,
             "justificativa": item["justificativa"],
+            "orientacao": item["orientacao"],
         })
 
     return normalizados
@@ -1124,6 +1128,7 @@ def salvar_conteudo_clinico(spdata, atendimento_medsystem, usuario_id, consulta)
                     exame_id=exame["exame_id"],
                     descricao=exame["descricao"],
                     justificativa=exame["justificativa"],
+                    orientacao=exame["orientacao"],
                 )
             )
 

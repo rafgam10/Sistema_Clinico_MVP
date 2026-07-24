@@ -47,6 +47,11 @@ class SolicitacaoExame(db.Model):
         nullable=True
     )
 
+    orientacao = db.Column(
+        db.Text,
+        nullable=True
+    )
+
     status = db.Column(
         db.Enum(StatusSolicitacaoExame),
         nullable=False,

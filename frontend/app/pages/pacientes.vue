@@ -18,6 +18,7 @@ import {
   buildSolicitacaoExames,
   buildSolicitacaoProcedimento
 } from '~/utils/pdf-documents'
+import { gerarHtmlGuiaTiss, imprimirGuiaTiss } from '~/utils/guia-tiss'
 
 const auth = useAuthStore()
 
@@ -364,12 +365,36 @@ async function gerarSolicitacaoExames(ag: AgendamentoComPaciente) {
   const registro = encontrarRegistroPorData(historico, ag.data)
 
   const exames = registro?.exames?.map((e) => {
-    if (typeof e === 'string') return e
-    return e.nome || e.descricao || ''
-  }).filter(Boolean) ?? []
+    if (typeof e === 'string') return { nome: e, orientacao: null }
+    return {
+      nome: e.nome || e.descricao || '',
+      codigo_amb: e.codigo_amb ?? null,
+      codigo_alfanumerico: e.codigo_alfanumerico ?? null,
+      orientacao: e.orientacao ?? null
+    }
+  }).filter(e => e.nome) ?? []
 
   if (exames.length === 0) {
     console.warn('Nenhum exame encontrado para esta consulta')
+    return
+  }
+
+  const convenio = (ag.paciente.convenio ?? '').toLowerCase()
+
+  if (convenio && convenio !== 'particular') {
+    const params = {
+      paciente: ag.paciente.nome,
+      cpf: ag.paciente.cpf,
+      convenio: ag.paciente.convenio ?? '',
+      idConvenioSpdata: ag.paciente.idConvenioSpdata,
+      data: formatarDataParaPdf(ag.data),
+      exames,
+      medico: auth.user?.nome,
+      crm: auth.user?.crm,
+      especialidade: auth.user?.especialidades?.join(', ')
+    }
+    const html = await gerarHtmlGuiaTiss(params)
+    imprimirGuiaTiss(html)
     return
   }
 

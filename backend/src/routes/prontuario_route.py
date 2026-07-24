@@ -53,6 +53,7 @@ def _solicitacao_exame_to_dict(solicitacao):
         "exame_id": solicitacao.exame_id,
         "descricao": solicitacao.descricao,
         "tipo_exame": solicitacao.tipo_exame,
+        "orientacao": solicitacao.orientacao,
         "codigo_alfanumerico": exame.codigo_alfanumerico if exame else None,
         "codigo_amb": exame.codigo_amb if exame else None,
     }

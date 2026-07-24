@@ -16,11 +16,13 @@ const auth = useAuthStore()
 const agendamentosStore = useAgendamentosStore()
 const padroesStore = usePadroesStore()
 const padroesAnamneseStore = usePadroesAnamneseStore()
+const padroesOrientacoesStore = usePadroesOrientacoesStore()
 const cronometro = useCronometroStore()
 const toast = useToast()
 onMounted(() => {
   padroesStore.fetchAll()
   padroesAnamneseStore.fetchAll()
+  padroesOrientacoesStore.fetchAll()
   cronometro.start()
 })
 
@@ -82,18 +84,20 @@ watch(
   { immediate: true }
 )
 
+const exame = ref<ExameSelecionado | null>(null)
+
 const tabAtiva = ref('0')
 const tabItems = [
   { label: 'Anamnese e Evolução', icon: 'i-lucide-notebook-text' },
-  { label: 'Receita', icon: 'i-lucide-pill' },
   { label: 'Solicitar Exames', icon: 'i-lucide-flask-conical' },
+  { label: 'Receita', icon: 'i-lucide-pill' },
   { label: 'Conclusão', icon: 'i-lucide-check-circle' }
 ]
 
 type CidResultado = { cid: string, nome: string }
 
 type AtendimentoDraft = {
-  version: 3
+  version: 4
   savedAt: string
   agendamentoId: number
   pacienteId: number | null
@@ -327,10 +331,29 @@ function normalizarExameSelecionado(valor: unknown): ExameSelecionado | null {
   const exameId = normalizarIdExame(item.exameId ?? item.exame_id ?? item.id)
   const codigo_amb = typeof item.codigo_amb === 'string' ? item.codigo_amb : null
   const codigo_alfanumerico = typeof item.codigo_alfanumerico === 'string' ? item.codigo_alfanumerico : null
+  const orientacao = typeof (item.orientacao ?? item.orientacoes) === 'string'
+    ? String(item.orientacao ?? item.orientacoes)
+    : null
 
   if (!nome) return null
 
-  return { nome, exameId, codigo_amb, codigo_alfanumerico }
+  return {
+    nome,
+    exameId,
+    codigo_amb,
+    codigo_alfanumerico,
+    orientacao: htmlTemConteudo(orientacao) ? orientacao : null
+  }
+}
+
+function htmlTemConteudo(valor?: string | null) {
+  const texto = (valor || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;|&#160;|&#xA0;/gi, ' ')
+    .replace(/[\u00A0\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+
+  return Boolean(texto)
 }
 
 function exameExisteNaLista(lista: ExameSelecionado[], exame: ExameSelecionado) {
@@ -366,6 +389,33 @@ function adicionarExame(valor: unknown) {
   sugestoesExames.value = []
 }
 
+function adicionarOrientacao(valor: ExameSelecionado) {
+  exame.value = valor
+  showOrientacaoExamesModal.value = true
+}
+
+function exameTemOrientacao(valor: ExameSelecionado) {
+  return htmlTemConteudo(valor.orientacao)
+}
+
+function salvarOrientacaoExame(orientacao: string) {
+  if (!exame.value) return
+
+  const selecionado = exame.value
+  const index = examesSelecionados.value.findIndex((e) => {
+    if (e === selecionado) return true
+    if (e.exameId && selecionado.exameId && e.exameId === selecionado.exameId) return true
+    return e.nome.trim().toLocaleLowerCase('pt-BR') === selecionado.nome.trim().toLocaleLowerCase('pt-BR')
+  })
+  if (index === -1) return
+
+  examesSelecionados.value[index] = {
+    ...examesSelecionados.value[index]!,
+    orientacao: htmlTemConteudo(orientacao) ? orientacao.trim() : null
+  }
+  exame.value = examesSelecionados.value[index] ?? null
+}
+
 function adicionarExameManual() {
   adicionarExame(buscaTermoExame.value)
 }
@@ -385,6 +435,7 @@ function adicionarPadraoExame() {
 const showAtestadoModal = ref(false)
 const showEncaminhamentoModal = ref(false)
 const showProcedimentoModal = ref(false)
+const showOrientacaoExamesModal = ref(false)
 const finalizandoConsulta = ref(false)
 const draftSalvoEm = ref<string | null>(null)
 const draftRestaurado = ref(false)
@@ -416,7 +467,7 @@ function montarDraft(): AtendimentoDraft | null {
   if (!ag) return null
 
   return {
-    version: 3,
+    version: 4,
     savedAt: new Date().toISOString(),
     agendamentoId: ag.id,
     pacienteId: ag.paciente.id ?? null,
@@ -602,7 +653,7 @@ async function gerarSolicitacaoExames() {
   const convenio = (agendamento.value?.paciente.convenio ?? '').toLowerCase()
 
   if (convenio && convenio !== 'particular') {
-    const html = await gerarHtmlGuiaTiss({
+    const params = {
       paciente: agendamento.value?.paciente.nome ?? 'Paciente',
       cpf: agendamento.value?.paciente.cpf,
       convenio: agendamento.value?.paciente.convenio ?? '',
@@ -610,8 +661,10 @@ async function gerarSolicitacaoExames() {
       data: new Date().toLocaleDateString('pt-BR'),
       exames: examesSelecionados.value,
       medico: auth.user?.nome,
-      crm: auth.user?.crm
-    })
+      crm: auth.user?.crm,
+      especialidade: auth.user?.especialidades?.join(', ')
+    }
+    const html = await gerarHtmlGuiaTiss(params)
     imprimirGuiaTiss(html)
     return
   }
@@ -621,7 +674,10 @@ async function gerarSolicitacaoExames() {
     paciente: agendamento.value?.paciente.nome ?? 'Paciente',
     data: new Date().toLocaleDateString('pt-BR'),
     exames: examesSelecionados.value
-      .map(e => e.nome),
+      .map(e => ({
+        nome: e.nome,
+        orientacao: e.orientacao ?? null
+      })),
     medico: auth.user?.nome,
     crm: auth.user?.crm,
     especialidade: auth.user?.especialidades?.join(', ')
@@ -665,13 +721,14 @@ async function finalizarConsulta() {
         nome: e.nome,
         exame_id: e.exameId ?? null,
         codigo_amb: e.codigo_amb ?? null,
-        codigo_alfanumerico: e.codigo_alfanumerico ?? null
+        codigo_alfanumerico: e.codigo_alfanumerico ?? null,
+        orientacao: e.orientacao ?? null
       })),
       duracao
     })
     limparDraft()
     cronometro.stop()
-    await navigateTo('/dashboard')
+    await navigateTo('/dashboard', { replace: true })
   } catch (error) {
     console.error('Erro ao finalizar consulta', error)
     toast.add({
@@ -964,7 +1021,7 @@ async function finalizarConsulta() {
         </div>
 
         <div
-          v-if="index === 1"
+          v-if="index === 2"
           class="px-2 flex flex-col gap-4 py-2  grow"
         >
           <UCard
@@ -1067,7 +1124,7 @@ async function finalizarConsulta() {
         </div>
 
         <div
-          v-if="index === 2"
+          v-if="index === 1"
           class="px-2 flex flex-col gap-4 py-2  grow"
         >
           <UCard
@@ -1137,13 +1194,6 @@ async function finalizarConsulta() {
                 </div>
               </UFormField>
 
-              <p
-                v-if="!padroesStore.exames.length"
-                class="shrink-0 text-sm text-muted italic"
-              >
-                Nenhum padrão de exames cadastrado. Crie padrões em "Padrões de Solicitações".
-              </p>
-
               <UCard
                 class="grow flex flex-col min-h-0"
                 :ui="{
@@ -1168,13 +1218,22 @@ async function finalizarConsulta() {
                     class="flex items-center justify-between p-3 rounded-lg border border-muted"
                   >
                     <span class="text-sm">{{ exame.nome }}</span>
-                    <UButton
-                      icon="i-lucide-x"
-                      color="error"
-                      variant="ghost"
-                      size="sm"
-                      @click="removerExameDaLista(i)"
-                    />
+                    <div class="flex gap-3 items-center">
+                      <UButton
+                        variant="link"
+                        :icon="exameTemOrientacao(exame) ? 'i-lucide-message-square-warning' : 'i-lucide-plus'"
+                        @click="adicionarOrientacao(exame)"
+                      >
+                        {{ exameTemOrientacao(exame) ? 'Editar Orientação' : 'Adicionar Orientação' }}
+                      </UButton>
+                      <UButton
+                        icon="i-lucide-x"
+                        color="error"
+                        variant="ghost"
+                        size="sm"
+                        @click="removerExameDaLista(i)"
+                      />
+                    </div>
                   </div>
                 </div>
                 <p
@@ -1298,6 +1357,13 @@ async function finalizarConsulta() {
       :data-atendimento="agendamento?.data"
       :documento="documentoProcedimento"
       @saved="atualizarDocumentoMedico"
+    />
+    <OrientacaoExameModal
+      v-model:open="showOrientacaoExamesModal"
+      :exame="exame"
+      :agendamento="agendamento"
+      :data-atendimento="agendamento?.data"
+      @saved="salvarOrientacaoExame"
     />
   </div>
 </template>

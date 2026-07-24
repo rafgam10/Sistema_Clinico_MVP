@@ -1,6 +1,11 @@
 import type { ItemMedicamento } from '~/types'
 import { getLogoBase64 } from '~/utils/pdf-assets'
 
+type ExameSolicitacaoPdf = string | {
+  nome: string
+  orientacao?: string | null
+}
+
 async function hospitalHeader() {
   const logo = await getLogoBase64()
   return [
@@ -47,14 +52,39 @@ function signatureBlock(medico?: string, crm?: string, especialidade?: string) {
 
 const defaultStyle = { fontSize: 11, lineHeight: 1.5 }
 
+function htmlTemConteudo(valor?: string | null) {
+  const texto = (valor || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;|&#160;|&#xA0;/gi, ' ')
+    .replace(/[\u00A0\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+
+  return Boolean(texto)
+}
+
+function normalizarExameSolicitacao(exame: ExameSolicitacaoPdf) {
+  if (typeof exame === 'string') {
+    return { nome: exame, orientacao: null }
+  }
+
+  return {
+    nome: exame.nome,
+    orientacao: htmlTemConteudo(exame.orientacao) ? exame.orientacao || null : null
+  }
+}
+
 export async function buildSolicitacaoExames(params: {
   paciente: string
   data: string
-  exames: string[]
+  exames: ExameSolicitacaoPdf[]
   medico?: string
   crm?: string
   especialidade?: string
 }) {
+  const htmlToPdfmake = (await import('html-to-pdfmake')).default
+  const exames = params.exames.map(normalizarExameSolicitacao)
+  const folhasOrientacao = exames.filter(e => htmlTemConteudo(e.orientacao))
+
   return {
     pageSize: 'A4' as const,
     pageMargins: [60, 40, 60, 60] as [number, number, number, number],
@@ -63,8 +93,20 @@ export async function buildSolicitacaoExames(params: {
       documentTitle('SOLICITAÇÃO DE EXAMES'),
       { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
       { text: `DATA: ${params.data}`, margin: [0, 0, 0, 20] },
-      ...params.exames.map(e => ({ text: `\u2022 ${e}`, margin: [0, 0, 0, 4] })),
-      signatureBlock(params.medico, params.crm, params.especialidade)
+      ...exames.map(e => ({ text: `\u2022 ${e.nome}`, margin: [0, 0, 0, 4] })),
+      signatureBlock(params.medico, params.crm, params.especialidade),
+      ...(
+        await Promise.all(folhasOrientacao.map(async e => [
+          { text: '', pageBreak: 'before' as const },
+          ...(await hospitalHeader()),
+          documentTitle('ORIENTAÇÃO DE EXAME'),
+          { text: `PACIENTE: ${params.paciente.toUpperCase()}`, bold: true, decoration: 'underline', margin: [0, 0, 0, 5] },
+          { text: `DATA: ${params.data}`, margin: [0, 0, 0, 5] },
+          { text: `EXAME: ${e.nome}`, bold: true, margin: [0, 0, 0, 20] },
+          ...htmlToPdfmake(e.orientacao || '', { window }),
+          signatureBlock(params.medico, params.crm, params.especialidade)
+        ]))
+      ).flat()
     ],
     defaultStyle
   }
